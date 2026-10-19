@@ -1,0 +1,54 @@
+# Global Rules for Editing Codebases & CADENCE SDLC Governance
+
+## 1. Worktree, Universal `.agents/` Layout & Remote PR Workflow (Mandatory for All Projects)
+1. Never commit or merge directly into local `develop` or `main` (never edit the primary checkout directly).
+2. Create a new dedicated `git worktree` (outside `.agents/` and `.gemini/`), make all changes, commit on the worktree branch, and push the branch to `origin`.
+3. Open a remote Pull Request targeting `develop` (`gh pr create --base develop`), merge the PR into `develop` on the remote (`gh pr merge`), and then pull remote `develop` into local `develop` (`git pull origin develop`).
+4. For `main`: only merge from `develop` into `main` on the remote (via remote PR) and pull `main` from remote locally.
+5. **Universal `.agents/` Discovery & `.gemini/` Reference Implementation:** `.agents/` is the universal, CLI-neutral primary directory for agents, skills, and hooks (`AGENTS.md`), with `.gemini/` as the canonical Antigravity/Gemini reference implementation (and other CLI directories projected off `.agents/` per `~/projects/sdlc/processes/docs/policies/cli-runtime-adoption-policy.md`). Always check `.agents/`, `.gemini/`, and `~/projects/sdlc/` for workspace agents, skills, and helper scripts.
+
+---
+
+## 2. CADENCE Core Operating Principles (Request / Response Lifecycle)
+1. **Surface ambiguity early; never guess silently.** When requirements are underspecified, ask. When competing designs carry distinct trade-offs, state each cost explicitly instead of picking one behind the scenes.
+2. **Deliver the smallest implementation that satisfies the specification.** Do not build speculative abstractions, unrequested configurability, or opportunistic "while we are here" features outside the active acceptance criteria.
+3. **Restrict blast radius to required files.** Leave unrelated neighboring code untouched. Remedy any defect introduced by your own changes, and record pre-existing issues separately rather than mixing unrelated refactors into the diff.
+4. **Establish verifiable completion criteria upfront and iterate until green.** Define concrete pass conditions before editing code, and verify that tests pass, runtime behavior matches the spec, and zero regressions remain before declaring completion.
+5. **Halt explicitly on missing or conflicting state.** If a required tracker binding, identifier, capability tier, tool, or precondition is absent or contradictory, stop immediately and name the exact missing element—never fall back silently.
+6. **Synchronize every representation of a shared fact in the same change.** Whenever a fact is recorded across multiple artifacts (specification, template, org binding, role definition, summary doc, or code comment), reconcile every location atomically.
+7. **Clarify governed CADENCE skill vs. direct edit when phrasing overlaps.** When a prompt's action verb overlaps a governed CADENCE lifecycle command (`/cadence-triage`, `/cadence-elicit`, `/cadence-spec`, `/cadence-implement`, `/cadence-review`, `/cadence-maintain`, `/cadence-migrate`, `/cadence-archive`, `/cadence-prep`, `/cadence-cycle`) and the intended execution path is not explicit, ask the operator whether to run the governed CADENCE skill workflow or perform a direct edit.
+8. **Target runtime software in tests, never governance prose.** Automated tests must verify executable application behavior, never the markdown specifications or policy documents that describe it.
+
+---
+
+## 3. CADENCE Frameworks, Engineering Pillars & TDD Discipline
+- **Contextual Grounding Matrix (`6W×4L` Grid)**: Ground specifications across **What**, **How**, **Where**, **Who**, **When**, and **Why** across the **Scope**, **Enterprise/Business**, **System**, and **Technology** rows before authoring production code.
+- **CHORD Scenario Decomposition**: Decompose every acceptance criterion into **C**onditions (`Given`), **H**andling/Triggers (`When`), **O**utcomes (`Then` — external return/response), **R**ules (`Then` — business invariants), and **D**eltas (`Then` — internal state/audit mutations), mechanically deriving edge cases and the four structured observability seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
+- **Always-On Engineering Pillars**:
+  1. **Pillar 1 — Structural Simplicity**: Minimum moving parts; no caching layer without profiling proof; `<=3` files touched to wire a new capability.
+  2. **Pillar 2 — Operational Resilience**: Deployable, observable, and recoverable; structured logs, trace correlation, and health metrics at every CHORD seam.
+  3. **Pillar 3 — Agentic Ergonomics**: Source files strictly `<400` lines for single-pass comprehension; `<=5` files read to understand any single feature flow; strict comment discipline (`C1`–`C8`).
+- **Triggered Mandatory Pillars (Priority Order)**: **Data & Audit Fidelity** (100% mutation audit coverage; actor identity derived exclusively from authenticated context, never caller input) > **Security Boundary Posture** (authz, PII redaction, untrusted input validation, client bundle hygiene) > **Surface Compatibility** (registered public surfaces in `cadence-surfaces.md`).
+- **Strict Red-Green-Refactor TDD**:
+  1. **RED** — Author one failing test for a single Gherkin/CHORD scenario.
+  2. **GREEN** — Write the minimal production code required to pass that test.
+  3. **ACCUMULATE** — Execute the full test suite via the repository's sanctioned test runner (`PROJECT_INTENT.md`); every test must pass.
+  4. **COMMIT** — Create one atomic commit per scenario progression (`happy path -> not-found -> validation -> variations -> boundaries -> concurrency -> auth -> E2E`).
+- **Tracker Projection**: Synchronize `metadata.yaml` and specification artifacts (`problem.md`, `spec.md`, `test-plan.md`) to the repository's bound issue tracker (`CADENCE_ORG.md` §10) within the same session.
+
+---
+
+## 4. Gemini Model Tier Mapping for CADENCE Agents & Workflows
+- **Deep Reasoning & Code Authoring (`gemini-4-argon-high` / `pro`)**: Primary architecture (`cadence-architect`), divergent option exploration (`cadence-explorer`), specification & CHORD/Gherkin authoring (`cadence-spec-author`), strict TDD implementation (`cadence-implementer`), schema/data migrations (`cadence-migration-author`), adversarial code review (`cadence-reviewer`), and maintainer acceptance (`cadence-maintainer`).
+- **High-Breadth / Fast-Mechanical Work (`gemini-3.8-flash-high` / `flash`)**: Issue triage & duplicate discovery (`cadence-triage-agent`), archival & insight extraction (`cadence-archivist`), and read-only local offload coordination (`log-triage`, `repo-scout`).
+
+---
+
+## 5. Automatic Local Hardware Coprocessor Offload & SDLC Guardrails
+Local models on the Ryzen 9 9955HX3D (128MB 3D V-Cache, port `9379`, 0 MB VRAM) and NVIDIA RTX 5070 Ti (12GB VRAM, port `9380`, on-demand) operate automatically as **read-only coprocessors** via the `local-offload` MCP server (`offload_log_triage`, `offload_deep_review`, `local_semantic_embed`) and subagents (`log-triage`, `repo-scout`):
+1. **Zero Autonomous Code Edits**: Local models (`gemma-4-e2b`, `gemma-4-12b`, `gemma-4-26b-a4b`, `nomic-embed-text`) must NEVER write, edit, or format project files (`enable_write_tools: false`). Gemini 4 Argon retains 100% ownership of all planning, reasoning, code generation, and CADENCE gate verification.
+2. **Mandatory Automatic Phase Offload Routing (No User Prompting Required)**:
+   - **Triage, Elicitation & Spec Discovery (`cadence-triage`, `cadence-elicit`, `cadence-spec`, `cadence-prep`, `cadence-interview`)**: Automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) and `repo-scout` (`local-moe-hybrid` on `:9380`) to rank insights, specs, and codebase symbols before broad file reads.
+   - **Implementation, Migration & Gate Loops (`cadence-implement`, `cadence-migrate`, `cadence-cycle`, `cadence-parallel`)**: Automatically route test/build/compiler/gate logs exceeding 30 lines through `offload_log_triage` / `log-triage` (`local-fast-cpu` on `:9379`, 0 MB VRAM) while preserving exact test runner command evidence, verbatim compiler/test error messages, test coverage metrics, linter warnings, and `file:line` coordinates.
+   - **Pre-Review Mechanical Sweeps (`cadence-review`, `cadence-maintain`)**: Automatically invoke `offload_deep_review` (`local-moe-hybrid` / `local-12b-gpu` on `:9380`) at Step 0 for advisory pre-scans (`<400`-line Agentic Ergonomics ceiling, `C1`–`C8` comment discipline, CHORD observability seams), verified by Argon before issuing verdicts.
+3. **Verbatim Extraction + Raw Escape Hatch**: `offload_log_triage` never paraphrases compiler/test errors and always writes the full unedited output with 1-indexed line numbers to `/tmp/agy-last-triage.log` so Argon can inspect raw lines whenever a CADENCE gate requires deeper verification.
