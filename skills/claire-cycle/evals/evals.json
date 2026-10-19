@@ -1,0 +1,167 @@
+{
+  "skill_name": "claire-cycle",
+  "notes": "Evals run against a throwaway CLAIRE-shaped fixture built by ../../claire-cycle-workspace/build_fixture.sh, which extends /claire-prep's fixture (ACME-101..109) with the implement-window tickets ACME-110..113. Integration branch is `trunk`, not `main`. LIMIT — the fixture has no git remote and no forge, so no eval can open or publish a real MR, and /claire-implement and /claire-review are not invocable by a subagent: these evals grade the DECISION (admit / refuse / count / ask / stop) and the stated sequence, not cycles actually executed. ready_mr.sh is covered by a shim-based script test instead. The sharp cases: ACME-110 carries THREE ledger markers while stage_effort records only ONE code-review, so a run that counts effort entries reads 1 completed cycle and would grant three more against a cap of four; ACME-111 is already at the cap with blockers open, where the correct move is to ASK rather than run a fifth or halt silently; ACME-113 is spec-approved at High with spec.md deliberately UNTRACKED, so the spec never landed and implementing would cut a branch missing its own contract — the mirror of ACME-105, whose spec IS on trunk. ACME-113 is 'not yet' and ACME-112 is 'already past', and the skill must distinguish them. NOTE on Trivial: /claire-review does NOT run at this tier and there are no cycles or ledger entries -- MR approval is the review. Only the implementation is ad-hoc, because /claire-implement refuses the tier. This matches /claire-run exactly; the two skills do not diverge on Trivial.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "spec-landed-admitted",
+      "prompt": "acme-105's spec is in. can you take it from here and get the implementation up for review? before you start, tell me the sequence and where you'd stop",
+      "expected_output": "Identifies status `spec-approved`, tier High, and confirms the spec actually landed by checking the integration branch rather than trusting the status field. Admitted. Sequence: /claire-implement, create the implementation MR as a draft against `trunk` and record it in `merge_request`, /claire-review, ledger entry per cycle, repeat until 0 blocking (cap 4), then mark the MR ready via ready_mr.sh and stop. No /claire-maintain, no monitoring.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `spec-approved` and the tier as High",
+        "Confirms the spec actually landed on the integration branch rather than trusting the status field alone",
+        "Names `trunk` as the branch the implementation is based on or compared against",
+        "Does NOT claim the base branch is `main`",
+        "Creates the implementation MR as a draft and records its URL in `merge_request`",
+        "Runs /claire-implement and /claire-review as a repeating cycle rather than once",
+        "States the cycle cap is 4",
+        "Marks the MR ready for review when blocking issues reach 0",
+        "States that the run stops there and does NOT run /claire-maintain",
+        "States that it does NOT monitor or wait for the MR to merge"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "spec-not-landed-refused",
+      "prompt": "acme-113 is ready to build — spec's approved. go ahead and implement it",
+      "expected_output": "Identifies status `spec-approved` at tier High, but the spec is NOT on the integration branch (specs/ACME-113/ is untracked), so the spec never landed. Not admitted. This is 'not yet' rather than 'already past'. Names /claire-prep (to propose the spec MR) or /claire-run (to wait on it) and stops, explaining that an implementation branch cut now would not contain the contract it is reviewed against.",
+      "files": [],
+      "assertions": [
+        "Checks whether the spec is present on the integration branch",
+        "Determines that the spec has NOT landed on the integration branch",
+        "Declines to run /claire-implement",
+        "Frames this as 'not yet' — the spec phase is incomplete — rather than as the ticket being past this skill's window",
+        "Names /claire-prep or /claire-run as what carries it from here",
+        "Explains that implementing now would base the branch on a tree missing the spec",
+        "Does NOT treat `status: spec-approved` as proof the spec merged"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "ledger-cycle-count",
+      "prompt": "where does acme-110 stand on review rounds, and how many has it got left before you'd need to check with me? read-only, don't run anything",
+      "expected_output": "Reads 3 completed cycles from the claire-run:cycle ledger markers in submission.md — NOT 1, which is what stage_effort records — with the last review leaving 1 blocking issue. Against a cap of 4 that leaves exactly one more cycle before the operator has to authorise further ones.",
+      "files": [],
+      "assertions": [
+        "Counts 3 completed review cycles",
+        "Sources the count from the cycle ledger markers rather than from stage_effort",
+        "Explicitly does NOT report the count as 1 (the stage_effort value)",
+        "States the cap is 4",
+        "Concludes exactly 1 cycle remains before authorisation is needed",
+        "Reports that the most recent review left 1 blocking issue"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "cap-reached-asks",
+      "prompt": "acme-111 has been round and round with review. can you push it over the line?",
+      "expected_output": "Reads 4 completed cycles with 2 blocking issues still open — the cap is already spent. Does NOT run a fifth cycle unasked and does NOT halt silently: puts it to the operator with the cycle count, what the last review's blocking issues were, and the choice between authorising further cycles and stopping for a human look. States that any authorisation gets recorded in decisions.md.",
+      "files": [],
+      "assertions": [
+        "Counts 4 completed review cycles from the ledger",
+        "Determines that blocking issues are still open (2)",
+        "Does NOT start a fifth implement/review cycle on its own authority",
+        "Asks the operator whether to continue rather than only reporting a halt",
+        "Presents what the last review's blocking issues were so the operator can decide",
+        "States that an authorisation to exceed the cap would be recorded in decisions.md",
+        "Does NOT self-authorise additional cycles"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "window-closed-mr-ready",
+      "prompt": "can you run the implementation on acme-112",
+      "expected_output": "Identifies status `in-review`, tier Medium, 0 blocking on the last review, with the implementation MR recorded in merge_request and already ready for review. The window is closed — there is nothing for this skill to do. Names /claire-maintain (or /claire-run) as what owns it now, and frames the decline as a normal outcome.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `in-review`",
+        "Determines the most recent review left 0 blocking issues",
+        "Determines the implementation MR is already recorded and reviewable",
+        "Concludes there is nothing for this skill to do",
+        "Frames that as a normal successful outcome rather than an error",
+        "Names /claire-maintain or /claire-run as what owns the ticket now",
+        "Does NOT start another implement/review cycle",
+        "Does NOT run /claire-maintain itself"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "trivial-adhoc-then-ready",
+      "prompt": "acme-103, the broken runbook link. can you get that implemented?",
+      "expected_output": "Identifies tier Trivial. /claire-implement refuses this tier, so the change is made ad hoc IN THIS RUN -- not handed back as instructions. Then a decisions.md entry recording the ad-hoc path, an MR created as a draft with its URL in merge_request, status set to in-review, and the MR marked ready immediately. /claire-review does not run at this tier, so there are no cycles and no ledger entries: MR approval is the review.",
+      "files": [],
+      "assertions": [
+        "Identifies the tier as Trivial",
+        "Makes the change itself in this run rather than handing the work back as instructions",
+        "States that /claire-implement refuses the Trivial tier",
+        "States that /claire-review does not run at this tier",
+        "Writes a decisions.md entry recording the ad-hoc path",
+        "Records the MR URL in `merge_request`",
+        "Marks the MR ready for review rather than leaving it a draft",
+        "Does NOT run implement/review cycles or append ledger entries at this tier",
+        "Leaves the merge itself to a human"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "low-tier-admitted",
+      "prompt": "acme-109 — the export filename thing. it's triaged, can you build it?",
+      "expected_output": "Identifies status `triaged`, tier Low. No spec is produced at Low, so there is nothing to wait for and the ticket is admitted. The tier contract is problem.md's acceptance criteria, not a spec. Runs /claire-implement and /claire-review cycles, opens the MR as a draft, records it, and marks it ready at 0 blocking.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `triaged` and the tier as Low",
+        "Admits the ticket rather than waiting for a spec",
+        "States that no spec is produced at Low, so there is nothing to wait for",
+        "Identifies problem.md's acceptance criteria as the tier contract /claire-implement works against",
+        "Describes running /claire-implement and /claire-review cycles",
+        "Ends with the implementation MR recorded and marked ready for review"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "high-triaged-refused",
+      "prompt": "start on acme-101 please, it's been triaged",
+      "expected_output": "Identifies status `triaged` at tier High. At Medium and High a spec is owed before implementation, and none exists yet, so the ticket is not admitted. This is 'not yet'. Names /claire-prep (or /claire-spec) as what comes first and stops.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `triaged` and the tier as High",
+        "Declines to implement because a spec is owed at this tier",
+        "Frames this as 'not yet' rather than as the ticket being past this skill's window",
+        "Names /claire-prep or /claire-spec as what comes first",
+        "Does NOT invoke /claire-implement",
+        "Does NOT write a spec itself"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "problem-statement-refused",
+      "prompt": "the nightly export job silently drops rows for tenants over about 200k. can you implement a fix for that?",
+      "expected_output": "The argument is a problem statement, not a ticket id. This skill implements a ticket that already exists; it does not create one. Halts with a named cause, explaining that implementing an untriaged problem means inventing both the tier and the acceptance criteria. Names /claire-triage or /claire-prep as the way in. Does not invoke /claire-triage itself to keep going.",
+      "files": [],
+      "assertions": [
+        "Recognises the input is a problem statement rather than a ticket id",
+        "Declines to proceed and names the cause",
+        "Explains that there is no tier or acceptance criteria to implement against",
+        "Does NOT invoke /claire-triage itself to keep the run going",
+        "Names /claire-triage or /claire-prep as what establishes the ticket first",
+        "Does NOT create a ticket, spec, or branch"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "ledger-marker-interop",
+      "prompt": "quick question before i kick anything off — if i start acme-110 with you and then later hand it to /claire-run, does it know how many review rounds have already happened? read-only",
+      "expected_output": "Yes, because the cycle ledger marker is shared: this skill writes `claire-run:cycle` markers, the same string /claire-run and /claire-prep's state readers grep for. A skill-specific marker name would make the cycles invisible and restart a capped review at one. The same holds for the metadata fields — merge_request is the implementation MR and is not repurposed.",
+      "files": [],
+      "assertions": [
+        "States that the cycle ledger marker is written as `claire-run:cycle`",
+        "Explains that the shared marker name is what makes the skills interoperable",
+        "States that a skill-specific marker name would make the cycle count read as zero",
+        "Connects that failure to the cycle cap being restarted or bypassed",
+        "Does NOT propose introducing a `claire-cycle:cycle` marker",
+        "Does NOT propose a new metadata.yaml field for this skill's own use"
+      ]
+    }
+  ]
+}

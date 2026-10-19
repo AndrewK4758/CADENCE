@@ -1,0 +1,11 @@
+{panel:title=Original intake (as filed) — preserved on import; the repo now owns the description below|borderStyle=solid|titleBGColor=#fff4e5|bgColor=#fffaf2}
+*Ticket:* {{ticket_key}}
+*Summary:* {{original_summary}}
+*Type:* {{original_type}}
+*Priority:* {{original_priority}}
+*Original Estimate:* {{original_estimate}}
+*Labels:* {{original_labels}}
+*Acceptance Criteria:* {{original_acceptance_criteria}}
+
+{{original_description}}
+{panel}

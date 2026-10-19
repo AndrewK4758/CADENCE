@@ -1,0 +1,314 @@
+# Spec Metadata -- Machine-readable fields for automation and tracker sync
+# This file is the source of truth; tracker tickets are generated/updated from it.
+# Remove or comment out any optional sections your project doesn't use.
+
+# --- Authoring: the sync reader's grammar -------------------------------------
+# This file is read by hand-rolled YAML SUBSET parsers -- one per tracker
+# adapter (Jira Server/DC, YouTrack) -- not a spec-compliant one, so a file
+# that `yaml.safe_load` accepts is not automatically a file a sync can read.
+# This note is the canonical statement of what EVERY adapter's reader accepts;
+# nothing else restates it (BTG-114: previously true of one adapter only).
+#
+# SUPPORTED, for EVERY key. A quoted scalar MAY WRAP across physical lines.
+# Each line break folds to a SINGLE SPACE, with the preceding line's trailing
+# and the continuation's leading whitespace dropped -- the same value a
+# spec-compliant parser produces. It works in all three value positions:
+# `key: "..."`, a list item `- "..."`, and a map-item value `- key: "..."`.
+# Wrap to stay inside the 400-line file convention; that is what the fold is
+# for.
+#
+# A quoted scalar's ESCAPES (BTG-114). In a SINGLE-quoted scalar the only
+# escape is the DOUBLED quote (`''`); a backslash is a literal character. In a
+# DOUBLE-quoted scalar there are two: the DOUBLED quote (`""`, this reader's
+# own extension) and a BACKSLASH, which consumes the next character --
+# `\"` is a quote, `\\` is one backslash, and `\n \t \r \0 \a \b \f \v \e`
+# are their control characters; a backslash before any other character is
+# that literal character. A `#` INSIDE a quoted value is part of the value,
+# never a comment boundary, and only whitespace or a `#` comment may follow a
+# closed quote -- anything else fails loudly rather than being discarded.
+#
+# NOT SUPPORTED, each of which fails loudly naming the file, the opening line
+# (or the offending item, on the raw related_tickets arm below) and the last
+# key read, rather than being half-read:
+#   * the NUMERIC escapes `\x`, `\u`, `\U` -- refused BY NAME, never guessed
+#   * a FLOW SEQUENCE (`[a, b]`) spanning physical lines -- keep it on one line
+#   * BLOCK SCALARS (`|`, `>`) as a MAPPING VALUE (`key: |`) -- refused at the
+#     indicator line itself. ONE EXEMPTION, UNCHANGED by BTG-114: a bare
+#     `- >` LIST ITEM read through the STRUCTURED loader is NOT refused
+#     there -- it loads as the one-character string `>` and is refused
+#     per-item further downstream, with its siblings preserved, because
+#     halting the whole file would be a worse trade than refusing the one
+#     item. The RAW `related_tickets:` reader below has no such exemption:
+#     the SAME bare `- >` item is refused there by name (G7), never read as
+#     `>`, because that arm's per-item downstream chokepoint does not exist
+#     the same way (spec.md member 4)
+#   * ANCHORS AND ALIASES (`&name`, `*name`)
+#   * MULTI-DOCUMENT streams (`---` separators)
+#   * map nesting beyond ONE level
+#   * a wrapped UNQUOTED (plain) scalar -- quote it, and it wraps
+#
+# ONE NARROWER EXCEPTION, under `related_tickets:` and no other key. That key
+# is read a SECOND time, straight from this file, by a RAW reader that
+# recovers the trailing comments the structured reader drops (they carry the
+# relation direction). For a PLAIN quoted list item (`- "..."`) that raw
+# reader honors every rule above -- including the full escape grammar (the
+# doubled-quote escape, the backslash family, and the numeric-escape
+# refusal), the `#`-inside-a-value rule, and the block-scalar refusal (with
+# no exemption, per the bullet above). ONE PRE-EXISTING, UNRELATED
+# NARROWING survives: the raw reader also TRIMS leading and trailing
+# whitespace from the extracted value (so a padded item still resolves to
+# a bare reference downstream); this is whitespace handling, not escape
+# processing, predates this grammar, and has zero corpus occurrences. It
+# does NOT implement any of that
+# structurally for a keyed map-item value (`- key: "..."`) or a flow-style
+# map (`- {ticket: "...", ...}`) -- those keep their existing, narrower
+# behavior: a value that escapes a quote by DOUBLING it, or a map-item value
+# that WRAPS across lines, is REFUSED by name (unresolvable from where this
+# raw reader sits), and every other map-item or flow-map value passes
+# through opaque and is refused downstream if it is not a bare ticket
+# reference. The raw reader additionally REFUSES, for a PLAIN item, a
+# literal TAB inside the value or its trailing-comment signal -- the raw
+# reader's own `<value><TAB><signal>` line contract cannot represent one, so
+# a tab is refused rather than silently reinterpreted as the field
+# delimiter. Every refusal names the file and the offending item; the run
+# reports `rejected`, never the benign-looking `none`; and a refusal is
+# SCOPED -- links declared under the ordering keys `precedes:`,
+# `preceded_by:`, `duplicates:` and `clones:` are read separately and STILL
+# PROJECT, and a refusal under one key never suppresses a different key's
+# read. Every other key accepts all three positions with the full escape
+# grammar above.
+#
+# VERSION-ANCHORED, deliberately. Continuation support and the escape grammar
+# above arrived in **the release that ships this change** -- anchored to the
+# change rather than to a version NUMBER on purpose, because the number is not
+# known when this note is written and nothing sweeps a stale one. In a
+# repository running an OLDER installed CLAIRE, a wrapped scalar or an
+# escaped quote still halts (or truncates) the sync -- so this note describes
+# the reader you have, not YAML in general.
+# ------------------------------------------------------------------------------
+
+# --- Core (universal) ---
+
+id: "{TICKET-ID}"                           # Tracker ticket ID (e.g., PROJ-1234). Generated if not pre-existing.
+title: "{Short descriptive title}"
+type: feature                               # feature | bug | tech-debt | security | documentation
+priority: medium                            # critical | high | medium | low
+status: draft                               # draft | triaged | spec-in-review | spec-approved | in-progress | in-review | merged | archived | cancelled
+                                            # TICKET LIFECYCLE -- the workflow state of the TICKET,
+                                            # and the vocabulary every agent, gate and tracker
+                                            # adapter resolves against.
+                                            #
+                                            # NOT the same vocabulary as the `## Status` block in
+                                            # problem.md / spec.md / test-plan.md / submission.md.
+                                            # Each of those is the review state of THAT DOCUMENT --
+                                            # which is why test-plan.md carries `Executing` and
+                                            # submission.md carries `Withdrawn` and `Rejected`,
+                                            # members this list has no counterpart for. The two are
+                                            # different vocabularies by design; neither is a copy of
+                                            # the other, and reconciling them would collapse a
+                                            # deliberate distinction.
+                                            #
+                                            # `cancelled` is TERMINAL WITHOUT MERGE: the ticket
+                                            # ended and no code came of it. It is the ONLY such
+                                            # value -- the enum does not grow a member for each way
+                                            # of stopping. WHY it ended goes in `resolution:` below.
+resolution: ""                              # The TERMINAL DISPOSITION of a ticket that ended without
+                                            # merging -- the STRUCTURED home for WHY it ended. Open
+                                            # vocabulary: superseded | duplicate | wont-do | withdrawn |
+                                            # premise-dissolved | folded-into | ... Add a word when a new
+                                            # way of stopping is found; the `status:` enum above does NOT
+                                            # grow a member for it.
+                                            #
+                                            # `folded-into` was added at the 2026-09-15 backlog fold, which
+                                            # closed 40 tickets whose work had become inseparable from a
+                                            # sibling's. It is the repository's own long-standing word for
+                                            # this (archived decision logs use "folded in" in exactly that
+                                            # sense), so it declares an existing practice rather than
+                                            # inventing a term. A ticket carrying it names its lead in
+                                            # `related_tickets:` and states the fold in its `## Status`
+                                            # block; the work was neither done nor rejected, it moved.
+                                            #
+                                            # NORMATIVE, and stated only here (every other site
+                                            # back-references this comment): the reason a ticket ended
+                                            # without merging is recorded in THIS key when it is recorded
+                                            # structurally, and in `decisions.md` when it needs narrative
+                                            # context. A reason is NEVER a `status:` value.
+                                            #
+                                            # Ships PRESENT-BUT-EMPTY, deliberately, on `jira_url`'s and
+                                            # `worklog_watermark_at`'s precedent below: empty means "no
+                                            # terminal disposition recorded", which is the correct reading
+                                            # for every ticket that is still moving. DO NOT COMMENT IT OUT.
+                                            # `/claire-archive`'s close-out path HALTS on a ticket whose
+                                            # `merged_at` is empty and whose `resolution:` is empty, absent
+                                            # or whitespace-only -- a ticket may not be closed out without
+                                            # saying why.
+                                            #
+                                            # Grammar: one line, quoted. A longer reason MAY wrap as a
+                                            # QUOTED scalar per this file's authoring note above; a wrapped
+                                            # UNQUOTED value halts the sync.
+
+# --- Sizing ---
+
+scope: M                                    # S | M | L | XL
+estimated_effort: ""                        # Human-readable estimate (e.g., "3d", "1w")
+actual_effort: ""                           # ACCUMULATED across stages -- the sum of the stage_effort
+                                            # increments below. Grows as the spec advances; NOT computed
+                                            # from git history at archive. See CLAIRE_ORG.md
+                                            # "Actual Effort Accumulation".
+stage_effort:                               # Append-only log: one entry per recorded work session. Usually
+                                            # one per stage, but a stage may carry MORE than one -- e.g.
+                                            # `claire-triage` gets a second entry when `/claire-elicit` runs after triage
+                                            # (probe elicitation is triage-stage work). Effort is the
+                                            # agent-observed working time for that session, MULTIPLIED by the
+                                            # stage's per-stage review multiplier (CLAIRE_ORG.md "Actual
+                                            # Effort Accumulation") to cover operator review, then rounded UP
+                                            # to the next 15-minute increment (never down; minimum "15m" for
+                                            # any NON-ZERO computed time). A resolved multiplier of 0 -- set
+                                            # only via a per-operator environment override -- records a real
+                                            # "0m" for that stage instead of the floor.
+                                            # /claire-sync-jira posts each NEW entry as a per-stage Jira
+                                            # worklog (not the accumulated total). See CLAIRE_ORG.md.
+  # Populated-entry pattern -- record the COMPUTED duration ONLY; never the multiplier value
+  # or the multiplication that produced it (see CLAIRE_ORG.md "Actual Effort Accumulation").
+  # `at` is the EXACT stage-completion wall-clock time in UTC (second precision) obtained from
+  # `date -u +%Y-%m-%dT%H:%M:%SZ` -- never midnight-only, never date-only, never a round-number time:
+  # - stage: spec                           # triage | spec | implementation | code-review | maintainer | archive
+  #   effort: "1h 30m"                      # the computed duration (15-min increments); a short work note is fine (e.g. "SCOUT + facets")
+  #   at: "2026-07-07T14:32:05Z"            # EXACT wall-clock UTC from `date -u +%Y-%m-%dT%H:%M:%SZ`; (stage, at) is the worklog idempotency key
+
+worklog_watermark_at: ""                    # OPTIONAL (BTG-064). High-water mark of stage_effort[].at that has
+                                            # been projected to the bound tracker as a worklog. Tracker worklogs
+                                            # are IMMUTABLE once posted: an entry is already-synced iff its `at`
+                                            # is <= this value, decided WITHOUT reading tracker state -- so an
+                                            # operator who edits or deletes a worklog is never overridden by a
+                                            # backfill. The KEY ABSENT ENTIRELY (a ticket carried over from a
+                                            # pre-BTG-064 fork) => bootstrap: the sync seeds this to
+                                            # max(stage_effort[].at), posts NOTHING that run, and reports
+                                            # <prefix>.worklog.watermark_seeded (it never backfills history).
+                                            # PRESENT-BUT-EMPTY (as shipped here, and as every new ticket
+                                            # starts) is NOT a bootstrap -- it means "never projected yet",
+                                            # so the ticket posts normally from its very first sync. Keep
+                                            # this key present and empty; commenting it out would send every
+                                            # new ticket down the seed path and suppress its first batch.
+                                            # Advanced ONLY after a successful post AND its post-add
+                                            # verification. Never written by hand. e.g. "2026-07-21T15:52:26Z"
+
+umbrella_epic_url: ""                       # OPTIONAL (BTG-105). PRESENT-BUT-EMPTY, on worklog_watermark_at's
+                                            # own precedent. Set by /claire-sync-jira (Jira Server/DC binding)
+                                            # to the REPLACEMENT umbrella issue created when this ticket's
+                                            # umbrella was superseded: a `type: epic` ticket whose live issue
+                                            # carries an Epic Link cannot be re-typed in place without
+                                            # stranding its workflow, so a new issue is created already at the
+                                            # configured umbrella type and the original is closed.
+                                            # REPO-OWNED: it is the idempotency key that stops a SECOND
+                                            # replacement from ever being created, and it is decided from this
+                                            # scalar ALONE -- never by searching the tracker
+                                            # (CLAIRE_ORG.md #9: "already synced" is decided from repo-owned
+                                            # state, never by reading mutable tracker state). Empty means "not
+                                            # yet replaced", which is the correct reading for every ticket that
+                                            # predates BTG-105 -- no migration or backfill is required. A value
+                                            # naming an issue the instance answers 404 for is a CONTRADICTION,
+                                            # not a licence to re-create: the sync fails loud
+                                            # (syncjs.umbrella.binding_contradicted) and creates nothing.
+                                            # Never written by hand. e.g. "https://jira.example/browse/ABC-42"
+
+# --- Tier (change-tiers.md classification) ---
+
+tier: ""                                    # Trivial | Low | Medium | High -- set at triage.
+                                            # Canonical field name read by /claire-triage and /claire-elicit. (PI-008-FA)
+
+# --- Organization (optional -- remove if not applicable) ---
+
+# requestor: ""                             # Email or name of the person who filed the problem
+# sprint: ""                                # Sprint identifier
+# team: ""                                  # Team abbreviation
+
+# --- Capitalization (optional -- only if your org tracks software capitalization) ---
+
+# capitalization: cap-dev                   # cap-dev: capitalizable development (ASC 350-40 / IAS 38)
+#                                           # cap-maint: capitalizable maintenance
+#                                           # expense: non-capitalizable (research, planning, bug fixes)
+
+# --- Domain context ---
+
+domain_entities:                            # Domain entities affected by this change
+  - ""                                      # e.g., User, Order, Invoice, Campaign
+affected_layers:                            # Architectural layers touched
+  - ""                                      # e.g., Domain, Service, API, Data, UI, Infrastructure
+affected_integrations:                      # External service dependencies involved
+  - ""                                      # e.g., PaymentGateway, EmailService, AuthProvider
+
+# --- Lineage (decomposition) ---
+# Populated when /claire-elicit decomposes a ticket into smaller strong-signal problems. (PI-008-FB)
+
+decomposed_from: ""                         # Parent ticket id when this ticket was created as a decomposition child.
+decomposed_into: []                         # Child ticket ids when this ticket was decomposed (written all-or-nothing).
+idempotency_key: ""                         # Opaque 12-hex sha256 prefix; triage's duplicate-detection key on re-run.
+
+# --- Traceability ---
+
+branch: ""                                  # Git branch name (auto-filled by implementer)
+merge_request: ""                           # Quick URL pointer to the change proposal: MR URL (GitLab), PR URL (GitHub), or patchset thread URL (SourceHut lists.sr.ht). The canonical change-proposal record (description, discussion, resolution) lives in submission.md alongside this file; see docs/guides/submitting-changes.md.
+spec_mr: ""                                 # Same forms as merge_request, but for the spec-review change proposal.
+
+# Tracker URLs. `jira_url` and `youtrack_url` ship PRESENT-AND-EMPTY -- leave them uncommented
+# (see each key's note). The remaining keys below are optional: uncomment and adapt for your tools.
+
+jira_url: ""                                # The Jira issue this ticket projects to. PRESENT-BUT-EMPTY,
+                                            # deliberately, on `worklog_watermark_at`'s and
+                                            # `umbrella_epic_url`'s precedent above -- empty means "not yet
+                                            # projected", which is the correct reading for every new ticket.
+                                            # DO NOT COMMENT IT OUT. The recorded value is the ONLY identity
+                                            # mapping between this ticket and its issue: `/claire-sync-jira`'s
+                                            # resolve step performs NO recovery lookup by design (BTG-124
+                                            # DEC-007 deleted the id search and deliberately did not replace
+                                            # it), so an unrecorded mapping is not degraded resolution -- it
+                                            # is a CREATE, and therefore a DUPLICATE issue for a ticket that
+                                            # already has one. Read by `/claire-sync-jira` (BTG-299 removed
+                                            # the Jira Cloud adapter, which formerly shared this key).
+                                            # Never written by hand: the allocating operation records it when
+                                            # it reserves, and the sync writes it back thereafter.
+                                            # e.g. "https://jira.example/browse/ABC-42"
+youtrack_url: ""                            # The YouTrack issue this ticket projects to. PRESENT-BUT-EMPTY on
+                                            # the same reasoning as `jira_url` above, and for the same
+                                            # mechanical reason: `/claire-sync-youtrack`'s resolve step carries the
+                                            # BYTE-PARALLEL contract -- the recorded `youtrack_url` is the
+                                            # ONLY identity mapping that adapter has, so an unrecorded
+                                            # mapping is a CREATE and therefore a DUPLICATE issue.
+                                            # Never written by hand. e.g. "https://youtrack.example/issue/ABC-42"
+
+# linear_url: ""                            # Linear issue URL
+# github_issue_url: ""                      # GitHub issue URL
+# confluence_url: ""                        # Confluence page URL
+# notion_url: ""                            # Notion page URL
+
+# --- Lifecycle timestamps (auto-filled by agents) ---
+# Every value below is the EXACT current wall-clock UTC time the event occurred, at second precision,
+# obtained by running `date -u +%Y-%m-%dT%H:%M:%SZ`. Never midnight-only, never date-only, never a
+# round-number time. An unset milestone stays "" (see CLAIRE_ORG.md "Actual Effort Accumulation").
+
+created_at: ""
+triaged_at: ""
+spec_approved_at: ""
+implementation_started_at: ""
+review_started_at: ""
+maintainer_approved_at: ""
+merged_at: ""
+archived_at: ""
+
+# Release/deploy milestones (manual; record-only at v1 -- no agent sets these).
+# Distinct from `archived` (a process-terminal status). See PI-029.
+released_at: ""                             # Semver tag cut (/claire-release pushed a vX.Y.Z tag).
+deployed_at: ""                             # Running in production (manual-deploy milestone).
+
+# --- Observability (populated by triage agent for BUG type) ---
+
+# observability_category: ""               # LOGIC_FAULT | LINEAGE_GAP | DRIFT_SIGNAL | SEAM_VIOLATION
+# observability_scout_dimension: ""        # State | Constraints | Outputs | Updates | Triggers
+# production_insight_id: ""                # PROD-{NNN} reference in docs/agentic-sdlc/production-insights.md
+# related_insights: []                     # Prior PROD entries for same component (e.g., ["PROD_CLAIRE-001", "PROD_CLAIRE-003"])
+
+# --- Tags for filtering and reporting ---
+
+tags:
+  - ""                                      # e.g., "breaking-change", "migration-required", "feature-flag"

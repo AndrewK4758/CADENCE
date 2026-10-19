@@ -1,0 +1,9 @@
+> Original intake (as filed) -- preserved on import; the repo now owns the description below.
+
+**Issue:** {{issue_id}}
+**Summary:** {{original_summary}}
+**Type:** {{original_type}}
+**Priority:** {{original_priority}}
+**State:** {{original_state}}
+
+{{original_description}}

@@ -1,0 +1,171 @@
+{
+  "_comment": "Adopter-owned configuration for /claire-sync-youtrack (BTG-176 AC-3). Every value that varies per repository or per YouTrack instance lives here; nothing instance-varying is hardcoded in a script or in skill prose. yt-lib.sh is the single resolver, so each key's fail-loud/default polarity is defined exactly once. The shipped values are calibrated against the reference instance recorded in archive/BTG-176/spec-2-live-rest-observations.md (v2026.1 build 13162); an adopter recalibrates them for their own project's bundles.",
+
+  "env": {
+    "base_url": "YOUTRACK_BASE_URL",
+    "token": "YOUTRACK_TOKEN",
+    "project_key": "YOUTRACK_PROJECT_KEY",
+    "self": "YOUTRACK_SELF"
+  },
+
+  "_comment_issue_type_map": "repo `type` -> a value of the project's Type bundle. The reference bundle is Bug, Epic, Story, Task, Spike, Feature, Blocker, Support Request (OBSERVED). `documentation` maps to Task rather than to the sibling adapter's `Issue`, which is a Jira type name with no value in this bundle -- writing it returns HTTP 400 'An Issue-type entity with the specified name ({1}) was not found' (OBSERVED). `Story`, `Spike`, `Blocker` and `Support Request` are reachable bundle values that no repo `type` maps onto today; that is a documented gap, not an omission.",
+  "issue_type_map": {
+    "feature": "Feature",
+    "bug": "Bug",
+    "tech-debt": "Task",
+    "security": "Bug",
+    "documentation": "Task",
+    "epic": "Epic"
+  },
+
+  "_comment_priority_map": "repo `priority` -> a value of the project's Priority bundle: Show-stopper, Critical, Major, Normal, Minor (OBSERVED). This bundle has NO VALUE IN COMMON with Jira's Highest/High/Medium/Low, so the sibling adapter's map cannot be copied -- every write would 400. `Show-stopper` sits above the repo's `critical` and is deliberately unmapped: the repo's four levels project onto the bundle's lower four, leaving the top reserved for a human to set by hand.",
+  "priority_map": {
+    "critical": "Critical",
+    "high": "Major",
+    "medium": "Normal",
+    "low": "Minor"
+  },
+
+  "_comment_status_state_map": "YouTrack `Type` -> repo `status` -> a value of the project's State bundle. TWO LEVELS, mirroring the sibling adapter's `status_workflow_map`, and this shape is a CORRECTION (BTG-176 DEC-077). It shipped flat, justified by the claim that there is \"no per-type variation to map\". That claim was FALSE and was disproved live on the reference instance: `Type` and `State` are independent custom fields -- `Type` an EnumProjectCustomField over bundle 127-2, `State` a StateProjectCustomField over bundle 129-1 -- and the instance accepts ANY of the 16 State values under ANY Type (Task+Code Review, Bug+Done, Task+Ready for QA, Story+Blocked - On Hold all returned HTTP 200 and read back unchanged). One project-wide bundle means the two Types share a VALUE SET; it does not mean they share a POLICY. The sibling's per-type map encodes policy -- which board state represents which lifecycle stage for which kind of work -- and YouTrack can express that policy exactly, so declining to was an unforced parity gap, not a data-model consequence. WHAT IS MIRRORED: the sibling routes `bug`/`security` and feature work through a review-then-QA path (`in-review` -> Code Review, `merged` -> Ready For Test) and chore work straight through (`in-review` -> In Progress, `merged` -> Done). Bug and Feature take the first here, Task the second. WHAT DELIBERATELY DIVERGES, said here rather than left to be inferred: (a) the sibling's pre-work state is `Planning`, which this bundle does not carry -- writing it is a guaranteed HTTP 400 -- so every Type uses `To Do`; (b) `archived` resolves to `Done` for every Type where the sibling holds Bug/Story at `Ready For Test`, because an archived CLAIRE ticket is terminal and `Done` is one of this bundle's resolved values (isResolved true) while `Ready for QA` is not; (c) `Epic` is populated, where the sibling omits it and silently skips every Epic transition -- an Epic here carries no review of its own, so `in-review` holds at `In Progress`. EVERY Type in `issue_type_map`'s range is present. A `(Type, status)` pair this map does not carry HALTS -- yt-transition.sh never falls back to a flat default and never guesses a State, because a guessed State is an ungoverned decision and, for a value outside the bundle, also a guaranteed HTTP 400.",
+  "_comment_cancelled_row": "RETARGET NOTE for the `cancelled` rows below and in `assignment_map` (BTG-262). `cancelled` is the repo lifecycle's terminal-without-merge status: the ticket ended and no code came of it. It ships mapped to `Done` as a DOCUMENTED DEFAULT, NOT A VERIFIED ONE. `Done` reads as 'completed', which a cancelled ticket is not. It is chosen anyway, and the reason is PORTABILITY rather than the absence of a truer value -- that distinction matters, so it is stated plainly. OBSERVED FACT, from this repository's own live run against its reference instance: that project's State bundle DOES carry a `Cancelled` member, and writing it returned HTTP 200 with isResolved true. So a truer value can exist and can be written; on that instance it was. WHY `Done` SHIPS ANYWAY: `Cancelled` is not guaranteed to exist in an arbitrary adopter's State bundle, and yt-transition.sh is the one genuinely FAIL-CLOSED path among this adapter's four -- a configured State that is absent on your instance HARD-FAILS your sync rather than reporting and moving on. `Done` is the portable default for that reason: every block here already declares it and it is a resolved value (isResolved true). IF YOUR BUNDLE CARRIES A TRUER MEMBER, YOU GET A LESS ACCURATE DEFAULT AND SHOULD RETARGET -- which is exactly what this note is for. AN ADOPTER WHOSE State BUNDLE CARRIES A TRUER MEMBER for terminal-without-merge work -- `Won't fix`, `Obsolete` -- RETARGETS THESE ROWS in their own copy, which is what this file is for. Nothing here is a claim about your instance's bundle; it is this repository's own choice, stated so you can change it.",
+  "status_state_map": {
+    "Bug": {
+      "draft": "To Do",
+      "triaged": "To Do",
+      "spec-in-review": "To Do",
+      "spec-approved": "To Do",
+      "in-progress": "In Progress",
+      "in-review": "Code Review",
+      "merged": "Ready for QA",
+      "archived": "Done",
+      "cancelled": "Done"
+    },
+    "Feature": {
+      "draft": "To Do",
+      "triaged": "To Do",
+      "spec-in-review": "To Do",
+      "spec-approved": "To Do",
+      "in-progress": "In Progress",
+      "in-review": "Code Review",
+      "merged": "Ready for QA",
+      "archived": "Done",
+      "cancelled": "Done"
+    },
+    "Task": {
+      "draft": "To Do",
+      "triaged": "To Do",
+      "spec-in-review": "To Do",
+      "spec-approved": "To Do",
+      "in-progress": "In Progress",
+      "in-review": "In Progress",
+      "merged": "Done",
+      "archived": "Done",
+      "cancelled": "Done"
+    },
+    "Epic": {
+      "draft": "To Do",
+      "triaged": "To Do",
+      "spec-in-review": "To Do",
+      "spec-approved": "To Do",
+      "in-progress": "In Progress",
+      "in-review": "In Progress",
+      "merged": "Done",
+      "archived": "Done",
+      "cancelled": "Done"
+    }
+  },
+
+  "_comment_custom_field_map": "A repo `metadata.yaml` key -> the project custom field it projects onto, and the field's YouTrack `$type`. SHIPPED EMPTY BY DESIGN, which is a decision and not an omission: no repo datum has an unambiguous analog in the reference project's field set. `estimated_effort` is deliberately NOT mapped onto `Estimation` -- the repo's values are free-form human durations ('3d', '1w') and the field takes a period presentation, so mapping them would be a guess, and this adapter refuses to project a guess. An adopter adds entries for their own project. Only the `$type` values with an implemented write form are accepted -- SingleEnumIssueCustomField, StateIssueCustomField (an object carrying `name`) and SimpleIssueCustomField (a bare scalar), all OBSERVED; any other value HALTs rather than being written in a shape no branch produces.",
+  "custom_field_map": {},
+
+  "_comment_type_conditional_fields": "A YouTrack `Type` bundle value -> the custom fields that attach to an issue OF that Type. OBSERVED on the reference project by cycling Type through every bundle value and reading the field list back each time: `Story points` attaches ONLY under `Story` and `Original estimation` ONLY under `Task`; every other Type carries neither, and the field simply vanishes from the issue. This map arms the pre-flight refusal (AC-15): a field carrying a value that the map says cannot attach under the resolved Type is refused BEFORE any request, because on the create path this instance answers HTTP 200 and then silently DISCARDS the value. A field this map never mentions is not governed by it, and the read-back remains the authority for it.",
+  "type_conditional_fields": {
+    "Story": ["Story points"],
+    "Task": ["Original estimation"],
+    "Bug": [],
+    "Epic": [],
+    "Spike": [],
+    "Feature": [],
+    "Blocker": [],
+    "Support Request": []
+  },
+
+  "_comment_assignment_map": "repo `status` -> the assignment action to take: `self` (assign to the credential's own identity), `unassigned` (clear the field) or `no-change` (leave whoever is there). A status absent from this map takes NO action and says so; an action outside the three issues no request. The polarities mirror the sibling adapter, because the repo statuses are the same and the meaning of each stage is the same. IT IS GATED BY `assignment_reconciliation_enabled`, which ships FALSE: this map reassigns issues that may belong to other people. On the reference instance the `self` action FAILS for the probing token -- the token owner exists in the directory but is not in the project's Assignee user bundle, so the write returns HTTP 400 'Value is not allowed' (OBSERVED). That is a real adopter-facing condition and the second reason the toggle is opt-in: an adopter must add their sync identity to the project's team before `self` can work.",
+  "assignment_map": {
+    "draft": "no-change",
+    "triaged": "no-change",
+    "spec-in-review": "no-change",
+    "spec-approved": "unassigned",
+    "in-progress": "self",
+    "in-review": "unassigned",
+    "merged": "self",
+    "archived": "unassigned",
+    "cancelled": "unassigned"
+  },
+
+  "_comment_toggles": "Optional capabilities, with the SAME polarities as the sibling adapter. Each key's default when ABSENT is defined once, in yt-lib.sh's yt_config_toggle, and an absent toggle is announced (syncyt.config.default_polarity_applied) rather than applied silently -- an operator must be able to tell a configured polarity from an assumed one. `assignment_reconciliation_enabled` ships FALSE because it reassigns issues that may belong to other people; the other two ship true because effort projection is the adapter's point and linking is additive and hand-reversible.",
+  "toggles": {
+    "worklog_creation_enabled": true,
+    "assignment_reconciliation_enabled": false,
+    "link_creation_enabled": true
+  },
+
+  "_comment_attachment_size_ceiling_mib": "The per-attachment download ceiling, in MiB, for the intake seed-read. FAIL-CLOSED: absent, malformed or non-positive means there is no usable bound and nothing is downloaded -- an absent ceiling is not an unlimited one, because a download with no bound is how an adapter fills a disk on someone else's data.",
+  "attachment_size_ceiling_mib": 25,
+
+  "_comment_link_relations": "A repo relation -> the instance link type it projects onto, its id, and the DIRECTION the create path carries. OBSERVED type ids on the reference instance: Relates 140-0 (undirected, `relates to`), Depend 140-1 (`is required for`/`depends on`), Duplicate 140-2, Subtask 140-3 (`parent for`/`subtask of`), Blocked By 140-4. `direction` is the `s` (source->target) or `t` (target->source) suffix on the link id in the create path; `directed` decides how the link reads BACK -- a directed type keeps the suffix and reports OUTWARD/INWARD, while an undirected one is read back under the bare id with direction BOTH, even though the create path still carries a suffix (OBSERVED). `outward`/`inward` are the instance's own labels for the type, recorded so the read-back can report drift between what this map says a relation MEANS and what the instance calls it. An unmapped relation HALTS; it never falls back to Relates, because that would project a directed repo relation as an undirected instance link and report success.",
+  "link_relations": {
+    "related_tickets": {
+      "type": "Relates",
+      "link_id": "140-0",
+      "directed": false,
+      "direction": "s",
+      "outward": "relates to",
+      "inward": ""
+    },
+    "_comment_precedes": "A MAPPING DECISION, NOT AN IDENTITY (BTG-176 DEC-016, ruled at the spec-review gate; AC-6 divergence 8). This instance offers Relates, Depend, Duplicate, Subtask and Blocked By, and there is NO Precedes link type -- the sibling adapter's `precedes` (Jira link id 10400) has no counterpart here. `Depend` was chosen because it is the only DIRECTED near-fit, and direction is exactly the property the repo's ordering relation exists to carry. It is not the same relation: a reader of this instance sees `is required for` / `depends on` where the repo means `precedes` / `preceded_by`, and this comment plus archive/BTG-176/spec-1-parity-audit.md is the standing explanation for that. The direction semantics are ASSERTED BY A TEST (test-plan S-6.6), never assumed from this entry.",
+    "precedes": {
+      "type": "Depend",
+      "link_id": "140-1",
+      "directed": true,
+      "direction": "s",
+      "outward": "is required for",
+      "inward": "depends on"
+    },
+    "preceded_by": {
+      "type": "Depend",
+      "link_id": "140-1",
+      "directed": true,
+      "direction": "t",
+      "outward": "is required for",
+      "inward": "depends on"
+    },
+    "_comment_decomposed_from": "The EPIC PARENT relation, and the one place this adapter diverges hardest from its sibling. `Subtask` (140-3) carries NO per-Type restriction on this instance (OBSERVED), so an Epic may parent an Epic and the parent relationship is ONE LINK: there is no re-type, no Move, no flatten and no replacement issue -- the whole umbrella-replacement flow /claire-sync-jira needs, because Jira forbids an Epic to hold an Epic Link, has no analog here. `direction: t` is read from the CHILD's side: the ticket being synced is the link's TARGET, so the ticket named by `decomposed_from` is the SOURCE and reads as `parent for` it. Getting that suffix backwards would silently make the child the parent, which is why the direction is read back and compared rather than assumed (yt-epic.sh).",
+    "decomposed_from": {
+      "type": "Subtask",
+      "link_id": "140-3",
+      "directed": true,
+      "direction": "t",
+      "outward": "parent for",
+      "inward": "subtask of"
+    }
+  },
+
+  "_comment_duration_units": "How long a working day and a working week are for THIS adopter. The repo's `stage_effort[].effort` values are human durations ('45m', '3h', '1d 2h', '1w'), and a work item's duration is posted in MINUTES, so `1d` has to be converted as this organisation means it rather than as a calendar day. Same shape and same values as the sibling adapter, because it is a property of the organisation and not of the tracker.",
+  "duration_units": {
+    "workday_hours": 8,
+    "workweek_days": 5
+  },
+
+  "_comment_work_item_type": "OPTIONAL. The id of the work-item type every posted work item is tagged with, or an empty string for none. OBSERVED: `type` is optional on a work-item POST -- omitting it returns `\"type\": null` and the post still succeeds -- so an adopter who declares nothing gets a typeless work item rather than a guessed one. The reference instance's project offers Development 146-0, Testing 146-1, Documentation 146-2, Investigation 146-3, Implementation 146-4; SHIPPED EMPTY, because which of those a CLAIRE stage's effort belongs to is the adopter's judgement and not this adapter's.",
+  "work_item_type": "",
+
+  "_comment_page_top_bound": "The explicit `$top` this adapter puts on every paged read. OBSERVED: `$top=N` bounds the result and `$top=-1` returns everything, so `-1` is the only unbounded form -- which means an UNBOUNDED read cannot report truncation, because it never truncates. A bounded read can, and `returned count >= the bound` is exactly the truncation signal (syncyt.transport.page_truncated). The bound exists so a pathological issue cannot make one read pull an unbounded response into memory; it is deliberately far above any plausible per-issue work-item count, so it bounds the pathological case without truncating a normal one.",
+  "page_top_bound": 500,
+
+  "_comment_sprint_query": "The ONE query yt-sprint-check.sh runs, with {key} substituted by the resolved issue id. It is configuration rather than a constant because THIS INSTANCE HAS NO `openSprints()`: the sibling adapter's JQL function has no YouTrack analog, sprint membership is a board concept, and the reference project has no agile board at all. Worse, a naive sprint query in a board-less project matches EVERY issue, because `Unscheduled` is the empty-field text for `Sprints` (OBSERVED) -- so a hardcoded query would answer `in-sprint` for everything. The shipped default asks only whether the issue is associated with any sprint at all; an adopter WITH a board narrows it to their current sprint (e.g. `#{key} Board <name>: {Current sprint}`). POLARITY: absent or blank yields the `inconclusive` verdict with syncyt.sprintcheck.query_unconfigured, never a guess and never a halt -- the section-13 guard has a fallback for exactly that case, and only `inconclusive` reaches it.",
+  "sprint_query": "#{key} has: Sprints",
+
+  "_comment_worklog_postcheck_capability": "Which post-add absorption check this adapter performs (BTG-064). FAIL-LOUD, the inverse of an opt-out toggle: absent or unrecognized HALTs, and is never silently read as `none`, because that would disarm the check while the adapter kept reporting success. Only an EXPLICIT `none` sanctions non-enforcement. `spent-time-increment` is live-confirmed on the reference instance: `Spent time` only grows, so absorption is verified by the increment matching the posted duration. The sibling adapter's `remaining-estimate-decrement` is NOT accepted here -- no branch implements it.",
+  "worklog_postcheck_capability": "spent-time-increment"
+}

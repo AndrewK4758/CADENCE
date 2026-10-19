@@ -1,0 +1,149 @@
+# authored-doc-exemptions.txt -- the org-token exemption ledger the
+# authored-document gate consults (BTG-191).
+#
+# ADOPTER-OWNED DATA, NOT FRAMEWORK DATA. This file is the ONE place the
+# authored-document gate's rules keep repository-SPECIFIC content: every row
+# below names a path in THIS repository and quotes a phrase from THIS
+# repository's history. `/claire-adopt` therefore copies this file with its
+# ROWS STRIPPED -- an adopter receives the header, the grammar and an empty
+# ledger, and accrues their own rows against their own tree. It is create-once
+# and is excluded from `/claire-upgrade` merges, exactly like the other seed
+# registers, so an adopter's rows are never overwritten by ours.
+#
+# WHY THE ROWS ARE NOT IN THE GATE ITSELF. They were, and that was a defect: the
+# four gate scripts ship to every adopting repository through COPY_PATHS, and
+# carrying these rows there would have shipped this organisation's live project
+# keys into every adopter's tree. Nothing would have caught it, either -- the
+# gate derives its own scan scope from the footprint descriptor, which classes
+# `ci-templates` as framework-development and enumerates nothing beneath it, so
+# the guard could not see its own leak. Splitting the DATA out of the CODE is the
+# same split `dead-citation-gate.sh` already makes to `dead-citation-exemptions.txt`,
+# and it is what keeps the code portable and the data local. Found at code review
+# cycle 1 (blocking B-1); recorded in decisions.md.
+#
+# THE ROWS ARE NOT GENERICISED, and that is deliberate. An occurrence naming a
+# CONCRETE LIVE OBJECT ID is PROVENANCE -- its citation IS its evidentiary value
+# -- and scrubbing one would destroy an incident record rather than protect
+# anything. That ruling is BTG-095's own, restated in the narrative below. The
+# fix is to stop SHIPPING the rows, not to falsify them.
+#
+# ROW GRAMMAR, identical to the gate's other ledgers:
+#
+#     <repo-relative-path>|<anchor substring>|<reason>
+#
+# A row matches only when the offending line CONTAINS its anchor. An empty or
+# path-wide anchor excuses every future line of a growing file, and the gate
+# reports such a row as a violation in its own right. Blank lines and lines whose
+# first non-space character is `#` are ignored.
+#
+# References: archive/BTG-191/decisions.md ; archive/BTG-095/decisions.md ;
+#             archive/BTG-175/decisions.md ; archive/BTG-176/decisions.md DEC-054.
+
+# ======================================================================
+#
+# MOVED HERE FROM ci-templates/scripts/tests/btg-095-lib/guard.sh, byte for byte,
+# by BTG-191. The array keeps its name, its rows and their order, so every
+# consumer -- btg-095's own scenarios, btg-175's seam probes, and btg-176's
+# register parse -- reads exactly what it always read; that file now sources this
+# one, and btg-176's register pointer was repointed to this address in the same
+# change (a refactor that moves the text must move the row, or the ledger
+# silently stops matching the tree).
+#
+# THE NARRATIVE BELOW MOVED WITH THE ARRAY, deliberately and not as a courtesy.
+# btg-175's S-4.7 reads the row count stated in this narrative and compares it
+# with the array's actual length -- "counting the ledger is the whole point of
+# the ledger" -- so separating the two would leave that scenario reading a number
+# with nothing behind it.
+
+# ----------------------------------------------------------------------
+# The EXEMPTION LEDGER -- anchored exact phrases, keyed to file AND line text.
+#
+# An exemption matches only when the offending line CONTAINS its anchor. A
+# substring or unanchored match would excuse the very pattern the guard polices
+# (II-005), so a NEW occurrence in an already-exempt file is still reported --
+# which is exactly what S-5.3 proves.
+#
+# Row grammar: <repo-relative-path>|<anchor substring>|<reason>
+#
+# MEASURED, NOT INHERITED. spec.md's step-8h sweep recorded that the only
+# non-archive occurrences were the three sync-jira-server provenance comments, and
+# concluded "No kind=installed doc contains it." That is FALSE of the tree: NINE
+# further occurrences live in FOUR shipped docs (claire-surfaces.md 1,
+# surface-registry.md 2, production-insights.md 4, intent-insights.md 2). All
+# TWELVE rows BTG-095 froze -- 3 sidecar comments + those 9, across 7 distinct
+# files -- are pre-existing historical narrative, none is introduced by BTG-095,
+# and none can be removed here: docs/policies/claire-surfaces.md's BTG-075 clause
+# is deliberately byte-preserved by btg-083-dead-citation.test.sh S-2.1. The finding
+# is recorded in archive/BTG-095/decisions.md rather than papered over.
+#
+# COUNTS CORRECTED (review NB-1, decisions.md DEC-030): this comment previously
+# read "seven further occurrences ... in three shipped docs. All ten", against an
+# array of twelve rows. Counting the ledger is the whole point of the ledger.
+#
+# POST-FREEZE ACCRUAL (BTG-130, DEC-001): SIX further occurrences accrued in FOUR
+# shipped files after BTG-095 archived at 3b0f2ab1 -- the commit that froze the
+# twelve rows above. None was reachable by that ledger when it was frozen; they
+# arrived with BTG-102/105/106/108/111/124 (production-insights.md 3,
+# jira-server-conditions-umbrella.md 1, jira-link-targets.sh 1,
+# jira-write-issue.sh 1). This is normal accrual, not a defect in BTG-095's work.
+# The gate ruling was EXEMPT, not scrub, on BTG-095's own precedent: it already
+# considered and rejected "strip the token from the newly-found lines" because
+# doing so "would destroy incident records whose citation *is* their value."
+# Scrubbing would also have made the ledger internally inconsistent -- rows 17-18
+# are the same inert-comment shape as the three original sidecar rows above.
+# The ledger was therefore EIGHTEEN rows: twelve frozen by BTG-095, six added there.
+#
+# BTG-173 (DEC-012) makes it NINETEEN, and it is a RELOCATION rather than fresh
+# accrual. Extracting the issue-type decision into `jira-type-lib.sh` carried the
+# BTG-102 provenance comment out of `jira-write-issue.sh`, which now holds ZERO
+# occurrences -- so that row was DEAD, excusing a line that no longer existed while
+# the identical text sat unexcused at its new address. A path-anchored row does not
+# follow its text; a refactor that moves the text must move the row, or the ledger
+# silently stops matching the tree. The row is repointed, and the ONE new occurrence
+# in that extraction's sidecar gets its own anchored row. Both stay EXACT-PHRASE
+# anchored, per the rule S-5.3 enforces: a per-file or whole-file excuse would
+# re-create the blind-spot class this repo has already had to retire once.
+#
+# BTG-175 (DEC-002/DEC-004/DEC-005/DEC-010) makes it TWENTY-THREE rows. Four are
+# APPENDED and one existing reason is REWRITTEN; no anchor and no path moves, so
+# nothing already excused changes what it excuses.
+#   +3 arrive with the token set itself. Generalising the derivation made every
+#      SECOND-ADAPTER occurrence in a shipping path visible for the first time. Sixteen of
+#      the eighteen in /claire-sync-youtrack's neutral source were SCRUBBED rather than
+#      ledgered (that is AC-1, and it is why de-hardcoding had to land first --
+#      exempting them would have meant inventing sixteen false reasons, which is
+#      exactly what BTG-174 refused to ship). The two that survive cite concrete
+#      live object ids and are provenance under the retain rule above; the third is
+#      BTG-174's registry Archive Note, left byte-unchanged by ruling OQ-4.
+#   +1 is the PRE-EXISTING FIRST-ADAPTER leak at intent-insights.md, the sole cause of
+#      this harness's standing `65 passed, 2 failed`. Ruling OQ-1(a) dispositioned
+#      it HERE so no later reader mis-attributes that red to BTG-175. Its reason is
+#      deliberately NOT the "historical record of a live run" its two file-siblings
+#      carry: that line records no run, it STATES THE RULE, and copying a sibling's
+#      reason because it shares a file would be the false-justification failure
+#      this whole ticket exists to prevent.
+#   ~1 REASON rewritten: surface-registry.md's row (see its own text).
+#
+# BTG-176 (DEC-054) makes it TWENTY-ONE rows -- a RETIREMENT, not accrual: two of
+# BTG-175's four are removed, for the reason stated at their old position below.
+# btg-175 S-4.7 asserts this narrative against the array's actual length, and the
+# two have now drifted apart twice (review NB-1 / DEC-030, then that retirement).
+# --- the three spec.md named: live-verification provenance in shell comments ---
+# --- the seven spec.md missed, found by RUNNING the guard ---
+# --- the six that accrued AFTER the freeze, found by RUNNING the guard (BTG-130) ---
+# --- the one that accrued with BTG-173's extraction (DEC-012) ---
+# --- the BTG-175 adds when the token set stops being single-adapter ---
+#
+# TWO OF THE FOUR ARE RETIRED BY BTG-176 (DEC-054). Both anchored a live-probe
+# citation inside `artifacts/commands/claire-sync-youtrack/youtrack-{reconcile,projection}.md`,
+# and that ticket DELETES both files: the reversal to direct REST replaced the
+# MCP-era prose sidecars with scripts, and neither citation survives anywhere in
+# the shipped tree (verified by search, not assumed -- the reference-instance
+# tokens they excused are absent from every root the guard sweeps).
+#
+# They are REMOVED rather than left in place, because a row anchored to a path
+# that does not exist excuses nothing today and would silently excuse ANY token
+# in a file later created at that path -- the exact blind-spot class the
+# register's own BTG-173 precedent (a moved comment leaving a dead row) exists
+# to prevent, and the class BTG-176 DEC-049 finding 7 recorded as owed. The
+# ledger may shrink; what it may not do is carry an excuse for nothing.
