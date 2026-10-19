@@ -1,6 +1,6 @@
 # Submitting Changes
 
-CLAIRE is forge-neutral. You can submit a change proposal through any of three workflows depending on where the repo lives:
+CADENCE is forge-agnostic. You can submit a change proposal through any of three standard forge workflows depending on where your repository is hosted:
 
 | Forge | Mechanism | Description container |
 |---|---|---|
@@ -8,67 +8,64 @@ CLAIRE is forge-neutral. You can submit a change proposal through any of three w
 | **GitHub** | Pull Request (PR) | PR description (Markdown) |
 | **SourceHut** | Patchset via `git send-email` | Cover letter (Markdown-in-email) or, for a single-commit series, the commit message itself |
 
-The rest of the framework uses "MR" as the generic noun for *the change proposal*. On GitLab that maps to a Merge Request; on GitHub to a Pull Request; on SourceHut to a patchset thread on `lists.sr.ht`. The content the reviewers need is the same across forges — only the transport differs.
+Across CADENCE documentation, "MR" serves as the generic term for *a submitted change proposal*. On GitLab it corresponds to a Merge Request, on GitHub to a Pull Request, and on SourceHut to an email patchset thread on `lists.sr.ht`. The substantive engineering record required by reviewers is identical across all three — only the transport layer differs.
 
-This guide covers the **authoring** side: how you get your branch in front of reviewers. Reviewer behavior (gate checklists, agent reads, archival) is forge-neutral and lives in the relevant policy and agent docs.
+This guide covers the **authoring and submission** mechanics: how you prepare your branch and put it in front of reviewers. Gate checklists, AI review execution, and archival rules are forge-neutral and live in their respective policy and workflow documents.
 
 ---
 
 ## `submission.md` — the canonical source
 
-The change-proposal description and the review discussion are versioned repository artifacts. Before you submit through any forge, write [`specs/{ticket-id}/submission.md`](../../specs/TEMPLATE/submission.md) using the template at `specs/TEMPLATE/submission.md`. Commit it on your branch alongside the implementation. Then submit through your forge:
+In CADENCE, both the change-proposal description and the review discussion are version-controlled repository artifacts. Before opening an MR/PR or sending a patchset on any forge, instantiate [`specs/{ticket-id}/submission.md`](../../specs/TEMPLATE/submission.md) from `specs/TEMPLATE/submission.md` and commit it on your branch alongside the change. Then project its contents to your forge:
 
-- **GitLab:** paste the `## Description` section of `submission.md` into the MR body.
-- **GitHub:** paste the `## Description` section into the PR body.
-- **SourceHut:** use the `## Description` section as the cover letter (`git send-email --cover-letter --annotate …`), or, for a single-commit series, as the lead commit message.
+- **GitLab:** copy the `## Description` section of `submission.md` into the Merge Request body.
+- **GitHub:** copy the `## Description` section into the Pull Request body.
+- **SourceHut:** use the `## Description` section as the patchset cover letter (`git send-email --cover-letter --annotate …`), or as the commit message body for a single-commit patch.
 
-After submission, the `## Discussion` section is appended as review feedback comes in. For SourceHut this is the canonical record (the `lists.sr.ht` thread may move or rot). For GitLab/GitHub it mirrors the forge thread so the archive carries the discussion when the spec freezes. The `## Resolution` section is filled by the maintainer (or by the archivist) when the change merges.
+As review feedback arrives, substantive threads and dispositions are appended to `submission.md`'s `## Discussion` section. On SourceHut, `submission.md` serves as the primary permanent record (since external mailing-list archives can move or go offline). On GitLab and GitHub, it mirrors the forge review thread into the repository so that when the ticket is archived to `archive/{ticket-id}/`, the entire engineering conversation travels with the code history. Once the change merges, the maintainer (or `cadence-archivist` during `/cadence-archive`) completes the `## Resolution` section.
 
-The code-reviewer and maintainer agents read `submission.md` directly as "the MR description". They do not need API access to your forge. The forge UI/thread is still useful for line-level commenting and the merge action itself — but the system of record is in the repo.
+Both `cadence-reviewer` and `cadence-maintainer` read `submission.md` directly from the working tree as "the MR description" — neither agent requires network API credentials to your forge. The forge web UI or email thread remains the ergonomic surface for inline diff comments and clicking Merge, while the Git repository remains the authoritative system of record.
 
 ### What the Description section must contain
 
-The `## Description` section of `submission.md` carries this payload (the template enforces the shape):
+The `## Description` section of `submission.md` carries six required elements (enforced by the template structure):
 
-- A one-line **summary** that names the bounded context(s) and flow(s) the change belongs to.
-- A link to the corresponding `spec.md` (Standard track) or the abbreviated specification inline (Lightweight track — see [`contributor_experience_guide.md`](contributor_experience_guide.md)).
-- A **Functional Validation** subsection: either a checklist of end-user-observable behaviour changes a QA
-  engineer can verify by hand at the UI/API boundary, or the single line `No behavioral changes expected --
-  regression testing only.` Leaving it unfilled is **not** the no-change form — it projects to the tracker as
-  an explicit NOT SPECIFIED marker, which is a visible gap rather than an assurance.
-- A **Doc impact** line: either a link to a `docs/flows/` update, or an explicit "Doc impact: none — internal to {context}" acknowledgment.
-- A **Compatibility impact** line for changes touching a registered surface. Resolve that across **every** registry present, per `docs/policies/change-tiers.md`'s rule: `docs/policies/surface-registry.md` (adopter-owned) and `docs/policies/claire-surfaces.md` (core-owned).
-- For changes with database migrations: an `[reversible, idempotent]` confirmation or a link to the integration test that proves apply/rollback/reapply works.
+- A concise **summary** identifying the bounded context(s) and business flow(s) (`docs/flows/`) the change participates in.
+- A link to `spec.md` (Standard track) or the inline abbreviated specification (Lightweight track — see [`contributor_experience_guide.md`](contributor_experience_guide.md)).
+- A **Functional Validation** subsection: either an actionable checklist of user- or API-observable behaviors that a reviewer or QA engineer can verify at the boundary, or the exact sentence `No behavioral changes expected -- regression testing only.` Leaving this section blank or placeholdered is **never** treated as "no change" — tracker projection renders an unpopulated section as an explicit `NOT SPECIFIED` warning.
+- A **Doc impact** statement: either a link to the updated `docs/flows/` / `docs/SYSTEM_OVERVIEW.md` files, or an explicit `"Doc impact: none — internal to {context}"` declaration (`docs/policies/doc-maintenance-policy.md`).
+- A **Compatibility impact** statement whenever the change touches a registered surface, resolved across **every** surface registry present in the repository per `docs/policies/change-tiers.md`: `docs/policies/surface-registry.md` (adopter-owned) and `docs/policies/cadence-surfaces.md` (core-owned).
+- Whenever database migrations are included: an explicit `[reversible, idempotent]` verification record or a reference to the automated integration test exercising the `apply → rollback → reapply` cycle (`docs/policies/migration-policy.md`).
 
 ---
 
 ## Workflow 1 — GitLab (Merge Request)
 
 ### Prerequisites
-- Push access to a fork or feature branch in the same project.
-- Optional: [`glab`](https://gitlab.com/gitlab-org/cli) for command-line MR creation.
+- Push permissions to a feature branch or repository fork.
+- Optional: [`glab`](https://gitlab.com/gitlab-org/cli) installed for CLI-driven MR creation.
 
 ### Authoring steps
 
 ```sh
-# 1. Branch from the project's default branch
-git checkout -b TT-1234-add-feature
+# 1. Cut a feature branch (or dedicated git worktree) from the integration branch
+git checkout -b impl/feature/TT-1234
 
-# 2. Implement via TDD (see implementer agent / TDD discipline)
-#    Commit per red-green cycle. Final commit count is unconstrained.
+# 2. Implement via strict red-green-refactor TDD (see 04-implementation.md)
+#    Commit once per scenario cycle.
 
-# 3. Write specs/TT-1234/submission.md from the template
+# 3. Populate specs/TT-1234/submission.md from the template
 cp specs/TEMPLATE/submission.md specs/TT-1234/submission.md
 # fill in Status=Submitted, Description, Forge metadata, etc.
 
 git add specs/TT-1234/submission.md
 git commit -m "TT-1234: add submission artifact"
 
-# 4. Push the branch
-git push -u origin TT-1234-add-feature
+# 4. Push the branch to origin
+git push -u origin impl/feature/TT-1234
 
-# 5a. Open the MR through the GitLab web UI, OR
-# 5b. Open it from the CLI, pasting the Description section as the body:
+# 5a. Open the MR via the GitLab web UI, OR
+# 5b. Create it from the CLI using the Description section of submission.md:
 glab mr create \
   --target-branch develop \
   --title "TT-1234: short summary" \
@@ -76,42 +73,42 @@ glab mr create \
 ```
 
 ### Description format
-The MR body is a copy of `submission.md`'s `## Description` section. GitLab Markdown renders it. If the project has `.gitlab/merge_request_templates/`, the template can simply point reviewers at `submission.md` in the repo.
+The GitLab MR description mirrors `submission.md`'s `## Description` section, rendered natively as GitLab Flavored Markdown. Repositories using `.gitlab/merge_request_templates/` can point reviewers directly to `specs/{ticket-id}/submission.md`.
 
 ### Discussion
-GitLab MR comments, including threaded review on individual lines of the diff. As substantive comments accumulate, the author (or reviewers themselves on append) mirrors the substance back into `submission.md`'s `## Discussion` section so the archive carries the record.
+Reviewers post inline diff comments and general feedback on the GitLab MR thread. As substantive questions and findings are resolved, the author (or the `/cadence-review` and `/cadence-maintain` skills) mirrors the discussion and finding classifications into `submission.md`'s `## Discussion` section.
 
 ### Acceptance
-Maintainer clicks **Merge** in the GitLab UI after the human gates pass. The merge commit's message is shaped by the project's merge-method setting. The maintainer (or archivist on follow-up) fills in `submission.md`'s `## Resolution` section.
+Once all required human gates for the ticket's tier pass, the maintainer merges the MR in GitLab. The maintainer (or `cadence-archivist` during `/cadence-archive`) records the merge details and follow-up dispositions in `submission.md`'s `## Resolution` section.
 
 ---
 
 ## Workflow 2 — GitHub (Pull Request)
 
 ### Prerequisites
-- Push access to a fork or feature branch.
-- Optional: [`gh`](https://cli.github.com/) for command-line PR creation.
+- Push permissions to a feature branch or fork (following the worktree + remote PR workflow).
+- Optional: [`gh`](https://cli.github.com/) installed for CLI-driven PR creation.
 
 ### Authoring steps
 
 ```sh
-# 1. Branch
-git checkout -b TT-1234-add-feature
+# 1. Cut a branch (in a dedicated git worktree outside the primary checkout)
+git checkout -b impl/feature/TT-1234
 
-# 2. Implement via TDD, commit per cycle.
+# 2. Implement via strict TDD, committing once per scenario cycle.
 
-# 3. Write specs/TT-1234/submission.md from the template
+# 3. Populate specs/TT-1234/submission.md from the template
 cp specs/TEMPLATE/submission.md specs/TT-1234/submission.md
 # fill in Status=Submitted, Description, Forge metadata, etc.
 
 git add specs/TT-1234/submission.md
 git commit -m "TT-1234: add submission artifact"
 
-# 4. Push
-git push -u origin TT-1234-add-feature
+# 4. Push the branch to origin
+git push -u origin impl/feature/TT-1234
 
-# 5a. Open the PR through the GitHub web UI, OR
-# 5b. Open it from the CLI, using the Description section as the body:
+# 5a. Open the PR via the GitHub web UI, OR
+# 5b. Create it from the CLI using the Description section of submission.md:
 gh pr create \
   --base develop \
   --title "TT-1234: short summary" \
@@ -119,35 +116,35 @@ gh pr create \
 ```
 
 ### Description format
-The PR body is a copy of `submission.md`'s `## Description` section. GitHub-flavored Markdown renders it. If the project has `.github/PULL_REQUEST_TEMPLATE.md`, the template can simply point reviewers at `submission.md` in the repo.
+The GitHub PR body mirrors `submission.md`'s `## Description` section and renders as GitHub Flavored Markdown. If the repository defines `.github/PULL_REQUEST_TEMPLATE.md`, it can reference `specs/{ticket-id}/submission.md`.
 
 ### Discussion
-PR comments, including threaded review on individual lines of the diff and "Files changed" view. As substantive comments accumulate, the author (or reviewers themselves on append) mirrors the substance back into `submission.md`'s `## Discussion` section so the archive carries the record.
+Reviewers leave line-level and summary comments on the PR's "Files changed" and "Conversation" tabs. Substantive points and gate assessments are mirrored into `submission.md`'s `## Discussion` section so the in-repo archive remains self-contained.
 
 ### Acceptance
-Maintainer clicks **Merge pull request** in the GitHub UI after the human gates pass. The maintainer (or archivist on follow-up) fills in `submission.md`'s `## Resolution` section.
+After the required human gates pass, the maintainer merges the PR on GitHub (`gh pr merge`), and the resolution record in `submission.md` is finalized.
 
 ---
 
 ## Workflow 3 — SourceHut (patchset via `git send-email`)
 
-SourceHut does not have a UI-based MR/PR. Changes are submitted as patchsets to the project's mailing list and reviewed by email reply. The web view at `lists.sr.ht/~user/repo/patches` archives every thread; the threads are the system of record.
+SourceHut uses an email-driven patch workflow rather than a browser-based PR form. Contributors format commits as patch emails sent to the project's mailing list and iterate via email replies. The web archive at `lists.sr.ht/~user/repo/patches` indexes every patchset thread.
 
 ### Prerequisites
 
-- A configured `git send-email` (one-time setup, ~5 minutes).
-- The project's `[PATCHES]` mailing list address — typically `~user/repo-devel@lists.sr.ht` for a sr.ht-hosted project. Look in the project's README or `CONTRIBUTING` for the canonical address.
+- A working `git send-email` configuration (one-time setup taking ~5 minutes).
+- The repository's target `[PATCHES]` mailing list address — typically `~user/repo-devel@lists.sr.ht`, documented in the project's `README.md` or `PROJECT_INTENT.md`.
 
 #### One-time setup
 
 ```sh
-# Tell git the mailing list to send to
+# Configure the target mailing list for this repository
 git config sendemail.to '~user/repo-devel@lists.sr.ht'
 
-# Tell git to prefix patch subjects with [PATCH project_name]
+# Prefix patch subjects with [PATCH project_name]
 git config format.subjectPrefix 'PATCH project_name'
 
-# Configure your SMTP server (Gmail example shown)
+# Configure your outbound SMTP server (Gmail example)
 git config --global sendemail.smtpserver smtp.gmail.com
 git config --global sendemail.smtpserverport 587
 git config --global sendemail.smtpencryption tls
@@ -155,115 +152,115 @@ git config --global sendemail.smtpuser you@gmail.com
 git config --global sendemail.smtppass <app-password>
 ```
 
-If you're new to `git send-email`, the SourceHut tutorial at [`git-send-email.io`](https://git-send-email.io) walks through SMTP setup for common providers.
+If you are setting up `git send-email` for the first time, [`git-send-email.io`](https://git-send-email.io) provides step-by-step instructions for common email providers.
 
 ### Authoring steps
 
 ```sh
-# 1. Branch
-git checkout -b TT-1234-add-feature
+# 1. Cut a feature branch
+git checkout -b impl/feature/TT-1234
 
-# 2. Implement via TDD, commit per cycle.
+# 2. Implement via TDD, committing once per scenario cycle.
 
-# 3. Write specs/TT-1234/submission.md from the template
+# 3. Populate specs/TT-1234/submission.md from the template
 cp specs/TEMPLATE/submission.md specs/TT-1234/submission.md
 # fill in Status=Submitted, Description, Forge metadata, etc.
 
 git add specs/TT-1234/submission.md
 git commit -m "TT-1234: add submission artifact"
 
-# 4. Format the patches and send them to the list.
-#    For a multi-commit series, include --cover-letter:
+# 4. Format and transmit the patch series to the mailing list.
+#    For a multi-commit branch, include --cover-letter:
 git send-email --cover-letter --annotate origin/develop..HEAD
 
-#    For a single-commit fix, the commit message itself is the description
-#    (still copy the same content from submission.md):
+#    For a single-commit change, the commit message body carries the description
+#    (populated from submission.md):
 git send-email -1
 ```
 
-When `--cover-letter` is set, `git send-email` opens your editor on a placeholder cover-letter email. Replace the `*** SUBJECT HERE ***` and `*** BLURB HERE ***` placeholders with the contents of `submission.md`'s `## Description` section. The cover letter is the SourceHut equivalent of the MR/PR body — it is what subscribers to the list see — but `submission.md` in the repo is the canonical record. For a single-commit series the commit message plays the cover letter's role; populate it from `submission.md` the same way.
+When `--cover-letter` is passed, `git send-email` opens your editor on a `[PATCH 0/N]` cover-letter template. Replace the `*** SUBJECT HERE ***` and `*** BLURB HERE ***` markers with the `## Description` section from `submission.md`. That cover letter acts as the mailing-list equivalent of a PR description, while `specs/{ticket-id}/submission.md` inside the repository remains the permanent source of truth.
 
 ### Description format
 
-Plain text or Markdown in the cover-letter body, mirroring `submission.md`'s `## Description` section. Lists, links, and code blocks render in the `lists.sr.ht` web archive even though the transport is email.
+Plain text or Markdown inside the cover-letter body copied from `submission.md`'s `## Description` section. Lists, links, and fenced code blocks render cleanly in the `lists.sr.ht` web interface.
 
 ### Subject prefix
 
-By default `git send-email` will subject patches `[PATCH 1/N]`, `[PATCH 2/N]`, etc. If `format.subjectPrefix` is set (recommended), the prefix becomes `[PATCH project_name 1/N]` so threads are easily filterable in archives.
+By default `git send-email` numbers patches `[PATCH 1/N]`, `[PATCH 2/N]`, and so on. Setting `format.subjectPrefix` produces `[PATCH project_name 1/N]`, making patch threads easy to filter across shared mailing lists.
 
 ### Discussion
 
-Reviewers reply to the patchset thread (in their mail client or via the `lists.sr.ht` web UI). Inline comments use the standard email convention of quoting the diff line with `>` and replying underneath.
+Reviewers reply directly to the patch emails (using standard `>` inline quoting to comment on specific diff lines).
 
-Because SourceHut has no built-in archive guarantee comparable to GitLab/GitHub's, **`submission.md`'s `## Discussion` section is the canonical record of the review.** The author (or reviewers themselves on append) mirrors substantive comments and resolutions back into the file as the conversation happens. If the `lists.sr.ht` thread ever moves or rots, the discussion is still in the repo.
+Because mailing-list archives live outside the Git repository, **`submission.md`'s `## Discussion` section serves as the canonical archive of the review.** The author and review skills mirror substantive thread replies and dispositions into `submission.md` as the review progresses, ensuring no context is lost if an external list URL ever changes.
 
 ### Sending a new version
 
-If review feedback requires changes, rework your commits locally (`git rebase -i`, then re-run tests), update `submission.md` (append the resolution entries to `## Discussion`, bump the patchset-version entry in `## Forge metadata`), and send a v2:
+When review feedback calls for code revisions, update your branch commits, re-run the test suite, append the resolution notes to `submission.md` `## Discussion`, increment the patchset version in `## Forge metadata`, and transmit a `v2` series:
 
 ```sh
 git send-email --cover-letter -v2 --annotate origin/develop..HEAD
 ```
 
-The `-v2` adds `[PATCH v2 …]` to the subject. The cover letter for v2 should include a brief changelog of what changed since v1 — copy it from the new `## Discussion` entries you just appended.
+Passing `-v2` prefixes subjects with `[PATCH v2 …]`. Include a concise v1→v2 changelog in the cover letter drawn from your latest `## Discussion` entries.
 
 ### Acceptance
 
-The maintainer applies the patchset with `git am` after consensus on the thread:
+Once the required human gates pass on the thread, the maintainer applies the patchset with `git am` (or `b4 am`):
 
 ```sh
-# Fetch the patchset (from your inbox, or via b4 fetching the message-id from lists.sr.ht)
-b4 am <message-id>            # if you use b4 (recommended)
-# OR
+# Fetch and apply the patchset by message-id using b4 (recommended)
+b4 am <message-id>
+# OR apply from a local mbox file
 git am < ~/Maildir/patchset.mbox
 
-# Run the full test suite, then push to trunk
+# Verify the full test suite passes, then push to the integration branch
 git push origin trunk
 ```
 
-Patches preserve authorship — your commits land in `trunk` with your name in `Author:`. The maintainer's `Signed-off-by:` chain (if the project uses one) is appended. The maintainer (or archivist on follow-up) fills in `submission.md`'s `## Resolution` section.
+`git am` preserves original commit authorship while appending the maintainer's `Signed-off-by:` trailer when configured. Finally, `submission.md`'s `## Resolution` section is completed.
 
 ### Recording the thread URL
 
-Set the `Thread URL` field in `submission.md`'s `## Forge metadata` section to the `lists.sr.ht` patchset URL:
+Record the `lists.sr.ht` thread URL in `submission.md` under `## Forge metadata`:
 
 ```
 - Forge: sourcehut
-- Thread URL: https://lists.sr.ht/~antonioyon/CLAIRE-devel/patches/12345
-- Branch: TT-1234-add-feature
+- Thread URL: https://lists.sr.ht/~antonioyon/CADENCE-devel/patches/12345
+- Branch: impl/feature/TT-1234
 - Target branch: trunk
 - Submitted: 2026-05-18 14:32 UTC
 ```
 
-The same URL may also be set in `specs/{ticket-id}/metadata.yaml`'s `merge_request:` field as a quick pointer for automation; the authoritative record is `submission.md`.
+You may also populate `merge_request:` in `specs/{ticket-id}/metadata.yaml` with the same URL for quick CLI lookup; `submission.md` remains the authoritative record.
 
 ---
 
 ## Choosing a workflow for a new adopter repo
 
-If you're setting up CLAIRE in a new repo, pick the workflow that matches your forge:
+When adopting CADENCE in a repository, select the submission workflow that matches your hosting platform:
 
-- **Hosted on GitLab (self-hosted or gitlab.com):** Workflow 1.
-- **Hosted on GitHub:** Workflow 2.
-- **Hosted on SourceHut, or any setup where the project prefers email patches:** Workflow 3.
+- **GitLab (self-managed or gitlab.com):** Workflow 1.
+- **GitHub:** Workflow 2.
+- **SourceHut (or any email-patch workflow):** Workflow 3.
 
-You do **not** need to support multiple workflows in one repo. The framework supports all three so adopters are not forced to migrate.
+A single repository only needs to use the workflow matching its forge; CADENCE supports all three so teams never have to switch hosting platforms to adopt the SDLC.
 
 ---
 
 ## What stays the same across workflows
 
-- **`submission.md`** — written before submission, mirrors the description into the forge body / cover letter, accumulates discussion, and freezes the resolution. Archived alongside the other spec artifacts.
-- **The human gates** — Spec Review, Code Review, Maintainer Acceptance, Deploy Validation. The gate checklists in `docs/agentic-sdlc/human-gates.md` apply regardless of forge.
-- **The code-reviewer and maintainer agents** — they read `git diff` (forge-neutral) and `submission.md` (also forge-neutral) as their primary inputs.
-- **Archival** — the archivist moves `specs/{ticket-id}/` to `archive/{ticket-id}/` with the frozen `submission.md` carrying the full record. The forge thread URL stays in the file for reference but is no longer load-bearing.
-- **CI/CD** — the `ci-templates/` pipelines run on the merged commit on `trunk`/`main`/`develop`; they don't care how the change arrived.
+- **`submission.md`** — authored before submission, supplies the MR/PR/cover-letter description, accumulates review discussion and finding dispositions, and freezes the final merge resolution inside `archive/{ticket-id}/`.
+- **The human gates** — Spec Approval (Gate 1), Code Review (Gate 2), Maintainer Acceptance (Gate 3), and Deploy Validation (Gate 4). The gate criteria in `docs/agentic-sdlc/human-gates.md` are identical across all forges.
+- **The `cadence-reviewer` and `cadence-maintainer` agents** — both consume local `git diff` and `submission.md` (assisted by `offload_deep_review` and `offload_log_triage`), operating with zero hard dependency on proprietary forge APIs.
+- **Archival** — `/cadence-archive` relocates `specs/{ticket-id}/` to `archive/{ticket-id}/` with the completed `submission.md` preserving the full audit trail inside Git.
+- **CI/CD pipelines** — the scripts under `ci-templates/` validate the commits on the integration branch regardless of how the change proposal was transported.
 
 ---
 
 ## Related docs
 
-- [`contributor_experience_guide.md`](contributor_experience_guide.md) — the full contributor workflow, including intent issues and the lightweight track.
-- [`../agentic-sdlc/human-gates.md`](../agentic-sdlc/human-gates.md) — gate checklists and reviewer responsibilities.
-- [`../policies/change-tiers.md`](../policies/change-tiers.md) — which process steps apply by change risk.
-- [`../policies/inner_source_sdlc_charter.md`](../policies/inner_source_sdlc_charter.md) — governance charter (when adopting inner-source).
+- [`contributor_experience_guide.md`](contributor_experience_guide.md) — end-to-end contributor onboarding, intent issues, and the lightweight vs. standard tracks.
+- [`../agentic-sdlc/human-gates.md`](../agentic-sdlc/human-gates.md) — human gate checklists and review responsibilities.
+- [`../policies/change-tiers.md`](../policies/change-tiers.md) — objective triggers determining which gates apply per change tier.
+- [`../policies/inner_source_sdlc_charter.md`](../policies/inner_source_sdlc_charter.md) — enterprise Inner-Source SDLC governance charter.

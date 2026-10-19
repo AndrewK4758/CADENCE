@@ -1,20 +1,20 @@
 # Database Migration Policy
 
-This document defines the mandatory requirements for all database migrations, regardless of framework or tooling. Every migration must be **idempotent** and **reversible**. These requirements are enforced by the implementer (at authoring time), code-reviewer (at review time), and maintainer (at acceptance time).
+This policy establishes the mandatory engineering rules for all database migrations across CADENCE repositories, regardless of language, ORM, or migration runner. Every migration must be both **idempotent** and **reversible**. These guarantees are enforced at three points: by `cadence-implementer` / `cadence-migration-author` during authoring, by `cadence-reviewer` during Gate 2 Code Review, and by `cadence-maintainer` during Gate 3 Maintainer Acceptance.
 
-This policy is framework-agnostic. For tool-specific guidance, see companion examples (e.g., `docs/guides/ef-migration-examples.md`).
+This policy is stack-agnostic. For framework-specific implementation patterns, consult companion guides such as `docs/guides/ef-migration-examples.md`.
 
 ## Core Principles
 
-1. **Reversibility** — Every migration must be rollback-safe. A deployment can be reverted to the previous migration without manual intervention or data loss.
-2. **Idempotency** — Running a migration against a database where it has already been (partially) applied must not fail. This protects against interrupted deployments and retry scenarios.
-3. **Separation of concerns** — Schema changes and data migrations are separate migration files. Never seed, transform, or backfill data in a schema migration.
+1. **Reversibility** — Every migration must support clean rollback. Any deployment must be revertible to the prior schema version without manual database surgery or silent data loss.
+2. **Idempotency** — Executing a migration against a database where it has already been partially or fully applied must succeed cleanly without error. This guards against interrupted deployments and automated retry loops.
+3. **Separation of concerns** — Structural schema changes (DDL) and data transformations (DML) must live in separate migration files. Never seed, transform, or backfill application rows inside a structural schema migration.
 
 ## Requirements
 
 ### 1. Every Forward Migration Must Have a Complete Reverse Migration
 
-Every operation in the forward (apply) direction must have a corresponding reversal in the rollback direction:
+Every structural operation in the forward (`apply` / `Up`) path requires an exact inverse operation in the rollback (`revert` / `Down`) path:
 
 | Forward operation | Required reverse operation |
 |---|---|
@@ -26,15 +26,15 @@ Every operation in the forward (apply) direction must have a corresponding rever
 | Alter column (type, nullability) | Alter back to original |
 | Custom SQL | Reversal SQL |
 
-**Empty or stub reverse migrations are never acceptable.** If a migration genuinely cannot be reversed (e.g., dropping a column containing data), this must be documented in the spec's `decisions.md` with explicit human approval and a data recovery plan.
+**Empty or no-op reverse migrations are strictly forbidden.** If a migration is genuinely irreversible by nature (for example, a contraction step that drops a legacy column containing historical data), the exception must be recorded in `specs/{ticket-id}/decisions.md` with explicit human sign-off and a verified backup/restore procedure.
 
 ### 2. Idempotency Guards
 
-All migrations must tolerate re-execution. This protects against interrupted deployments where a migration partially applied before failing.
+Every migration must tolerate repeated execution so that a deployment interrupted mid-flight can be safely re-run.
 
-**For migration tools with built-in tracking** (e.g., a migration history or version table): the tool prevents full re-execution at the migration level. However, any custom/raw SQL embedded within a migration must still be independently guarded.
+**For migration runners with built-in version tracking** (such as a migration history table): the tool prevents re-running a migration that completed in full. However, any raw or custom SQL block embedded inside a migration must still carry its own conditional existence guards in case an earlier run failed mid-script before recording completion.
 
-**For raw SQL or custom scripts:** Every DDL statement must use conditional guards:
+**For raw SQL or custom migration scripts:** Every DDL statement must be wrapped in an explicit existence check:
 
 ```sql
 -- Column addition with existence guard
@@ -55,7 +55,7 @@ BEGIN
 END
 ```
 
-The test for idempotency: if you run the migration twice against the same database, the second run must either no-op or succeed identically — never error.
+The practical test for idempotency: executing the forward migration twice in succession against the same database instance must either no-op cleanly or produce the exact same schema state — never throw a duplicate-object error.
 
 ### 3. Separation: Schema vs. Data
 
@@ -64,54 +64,54 @@ The test for idempotency: if you run the migration twice against the same databa
 | **Schema migration** | DDL: create/alter/drop tables, columns, indexes, constraints | DML: INSERT, UPDATE, DELETE of application data |
 | **Data migration** | DML: backfill, transform, seed | DDL: structural changes |
 
-If a feature requires both schema and data changes, create separate migrations in the correct order:
-1. Schema migration (additive — adds new columns/tables)
-2. Data migration (populates new columns from existing data)
-3. Schema migration (removes old columns/tables, if applicable, in a later release after consumers have migrated)
+Whenever a feature requires both structural schema changes and data population, author separate, sequentially ordered migrations:
+1. **Schema migration (expand)** — additive DDL adding nullable columns or new tables.
+2. **Data migration (backfill)** — DML populating the new columns/tables from existing records.
+3. **Schema migration (contract)** — restrictive DDL removing deprecated columns/tables in a subsequent release after all consumers have transitioned.
 
-This separation ensures each migration can be independently rolled back and that schema rollback does not destroy backfilled data unexpectedly.
+Separating DDL from DML ensures each step can be rolled back independently and prevents a schema rollback from inadvertently destroying backfilled production data.
 
-For the recommended expand/contract deployment pattern that operationalizes this principle, see `docs/agentic-sdlc/migration-workflow.md`.
+For the full multi-release expand/contract deployment workflow that operationalizes this rule, see `docs/agentic-sdlc/migration-workflow.md`.
 
 ### 4. Large Table Safety
 
-For tables exceeding 1M rows (or any table identified as high-traffic):
+When migrating tables exceeding 1 million rows (or any table on a high-throughput critical path):
 
-- **No extended locks:** Avoid operations that hold exclusive table locks for extended periods. Use online/concurrent operations where the database supports them (e.g., `CREATE INDEX CONCURRENTLY` in PostgreSQL, `ONLINE = ON` in SQL Server).
-- **Batch data migrations:** Process rows in batches (1,000–10,000) with explicit transaction scoping. Never update an entire large table in a single transaction.
-- **Timeout budgets:** Document expected execution time in the spec. Any migration expected to exceed 30 seconds must be flagged during spec review.
-- **Non-nullable columns:** Adding a NOT NULL column to a populated table requires a default value. Never add a non-nullable column without a default to a table that contains rows.
-- **Column removal:** Dropping columns from large tables should happen in off-peak windows. Consider marking the column as deprecated first, then removing in a subsequent release.
+- **No extended table locks:** Avoid DDL statements that acquire long-lived exclusive table locks. Always use online or concurrent index/constraint operations supported by the database engine (e.g., `CREATE INDEX CONCURRENTLY` in PostgreSQL, `WITH (ONLINE = ON)` in SQL Server).
+- **Batched data migrations:** Execute backfills and updates in bounded batches (1,000–10,000 rows per transaction) rather than locking the entire table in a single monolithic transaction.
+- **Execution time budgets:** Record expected migration runtime in `spec.md`. Any migration projected to run longer than 30 seconds must be flagged explicitly for Gate 1 Spec Approval.
+- **Non-nullable additions:** Adding a `NOT NULL` column to a populated table requires either a metadata-only default value or a three-step expand/backfill/alter sequence. Never add an un-defaulted `NOT NULL` column directly to a table containing existing rows.
+- **Column removal:** Schedule column drops on large tables during low-traffic windows, and always deprecate and stop reading/writing the column in application code at least one release prior to dropping it.
 
 ### 5. Rollback Verification
 
-The implementer must verify rollback works before marking implementation complete. The procedure, using whatever migration CLI the project uses:
+Before marking implementation complete, `cadence-implementer` (or `cadence-migration-author`) must empirically verify the full round-trip migration cycle using the repository's migration CLI (triaging the command output via `offload_log_triage` / `log-triage` to preserve exact verification evidence):
 
 ```
-1. Apply the migration forward        → database at version N
-2. Roll back to the previous version   → database at version N-1
-3. Re-apply the migration forward      → database at version N (again)
+1. Apply the migration forward        → database reaches version N
+2. Roll back to the previous version   → database returns cleanly to version N-1
+3. Re-apply the migration forward      → database reaches version N again without error
 ```
 
-All three steps must succeed without errors. If the project has a test database managed by integration tests, this apply-rollback-reapply cycle should be codified as an explicit test case.
+All three steps must exit zero without errors. When the repository runs automated integration tests against a containerized or ephemeral test database, codify this `apply → rollback → reapply` sequence as an automated test case.
 
-Evidence of this verification must be present in the MR — either via:
+Concrete evidence of rollback verification must accompany the MR via at least one of:
 - A commit message tag: `[reversible, idempotent]`
-- An integration test that exercises the cycle
-- Explicit documentation in the MR description
+- An automated integration test exercising the apply-rollback-reapply cycle
+- Verbatim CLI verification output recorded in `submission.md`
 
 ### 6. Migration Naming and Ordering
 
-Migrations must be named to clearly communicate their purpose and ordering:
+Migration filenames must communicate both execution order and ticket lineage clearly:
 
-- Include a timestamp or sequence number for deterministic ordering
-- Include the ticket/issue ID for traceability
-- Include a human-readable description of what the migration does
-- Separate schema and data migrations must be independently identifiable
+- Prefix with a chronological timestamp or monotonic sequence number for deterministic ordering.
+- Embed the ticket ID for direct traceability back to `specs/` or `archive/`.
+- Include a concise, human-readable slug describing the operation.
+- Make schema migrations and data migrations distinguishable by name.
 
-For frameworks with built-in ordering (e.g., EF Core timestamps in generated metadata), the filename ordering requirement is satisfied by the framework. The naming pattern may omit the timestamp prefix if the framework guarantees execution order.
+In frameworks that manage ordering metadata automatically (such as EF Core's `.Designer.cs` timestamp attributes), the filename pattern may follow the framework's native generator convention provided execution order remains deterministic.
 
-Example pattern: `{timestamp}_{ticket}_{description}.{ext}`
+Standard naming pattern: `{timestamp}_{ticket}_{description}.{ext}`
 
 ## Anti-Patterns
 
@@ -127,11 +127,11 @@ Example pattern: `{timestamp}_{ticket}_{description}.{ext}`
 
 ## Exceptions
 
-If a migration genuinely cannot meet these requirements (e.g., a destructive schema change mandated by compliance, a one-way encryption migration), the following process applies:
+When a migration genuinely cannot satisfy reversibility (for example, a regulatory data-erasure mandate or a one-way cryptographic hash migration), follow this explicit exception protocol:
 
-1. Document the exception in `specs/{ticket-id}/decisions.md` with rationale
-2. Include a data recovery plan (backup procedure, point-in-time restore steps, or export script)
-3. Get explicit human approval before implementation
-4. The code-reviewer and maintainer must both acknowledge the exception in their reviews
+1. Record the exception and technical rationale in `specs/{ticket-id}/decisions.md`.
+2. Author a concrete data recovery plan (pre-migration snapshot procedure, point-in-time restore runbook, or reversible export script).
+3. Obtain explicit human sign-off at Gate 1 (Spec Approval) before writing migration code.
+4. Both `cadence-reviewer` (Gate 2) and `cadence-maintainer` (Gate 3) must explicitly verify and acknowledge the documented exception in their review assessments.
 
-Exceptions are tracked — they are never silent omissions.
+Migration exceptions are governed, auditable decisions — never silent omissions.

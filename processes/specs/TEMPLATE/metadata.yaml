@@ -82,7 +82,7 @@
 # above arrived in **the release that ships this change** -- anchored to the
 # change rather than to a version NUMBER on purpose, because the number is not
 # known when this note is written and nothing sweeps a stale one. In a
-# repository running an OLDER installed CLAIRE, a wrapped scalar or an
+# repository running an OLDER installed CADENCE, a wrapped scalar or an
 # escaped quote still halts (or truncates) the sync -- so this note describes
 # the reader you have, not YAML in general.
 # ------------------------------------------------------------------------------
@@ -138,7 +138,7 @@ resolution: ""                              # The TERMINAL DISPOSITION of a tick
                                             # `worklog_watermark_at`'s precedent below: empty means "no
                                             # terminal disposition recorded", which is the correct reading
                                             # for every ticket that is still moving. DO NOT COMMENT IT OUT.
-                                            # `/claire-archive`'s close-out path HALTS on a ticket whose
+                                            # `/cadence-archive`'s close-out path HALTS on a ticket whose
                                             # `merged_at` is empty and whose `resolution:` is empty, absent
                                             # or whitespace-only -- a ticket may not be closed out without
                                             # saying why.
@@ -153,27 +153,27 @@ scope: M                                    # S | M | L | XL
 estimated_effort: ""                        # Human-readable estimate (e.g., "3d", "1w")
 actual_effort: ""                           # ACCUMULATED across stages -- the sum of the stage_effort
                                             # increments below. Grows as the spec advances; NOT computed
-                                            # from git history at archive. See CLAIRE_ORG.md
+                                            # from git history at archive. See CADENCE_ORG.md
                                             # "Actual Effort Accumulation".
 stage_effort:                               # Append-only log: one entry per recorded work session. Usually
                                             # one per stage, but a stage may carry MORE than one -- e.g.
-                                            # `claire-triage` gets a second entry when `/claire-elicit` runs after triage
+                                            # `cadence-triage` gets a second entry when `/cadence-elicit` runs after triage
                                             # (probe elicitation is triage-stage work). Effort is the
                                             # agent-observed working time for that session, MULTIPLIED by the
-                                            # stage's per-stage review multiplier (CLAIRE_ORG.md "Actual
+                                            # stage's per-stage review multiplier (CADENCE_ORG.md "Actual
                                             # Effort Accumulation") to cover operator review, then rounded UP
                                             # to the next 15-minute increment (never down; minimum "15m" for
                                             # any NON-ZERO computed time). A resolved multiplier of 0 -- set
                                             # only via a per-operator environment override -- records a real
                                             # "0m" for that stage instead of the floor.
-                                            # /claire-sync-jira posts each NEW entry as a per-stage Jira
-                                            # worklog (not the accumulated total). See CLAIRE_ORG.md.
+                                            # /cadence-sync-jira posts each NEW entry as a per-stage Jira
+                                            # worklog (not the accumulated total). See CADENCE_ORG.md.
   # Populated-entry pattern -- record the COMPUTED duration ONLY; never the multiplier value
-  # or the multiplication that produced it (see CLAIRE_ORG.md "Actual Effort Accumulation").
+  # or the multiplication that produced it (see CADENCE_ORG.md "Actual Effort Accumulation").
   # `at` is the EXACT stage-completion wall-clock time in UTC (second precision) obtained from
   # `date -u +%Y-%m-%dT%H:%M:%SZ` -- never midnight-only, never date-only, never a round-number time:
   # - stage: spec                           # triage | spec | implementation | code-review | maintainer | archive
-  #   effort: "1h 30m"                      # the computed duration (15-min increments); a short work note is fine (e.g. "SCOUT + facets")
+  #   effort: "1h 30m"                      # the computed duration (15-min increments); a short work note is fine (e.g. "CHORD + facets")
   #   at: "2026-07-07T14:32:05Z"            # EXACT wall-clock UTC from `date -u +%Y-%m-%dT%H:%M:%SZ`; (stage, at) is the worklog idempotency key
 
 worklog_watermark_at: ""                    # OPTIONAL (BTG-064). High-water mark of stage_effort[].at that has
@@ -194,7 +194,7 @@ worklog_watermark_at: ""                    # OPTIONAL (BTG-064). High-water mar
                                             # verification. Never written by hand. e.g. "2026-07-21T15:52:26Z"
 
 umbrella_epic_url: ""                       # OPTIONAL (BTG-105). PRESENT-BUT-EMPTY, on worklog_watermark_at's
-                                            # own precedent. Set by /claire-sync-jira (Jira Server/DC binding)
+                                            # own precedent. Set by /cadence-sync-jira (Jira Server/DC binding)
                                             # to the REPLACEMENT umbrella issue created when this ticket's
                                             # umbrella was superseded: a `type: epic` ticket whose live issue
                                             # carries an Epic Link cannot be re-typed in place without
@@ -203,7 +203,7 @@ umbrella_epic_url: ""                       # OPTIONAL (BTG-105). PRESENT-BUT-EM
                                             # REPO-OWNED: it is the idempotency key that stops a SECOND
                                             # replacement from ever being created, and it is decided from this
                                             # scalar ALONE -- never by searching the tracker
-                                            # (CLAIRE_ORG.md #9: "already synced" is decided from repo-owned
+                                            # (CADENCE_ORG.md #9: "already synced" is decided from repo-owned
                                             # state, never by reading mutable tracker state). Empty means "not
                                             # yet replaced", which is the correct reading for every ticket that
                                             # predates BTG-105 -- no migration or backfill is required. A value
@@ -215,7 +215,7 @@ umbrella_epic_url: ""                       # OPTIONAL (BTG-105). PRESENT-BUT-EM
 # --- Tier (change-tiers.md classification) ---
 
 tier: ""                                    # Trivial | Low | Medium | High -- set at triage.
-                                            # Canonical field name read by /claire-triage and /claire-elicit. (PI-008-FA)
+                                            # Canonical field name read by /cadence-triage and /cadence-elicit. (PI-008-FA)
 
 # --- Organization (optional -- remove if not applicable) ---
 
@@ -239,7 +239,7 @@ affected_integrations:                      # External service dependencies invo
   - ""                                      # e.g., PaymentGateway, EmailService, AuthProvider
 
 # --- Lineage (decomposition) ---
-# Populated when /claire-elicit decomposes a ticket into smaller strong-signal problems. (PI-008-FB)
+# Populated when /cadence-elicit decomposes a ticket into smaller strong-signal problems. (PI-008-FB)
 
 decomposed_from: ""                         # Parent ticket id when this ticket was created as a decomposition child.
 decomposed_into: []                         # Child ticket ids when this ticket was decomposed (written all-or-nothing).
@@ -259,19 +259,19 @@ jira_url: ""                                # The Jira issue this ticket project
                                             # `umbrella_epic_url`'s precedent above -- empty means "not yet
                                             # projected", which is the correct reading for every new ticket.
                                             # DO NOT COMMENT IT OUT. The recorded value is the ONLY identity
-                                            # mapping between this ticket and its issue: `/claire-sync-jira`'s
+                                            # mapping between this ticket and its issue: `/cadence-sync-jira`'s
                                             # resolve step performs NO recovery lookup by design (BTG-124
                                             # DEC-007 deleted the id search and deliberately did not replace
                                             # it), so an unrecorded mapping is not degraded resolution -- it
                                             # is a CREATE, and therefore a DUPLICATE issue for a ticket that
-                                            # already has one. Read by `/claire-sync-jira` (BTG-299 removed
+                                            # already has one. Read by `/cadence-sync-jira` (BTG-299 removed
                                             # the Jira Cloud adapter, which formerly shared this key).
                                             # Never written by hand: the allocating operation records it when
                                             # it reserves, and the sync writes it back thereafter.
                                             # e.g. "https://jira.example/browse/ABC-42"
 youtrack_url: ""                            # The YouTrack issue this ticket projects to. PRESENT-BUT-EMPTY on
                                             # the same reasoning as `jira_url` above, and for the same
-                                            # mechanical reason: `/claire-sync-youtrack`'s resolve step carries the
+                                            # mechanical reason: `/cadence-sync-youtrack`'s resolve step carries the
                                             # BYTE-PARALLEL contract -- the recorded `youtrack_url` is the
                                             # ONLY identity mapping that adapter has, so an unrecorded
                                             # mapping is a CREATE and therefore a DUPLICATE issue.
@@ -285,7 +285,7 @@ youtrack_url: ""                            # The YouTrack issue this ticket pro
 # --- Lifecycle timestamps (auto-filled by agents) ---
 # Every value below is the EXACT current wall-clock UTC time the event occurred, at second precision,
 # obtained by running `date -u +%Y-%m-%dT%H:%M:%SZ`. Never midnight-only, never date-only, never a
-# round-number time. An unset milestone stays "" (see CLAIRE_ORG.md "Actual Effort Accumulation").
+# round-number time. An unset milestone stays "" (see CADENCE_ORG.md "Actual Effort Accumulation").
 
 created_at: ""
 triaged_at: ""
@@ -298,15 +298,15 @@ archived_at: ""
 
 # Release/deploy milestones (manual; record-only at v1 -- no agent sets these).
 # Distinct from `archived` (a process-terminal status). See PI-029.
-released_at: ""                             # Semver tag cut (/claire-release pushed a vX.Y.Z tag).
+released_at: ""                             # Semver tag cut (/cadence-release pushed a vX.Y.Z tag).
 deployed_at: ""                             # Running in production (manual-deploy milestone).
 
 # --- Observability (populated by triage agent for BUG type) ---
 
-# observability_category: ""               # LOGIC_FAULT | LINEAGE_GAP | DRIFT_SIGNAL | SEAM_VIOLATION
-# observability_scout_dimension: ""        # State | Constraints | Outputs | Updates | Triggers
+# observability_category: ""               # LOGIC_FAULT | DELTA_AUDIT_GAP | DRIFT_SIGNAL | BOUNDARY_FAULT
+# observability_chord_dimension: ""        # State | Constraints | Outputs | Updates | Triggers
 # production_insight_id: ""                # PROD-{NNN} reference in docs/agentic-sdlc/production-insights.md
-# related_insights: []                     # Prior PROD entries for same component (e.g., ["PROD_CLAIRE-001", "PROD_CLAIRE-003"])
+# related_insights: []                     # Prior PROD entries for same component (e.g., ["PROD_CADENCE-001", "PROD_CADENCE-003"])
 
 # --- Tags for filtering and reporting ---
 

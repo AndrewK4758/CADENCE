@@ -1,82 +1,96 @@
 # Workflow Step 08 — Archive
 
-> Part of the per-step workflow guide series. This document details the **Archive** step, the final step of the CLAIRE workflow. For the preceding step see [`07-merge.md`](07-merge.md); for the whole-workflow overview see [`../getting-started.md`](../getting-started.md) §2.3.
+> Part of the per-step workflow guide series. This guide details the **Archive** step — the closing phase of the CADENCE lifecycle. For the preceding step see [`07-merge.md`](07-merge.md); for the end-to-end workflow overview see [`../getting-started.md`](../getting-started.md) §2.3.
 
 | | |
 |---|---|
-| **Step** | Archive (`/claire-archive`) |
-| **Who** | Reviewer (invokes the skill; the `claire-archivist` subagent does the work) |
-| **Consumes** | A merged ticket — `status: merged`, or its commit reachable on `develop` |
-| **Produces** | `archive/{ticket-id}/` + `summary.md`, updated CHANGELOG, promoted ADRs/insights; `status: archived` |
-| **Leads to** | — (workflow complete) |
+| **Step** | Archive (`/cadence-archive`) |
+| **Who** | Reviewer / Maintainer (invokes the skill; `cadence-archivist` + `repo-scout` execute the closeout) |
+| **Consumes** | A merged ticket — `status: merged` in `metadata.yaml`, or its merge commit reachable on the bound integration branch (`CADENCE_ORG.md` §15) |
+| **Produces** | `archive/{ticket-id}/` + `summary.md`, updated `CHANGELOG.md`, promoted ADRs (`docs/ADR/`) and intent insights (`intent-insights.md`), disposed follow-ups; `status: archived` |
+| **Leads to** | — (ticket lifecycle complete) |
 
 ---
 
 ## Purpose
 
-Archive closes the loop: it moves a completed ticket's artifacts out of the active `specs/` tree into `archive/`, captures what happened, and **feeds the project's learning back into its living records** — the CHANGELOG, the ADR log, intent insights, and the tracker. It is what keeps `specs/` a set of *in-flight* work and turns finished work into durable, searchable project memory.
+Archive closes the governance loop: it relocates a completed ticket's specification and review artifacts out of the active `specs/` directory into `archive/{ticket-id}/`, generates a durable closeout summary, disposes of any remaining `adr-owed` or `out-of-scope-defect` findings, and **distills what the team learned back into the repository's standing knowledge base** — `CHANGELOG.md`, `docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`, and the bound issue tracker. Archival keeps `specs/` strictly scoped to *in-flight* work while transforming completed tickets into permanent, searchable institutional memory.
 
-## Prerequisite: the change is merged
+## Prerequisite: the change is merged on the integration branch
 
-`/claire-archive` runs **after merge**. It verifies the ticket is merged — `metadata.yaml` shows `status: merged`, or the merge commit is reachable on `develop` (a commit on `develop` counts as merged even if not yet on `release/*` or `master`; see [`branch-strategy.md`](../../policies/branch-strategy.md)). If the MR isn't merged yet, it stops and tells you to complete the merge first. If `specs/{ticket-id}/` is already gone and `archive/{ticket-id}/` exists, it reports the ticket is already archived.
+`/cadence-archive` runs **only after merge** ([`07-merge.md`](07-merge.md)). Before acting, it resolves the repository's integration branch from [`CADENCE_ORG.md#branch-strategy-binding`](../../agentic-sdlc/CADENCE_ORG.md#branch-strategy-binding) (§15) and verifies that the ticket is merged — either `metadata.yaml` already shows `status: merged` or the ticket's implementation merge commit is reachable on the integration branch (`develop` under `long-lived-feature-release`, `main` under `trunk-based`; a commit on `develop` counts as merged even before release promotion to the production mirror). If the change has not yet merged, `/cadence-archive` **halts** and instructs you to complete the merge first. If `specs/{ticket-id}/` is already absent and `archive/{ticket-id}/` exists, it reports cleanly that the ticket is already archived.
 
 ## Who does what
 
-You drive the step from inside Claude Code:
+Invoke `/cadence-archive` from your agentic CLI runtime (`.agents/skills/cadence-archive/` or `.gemini/` on Antigravity):
 
 ```
-/claire-archive <ticket-id>           # e.g. /claire-archive TT-6547
+/cadence-archive <ticket-id>           # e.g. /cadence-archive TT-6547
 ```
 
-The skill delegates to the **`claire-archivist`** subagent. Like every other artifact change, the archival itself happens **on a branch and merges into `develop` via an MR** — moving files to `archive/`, updating the CHANGELOG, and promoting ADRs are all reviewable transitions, not direct commits.
+`/cadence-archive` handles the interactive human confirmation steps (`step 1b` for `adr-owed` promotion/deferral and `step 2e` for any undisposed `out-of-scope-defect` follow-ups per [`finding-classes.md`](../../policies/finding-classes.md)), delegates artifact relocation, `summary.md` generation, `CHANGELOG.md` updates, and ADR/insight drafting to the **`cadence-archivist`** subagent, and projects the final `archived` status to the bound tracker (`CADENCE_ORG.md` §9).
+
+Like every other governed repository change, archival itself is committed **on a dedicated worktree branch (`archive/{type}/{id}`) and merged into the integration branch via a remote MR/PR** — never committed directly to local `develop` or `main`.
+
+## Automatic Local Offload during Archival (`local_semantic_embed` & `repo-scout`)
+
+During archival closeout, `/cadence-archive` and `cadence-archivist` automatically use CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`) at **0 MB GPU VRAM**:
+
+1. **Follow-Up Candidate Deduplication (`local_semantic_embed` on `local-embed-cpu`):** During step 2e's prior-work check ([`finding-classes.md`](../../policies/finding-classes.md) Routing step 4), queries `nomic-embed-text` (port `9379`) across `specs/` (open tickets) and `archive/` (completed tickets) to classify each remaining `out-of-scope-defect` or deferred `adr-owed` candidate as `new`, `duplicate of <id>`, or `fold into <id>` (recording the exact search terms, searched roots, and hit counts).
+2. **ADR & Intent-Insight Lineage Lookup (`repo-scout` on `local-moe-hybrid`):** Searches `docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`, and `docs/flows/` to identify the next sequential `ADR-NNN` / `II-NNN` identifiers (via `mint-id.sh`), verify whether a decision supersedes or narrows an existing ADR (`ADR_CADENCE-0073`), and check whether any `docs/flows/` document warrants a post-merge update proposal (`doc-maintenance-policy.md`).
+
+All file moves, markdown authoring, and tracker syncs remain 100% owned by `/cadence-archive` and `cadence-archivist`.
 
 ## What happens
 
-The `claire-archivist` performs the closeout:
+`/cadence-archive` and `cadence-archivist` execute a structured nine-step closeout:
 
-1. **Finalize `submission.md`** — fill `## Resolution` (and any outstanding `## Discussion`) from the merge commit, so the archived record is complete.
-2. **Move the artifacts** — relocate `specs/{ticket-id}/` to `archive/{ticket-id}/`.
-3. **Generate `summary.md`** — a closeout summary with metrics drawn from git history.
-4. **Record the archive stage effort** — append an `archive` `stage_effort` entry and accumulate it into `actual_effort` (per `CLAIRE_ORG.md` "Actual Effort Accumulation"). Effort is *accumulated*, never recomputed from git history at archive time.
-5. **Update [`CHANGELOG.md`](../../../CHANGELOG.md)** — add the entry in Keep a Changelog format.
-6. **Promote durable knowledge** — ADR-worthy decisions to [`docs/ADR/`](../../ADR/); qualifying non-bug discoveries to [`intent-insights.md`](../../agentic-sdlc/intent-insights.md).
-7. **Sync external systems** — run the designated tracker-sync skill (`/claire-sync-jira`) to project `status: archived`.
-8. **Propose flow-doc updates** — flagged for **human review**, not auto-applied.
-9. **Clean up the feature branch.**
+1. **Dispose of `adr-owed` findings (step 1b).** Present every `adr-owed` entry logged during review (`finding-classes.md`) alongside its recorded precondition and current evidence. The human operator either **promotes** it (`cadence-archivist` step 6 then authors the new ADR under `docs/ADR/` citing the ticket and entry) or **defers** it with a stated reason (routing it into step 2e's follow-up filing queue).
+2. **Finalize `submission.md` & dispose of remaining follow-ups (step 2e).** Complete `submission.md`'s `## Resolution` section from the merge commit. For any `out-of-scope-defect` (or deferred `adr-owed`) entry lacking a disposition, run the `local_semantic_embed` prior-work check across `specs/` and `archive/`, present the `new` / `duplicate of <id>` / `fold into <id>` verdict for human confirmation, invoke `/cadence-triage --file-only <draft-path>` for confirmed `new` items, and record the final disposition and cumulative non-blocking class tally in `submission.md`'s `Follow-ups created` field.
+3. **Relocate ticket artifacts.** Move `specs/{ticket-id}/` to `archive/{ticket-id}/` via `git mv` on the `archive/{type}/{id}` branch so Git history tracks the rename cleanly.
+4. **Generate `archive/{ticket-id}/summary.md`.** Synthesize a concise closeout record capturing the problem solved, key design decisions, files modified, test scenarios delivered, and cycle-time metrics.
+5. **Record archive stage effort.** Append the `archive` `stage_effort` entry to `archive/{ticket-id}/metadata.yaml`, set `status: archived` and `archived_at`, and sum the stage entry into `actual_effort` (per `CADENCE_ORG.md` "Actual Effort Accumulation" — `actual_effort` is strictly the accumulated sum of `stage_effort` entries, never recomputed from Git commit timestamps at archive time).
+6. **Update [`CHANGELOG.md`](../../../CHANGELOG.md).** Add a structured entry under `[Unreleased]` (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`) in Keep a Changelog format.
+7. **Promote durable architectural knowledge.** Write promoted Architecture Decision Records to [`docs/ADR/`](../../ADR/) and append reusable non-bug architectural or process discoveries to [`intent-insights.md`](../../agentic-sdlc/intent-insights.md) (`II-{NNN}`).
+8. **Synchronize external tracker.** Run the bound tracker-sync skill (`CADENCE_ORG.md` §9, e.g., `/cadence-sync-jira` or `/cadence-sync-youtrack`) to project `status: archived` and the final stage effort worklog.
+9. **Surface flow-doc proposals & verify branch cleanup.** Flag any proposed updates to `docs/flows/` or `docs/SYSTEM_OVERVIEW.md` for **explicit human review** (never auto-merged silently, per `doc-maintenance-policy.md`), and verify that the post-merge feature branch was cleaned up (satisfied automatically when the forge auto-deletes head branches on merge).
 
 ## Outputs
 
 | Artifact | Content |
 |---|---|
-| `archive/{ticket-id}/` | The full spec artifact set, moved from `specs/`. |
-| `archive/{ticket-id}/summary.md` | Closeout summary with git-history metrics. |
-| `archive/{ticket-id}/metadata.yaml` | `status: archived`, `archived_at` set, `archive` `stage_effort` recorded. |
-| [`CHANGELOG.md`](../../../CHANGELOG.md) | New entry for the change. |
-| [`docs/ADR/`](../../ADR/) · [`intent-insights.md`](../../agentic-sdlc/intent-insights.md) | Any promoted decisions / insights. |
-| Jira | `archived` status projected. |
-| Flow-doc proposals | Drafted and flagged for human review (not written blindly). |
+| `archive/{ticket-id}/` | The complete specification, test-plan, decision-log, and submission bundle relocated from `specs/{ticket-id}/`. |
+| `archive/{ticket-id}/summary.md` | Generated closeout summary with delivery and effort metrics. |
+| `archive/{ticket-id}/metadata.yaml` | Updated with `status: archived`, `archived_at`, and the `archive` `stage_effort` entry accumulated into `actual_effort`. |
+| [`CHANGELOG.md`](../../../CHANGELOG.md) | New entry under `[Unreleased]` describing the shipped change. |
+| [`docs/ADR/`](../../ADR/) · [`intent-insights.md`](../../agentic-sdlc/intent-insights.md) | Newly promoted ADRs (from confirmed `adr-owed` items) and `II-{NNN}` intent insights. |
+| Bound tracker (`CADENCE_ORG.md` §9) | Final `archived` status and stage effort projected. |
+| Flow-doc proposals | Drafted and surfaced for human maintainer sign-off (when applicable). |
 
 ## Definition of done
 
-- [ ] All artifacts live under `archive/{ticket-id}/` and `summary.md` exists.
-- [ ] `CHANGELOG.md` updated; `metadata.yaml` shows `status: archived` with `archived_at` set.
-- [ ] The `archive` `stage_effort` entry is recorded and `actual_effort` reflects it (accumulated, not recomputed).
-- [ ] ADRs / intent insights promoted where warranted.
-- [ ] External systems updated (or noted as unavailable).
-- [ ] Any flow-doc proposals surfaced for human review.
+- [ ] All ticket artifacts reside under `archive/{ticket-id}/` (and `specs/{ticket-id}/` is removed), including a generated `summary.md`.
+- [ ] Every `adr-owed` and `out-of-scope-defect` finding carries a complete disposition in `submission.md`'s `Follow-ups created` field (with zero unlabelled or undisposed entries).
+- [ ] `CHANGELOG.md` updated under `[Unreleased]`; `metadata.yaml` records `status: archived` and `archived_at`.
+- [ ] The `archive` `stage_effort` entry is appended and accumulated into `actual_effort` (never recomputed from Git log timestamps).
+- [ ] Promoted ADRs and `intent-insights.md` entries committed where warranted.
+- [ ] Bound external tracker synchronized (`status: archived`).
+- [ ] Any proposed `docs/flows/` or `docs/SYSTEM_OVERVIEW.md` updates surfaced for human review.
+- [ ] Archive branch (`archive/{type}/{id}`) merged into the integration branch via remote MR/PR and pulled locally.
 
 ## What this step is NOT
 
-- **Not pre-merge.** Archival happens only after the change is merged to `develop`.
-- **Not effort recomputation.** `actual_effort` is the accumulated sum of stage entries — the archivist adds the archive stage, it does not derive the total from git history.
-- **Not auto-doc-editing.** Flow-doc and SYSTEM_OVERVIEW changes are *proposed* for human sign-off, never applied silently.
-- **Not a direct commit.** The archive changes land on `develop` through an MR like every other transition.
+- **Not runnable before merge.** `/cadence-archive` refuses to archive an unmerged ticket.
+- **Not timestamp-based effort recomputation.** `actual_effort` is the sum of recorded `stage_effort` entries across stages; the archivist appends the `archive` stage entry and never overwrites prior stages from Git commit spans.
+- **Not silent system-doc mutation.** Modifications to `docs/flows/` and `docs/SYSTEM_OVERVIEW.md` always require human sign-off (`doc-maintenance-policy.md`).
+- **Not a direct commit to `develop` or `main`.** Like every other artifact transition, archival lands on the integration branch through an `archive/{type}/{id}` branch and remote MR/PR.
 
 ## Related documents
 
-- [`07-merge.md`](07-merge.md) — the preceding step; archival requires the change be merged first.
+- [`07-merge.md`](07-merge.md) — the preceding step; a ticket must be merged on the bound integration branch before `/cadence-archive` runs.
 - [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier matrix.
-- [`../../policies/branch-strategy.md`](../../policies/branch-strategy.md) — why "merged" resolves against `develop`.
-- [`../../policies/ticket-management-system.md`](../../policies/ticket-management-system.md) — the tracker-sync trigger for the `archived` status.
-- [`../../ADR/`](../../ADR/) · [`../../agentic-sdlc/intent-insights.md`](../../agentic-sdlc/intent-insights.md) — where durable knowledge is promoted.
-- [`../../../specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) — the record finalized at archival.
+- [`../../policies/branch-strategy/long-lived-feature-release.md`](../../policies/branch-strategy/long-lived-feature-release.md) · [`trunk-based.md`](../../policies/branch-strategy/trunk-based.md) — how "is this merged?" and post-merge branch cleanup resolve.
+- [`../../policies/finding-classes.md`](../../policies/finding-classes.md) — `adr-owed` promotion (step 1b) and `out-of-scope-defect` follow-up filing (step 2e).
+- [`../../policies/doc-maintenance-policy.md`](../../policies/doc-maintenance-policy.md) — human approval requirement for `docs/flows/` and `docs/SYSTEM_OVERVIEW.md`.
+- [`../../ADR/`](../../ADR/) · [`../../agentic-sdlc/intent-insights.md`](../../agentic-sdlc/intent-insights.md) — destinations for promoted architectural decisions and reusable insights.
+- [`../../../specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) — the change-proposal and disposition record finalized at archival.

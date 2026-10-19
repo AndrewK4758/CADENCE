@@ -111,7 +111,7 @@ predicate_org_token() {
 # the run reports a violation.
 #
 # A GATE THAT ONLY BLOCKS IS UNUSABLE AT THE STEP THAT AUTHORED THE DOCUMENT.
-# Both /claire-release-authored causes this gate catches were LEGITIMATE RECORDS
+# Both /cadence-release-authored causes this gate catches were LEGITIMATE RECORDS
 # that BTG-190 dispositioned with ledger rows, not edits: an operator blocked
 # mid-cut with no stated remedy is pushed toward editing an immutable record,
 # which is facet conflict C-1. The menu is contract, not courtesy, and its order
@@ -170,7 +170,7 @@ adg_report_uncovered() {
   uncovered="$(adg_uncovered_documents "$root" "$@" | tr '\n' ' ')"
   n="$(printf '%s' "$uncovered" | wc -w | tr -d ' ')"
   echo "authored-doc: note authoreddoc.caller.undocumented_write_path -- $n swept document(s) have no write-time call site; this repo-wide sweep is the compensating control for each: $uncovered"
-  adg_emit_seam LINEAGE_GAP authoreddoc.caller.undocumented_write_path "$n uncovered"
+  adg_emit_seam DELTA_AUDIT_GAP authoreddoc.caller.undocumented_write_path "$n uncovered"
 }
 
 # adg_emit_seam <TYPE> <event_name> <subject> -- the repository's seam-emission
@@ -217,6 +217,6 @@ adg_report_violation() {
 # (BTG-247 rows 13-21).
 adg_setup_failure() { # seam, message
   echo "authored-doc: FATAL -- $2" >&2
-  adg_emit_seam IMPOSSIBLE_STATE "$1" "$2"
+  adg_emit_seam UNSOUND_CONDITION "$1" "$2"
   exit 2
 }

@@ -1,122 +1,122 @@
 # Documentation Maintenance Policy
 
-This policy defines when and how system-level documentation must be updated alongside code changes. The goal is to prevent erosion of human understanding as the system evolves.
+This policy defines when and how system-level architecture and flow documentation must be updated alongside code changes. Its purpose is to prevent architectural drift and preserve human comprehension as the codebase evolves.
 
 ## When Documentation Updates Are Required
 
-An MR **must** update documentation (or explicitly acknowledge no update is needed) when it introduces any of the following:
+Every MR **must** update system documentation (or explicitly record a verified no-impact statement) whenever it introduces any of the following:
 
-- A new API endpoint (REST, gRPC, or internal)
-- A new event or message type published to a queue
+- A new API endpoint (REST, gRPC, or internal RPC)
+- A new event or message schema published to a broker or queue
 - A new service or bounded context
-- A new major capability surfaced to consumers (CLI command, slash command, scheduled job, or other invocable surface — applies even when no HTTP endpoint or queue event is added)
-- A new integration with an external system
-- A change to an existing flow's sequence (new steps, removed steps, reordering)
-- A change to data ownership (which context writes to which tables)
-- A change to system boundaries as documented in `docs/SYSTEM_OVERVIEW.md` (newly-owned data, removed ownership, or a new authoritative source for an entity previously owned elsewhere)
+- A new major capability exposed to users or automation (CLI command, slash command, scheduled job, or other invocable surface — applicable even when no HTTP endpoint or queue event is added)
+- A new integration with an external third-party or internal system
+- A modification to an existing business flow's sequence (adding steps, removing steps, or reordering execution)
+- A change in data ownership (altering which bounded context writes to which tables or stores)
+- A change to system boundaries as recorded in `docs/SYSTEM_OVERVIEW.md` (newly owned entities, retired ownership, or a new authoritative source of record for an entity previously managed elsewhere)
 
 ## What Constitutes Acknowledgment
 
-One of the following must be present in the MR:
+Every MR must include one of the following two artifacts:
 
-1. **Doc update committed:** The relevant `docs/flows/{flow-name}.md` and/or `docs/SYSTEM_OVERVIEW.md` are updated in the MR.
-2. **Explicit no-impact statement:** The MR description includes:
+1. **Doc update committed:** The affected `docs/flows/{flow-name}.md` and/or `docs/SYSTEM_OVERVIEW.md` files are updated directly within the MR.
+2. **Explicit no-impact statement:** The MR description (`submission.md`) carries an explicit declaration:
    > Doc impact: none — this change is internal to {context} and does not alter any documented flow.
 
-The absence of both is flagged during code review.
+Omitting both is flagged during code review.
 
 ## MR Description Requirements
 
-Every MR description must state:
+Every MR description (`submission.md`) must explicitly identify:
 
-- **Bounded context:** Which context(s) this change lives in
-- **Flow:** Which business flow(s) this change participates in (reference `docs/flows/` by name)
+- **Bounded context:** Which bounded context(s) the change modifies
+- **Flow:** Which business flow(s) the change participates in (referencing `docs/flows/` documents by name)
 
-This enables reviewers to orient themselves in the system before examining the diff.
+Stating both up front allows human reviewers to orient themselves in the system architecture before reading a single line of the diff.
 
 ## Dependency Graph Maintenance
 
-Projects adopting this framework should use language-appropriate tooling to auto-generate service/module dependency graphs:
+Repositories adopting CADENCE should use stack-appropriate tooling to generate service and module dependency graphs automatically:
 
-- The generated output should be referenced from (or embedded in) `docs/SYSTEM_OVERVIEW.md`
-- Regeneration should occur when service topology changes (new services, new inter-service dependencies)
-- The choice of tooling is project-specific; the convention is that the graph exists and is current
+- The generated graph should be embedded in or linked from `docs/SYSTEM_OVERVIEW.md`.
+- Graphs should be regenerated whenever service or module topology changes (new services, new cross-context dependencies).
+- Specific graphing tools remain stack-specific, but the governance expectation is that the dependency map exists and stays current.
 
 ## Human Review for System-Level Docs
 
-Agent-proposed changes to the following files **always require human approval** at the maintainer gate:
+Agent-authored modifications to the following architectural documents **always require explicit human approval** at the Maintainer gate:
 
 - `docs/SYSTEM_OVERVIEW.md`
-- Any file under `docs/flows/`
+- Any flow document under `docs/flows/`
 
-Agents may propose updates (e.g., the archivist after archiving a spec that introduced a new endpoint), but humans decide whether the proposed change accurately represents the system.
+While agents may draft proposed updates (for example, `cadence-archivist` proposing a flow update after archiving a ticket that added an endpoint), accountable humans decide whether the proposed narrative accurately reflects the live system.
 
 ## Reconciliation Sweep Method
 
-`CLAUDE.md` Behavior 6 states the *obligation* — "a fact changed anywhere is reconciled everywhere". This section states the **method**, and is its **only home**: `CLAUDE.md` and the `claire-spec-author` / `claire-reviewer` role prose continue to state the obligation and never restate the method, because a method copied into four places is four copies to drift — the same failure the obligation exists to prevent.
+`AGENTS.md` Behavior 6 establishes the core *obligation* — "a fact changed anywhere is reconciled everywhere". This section defines the **operational method** for discharging that obligation and serves as its **single authoritative home**: `AGENTS.md` and the `cadence-spec-author` / `cadence-reviewer` role definitions state the obligation and point here without restating the method, because duplicating a multi-step procedure across four files creates four surfaces that can drift apart — the exact failure mode Behavior 6 exists to prevent.
 
 ### Two independent searches
 
-A reconciliation sweep — run for any change that falsifies a claim the repository makes about itself — performs **two independent searches**:
+Every reconciliation sweep — required whenever a change falsifies a claim the repository makes about itself — executes **two independent searches**:
 
-1. **The identifier search.** The identifiers being **moved, renamed, or removed**: the condition name, function, path, variable, or field whose meaning the change alters. This is the search a sweep already runs.
-2. **The claim search.** The **claim's distinctive phrasing** — the words a document would use to assert the property that is now false — chosen **independently** of any identifier in the first search.
+1. **The identifier search.** Search for the exact code or configuration identifiers being **moved, renamed, or removed**: the condition token, function name, file path, variable, or schema field whose semantics the change alters. This is the mechanical search most sweeps naturally run first.
+2. **The claim search.** Search for the **claim's distinctive prose phrasing** — the natural-language terms a narrative document would use to state the property that is now false — selected **independently** of any identifier used in the first search.
 
-The second search is not a spelling variant of the first. If its terms are derived from the identifier, it inherits the identifier search's blind spot and adds nothing; pick the phrasing from the *claim*, then check that it would not have been found by search 1.
+The second search must not be a mere casing or punctuation variant of the first. If its search terms are derived from the code identifier, it inherits the identifier search's blind spot and contributes zero additional coverage; derive the query terms from the *conceptual claim*, and verify that those terms would not have been matched by search 1 alone.
 
-**Both searches and both hit sets are recorded** in the change's decision log or MR description: each search as it was actually run, and the set of files it returned. An empty hit set is a result and is recorded as one — it is the difference between "nothing else asserts this" and "nobody looked."
+**Both search queries and both resulting hit sets must be recorded** in the ticket's `decisions.md` or MR description (`submission.md`): document the exact search executed and the list of files returned by each. An empty hit set is a concrete finding and must be recorded explicitly — it distinguishes "no other document asserts this claim" from "nobody checked."
 
 ### Why the second search exists
 
-An identifier-keyed sweep **cannot reach** a document that asserts the now-false property **in prose** while **naming no** identifier the change touched. Flow documents are the canonical members of that class: they narrate a flow for a human reader and may contain not one of the names the change moved.
+An identifier-keyed search **cannot reach** a narrative document that states the now-false property **in prose** without mentioning any code identifier modified by the diff. Flow documents under `docs/flows/` are the prime example: they explain end-to-end behavior for human readers and frequently omit low-level condition tokens or function names.
 
-The motivating instance is real and in this repository. BTG-105's reconciliation sweep searched for `syncjs.*` condition names, and so never reached `docs/flows/jira-server-projection.md`, which describes the same flow in prose and contains no condition name to match. That document was not overlooked through carelessness — it was **unreachable by the search that was run**. No amount of diligence applied to search 1 would have found it; only a second search keyed on the claim would.
+The motivating failure occurred in this repository: BTG-105's reconciliation sweep searched exclusively for `syncjs.*` condition identifiers and therefore never surfaced `docs/flows/jira-server-projection.md`, which narrated the exact same behavior in plain English without citing a single `syncjs.*` token. That flow document was not missed due to negligence — it was **structurally unreachable by the identifier query**. No amount of care applied to search 1 could have located it; only a second search keyed on the prose claim could.
 
 ### An unrecorded sweep did not happen
 
-A change that **claims a sweep** was performed while recording **no search and no hit set** is **not accepted as evidence** the sweep occurred. A reviewer treats it as a sweep that **did not run**, and asks for it — the same disposition, whether the omission was an oversight or the sweep was genuinely skipped, because from outside the two are indistinguishable.
+A change that **asserts a reconciliation sweep was performed** while recording **neither the search queries nor their hit sets** is **not accepted as evidence** that the sweep ran. Reviewers treat an unrecorded sweep identically to a sweep that **was never executed**, requiring the author to run and record it — because from the outside, an unrecorded sweep and a skipped sweep are indistinguishable.
 
-The record is the evidence. The claim is not.
+The written record is the evidence; a bare assertion is not.
 
-**An assertion that no document under `docs/flows/` covers this journey is itself a hit set** — it is the claim search's result. The rule above applies to it unchanged: an absence recorded without the search that produced it is an unrecorded sweep, and is treated as one, whether the search was skipped or simply never written down (`BTG-293`).
+**Claiming that no document under `docs/flows/` covers a journey is itself a hit-set assertion** — it states the outcome of a claim search. The exact same rule governs it: an absence claim recorded without the search query and return that produced it is an unrecorded sweep and is rejected at review, whether the search was skipped or merely left undocumented (`BTG-293`).
 
 ### What a reviewer examines
 
-When a recorded sweep is examined, the record must show **both searches** — the identifier search and the claim search — each with its own hit set, and the two must be **distinguishable**: a reviewer has to be able to see which search produced which hit set. A record showing **only one search** is a one-search sweep, whatever it is labelled, and carries the blind spot this method exists to close.
+When inspecting a recorded reconciliation sweep, the reviewer verifies that **both searches appear** — the identifier search and the independent claim search — each paired with its own hit set, and that the two are **clearly distinguishable**: a reader must be able to tell which query produced which hit set. A record containing **only a single search** is a one-legged sweep regardless of how it is labeled, and leaves open the exact prose blind spot this method closes.
 
-This rule is a **prose obligation**, checked by a human at the **code-review and maintainer gates** like the rest of this policy. It is **deliberately not mechanized**: a gate that tried to decide whether some free text "recorded both hit sets" would be a content **classifier**, fail-open by construction — and a weak gate over a real obligation is worse than the obligation alone, because it converts an unmet duty into a green check. If a recurrence ever shows the prose obligation is insufficient, that is the trigger to revisit this, in a ticket that argues it — not a gap to quietly fill.
+This requirement is a **normative prose obligation** enforced by human reviewers at the **Code Review and Maintainer gates** alongside the rest of this policy. It is **deliberately not mechanized as a regex gate**: a script attempting to judge whether free-form prose "adequately recorded two independent hit sets" would act as a shallow content **classifier** that is fail-open by construction — and a brittle automated check over a substantive engineering duty is worse than human review alone because it turns an unfulfilled obligation into a green checkmark. Should future recurrences ever demonstrate that gate review is insufficient, that evidence will ground a dedicated ticket to revisit enforcement rather than a silent heuristic script.
 
 ### Ruling (BTG-293)
 
-**Verdict.** The prose obligation defined above is **sufficient as an obligation** and **insufficient as recorded**. The defects found are in the record, not in the duty: this ruling corrects the record in prose and narrows one downstream check; no new mechanism is introduced.
+**Verdict.** The prose obligation specified above is **sound as a governance duty** and **insufficient when recorded only as a bare conclusion**. The historical misses were defects in how sweeps were recorded rather than in the two-search duty itself: this ruling tightens the recording standard in prose and narrows one downstream reviewer check without introducing new automated scripts.
 
-**Evidence.** Re-measured against the archived corpus at commit `8085a5ee`: the confirmed false-absence class on `docs/flows/jira-server-projection.md` is **seven** — a **confirmed** count, and **at least** that many, not claimed as exhaustive — **corrected from** the **four** originally cited when this ticket was filed. Catch distribution across the seven: **0 of 7** caught at the code-review gate, **5 of 7** at the maintainer gate, 1 of 7 in-ticket, 1 of 7 post-merge at archive. The full measurement, with the command, corpus and unit behind every figure, is recorded in `archive/BTG-293/spec.md` under `## Measurement`. Every figure in this ruling describes **this repository**, at the commit named above; an adopting repository's own record may differ.
+**Evidence.** Re-measured across the archived ticket corpus at commit `8085a5ee`: the confirmed false-absence class against `docs/flows/jira-server-projection.md` totals **seven instances** — a **verified floor**, not claimed as exhaustive — **revised upward from** the **four** instances initially cited at ticket intake. Detection breakdown across those seven instances: **0 of 7** caught at the Code Review gate, **5 of 7** caught at the Maintainer gate, **1 of 7** caught in-ticket during authoring, and **1 of 7** caught post-merge during Archive. Complete measurement commands, corpus scope, and per-ticket breakdowns are preserved in `archive/BTG-293/spec.md` under `## Measurement`. All figures characterize **this framework repository** at commit `8085a5ee`; an adopting repository's historical distribution may differ.
 
-**Reasoning.** Three candidate mechanisms were evaluated and rejected on measured grounds, not preference:
+**Reasoning.** Three candidate mechanical gates were evaluated and rejected on empirical grounds rather than personal preference:
 
-- **Directory non-emptiness** (refuse any absence claim while `docs/flows/` is non-empty) was rejected on measured grounds: it fires on 158 of 307 archived tickets, of which roughly 151 assert absence truly — a ~96% false-positive rate.
-- **A resolvable citation validated by a shape-only gate** was rejected on measured grounds: it catches 0 of 7 outright, because every one of the seven could have emitted the "no coverage" token freely, and it breaks the Stable, 2-release-cycle `specs/TEMPLATE/*` surface.
-- **Derived coverage declarations** were rejected on measured grounds: the first such declaration ever authored for this repository named a path that has never existed at any commit, so the derivation would have resolved absence to true for the very journey it was meant to cover.
+- **Directory non-emptiness gate** (rejecting any flow-doc absence claim whenever `docs/flows/` is non-empty) was rejected on measured grounds: it triggers on 158 of 307 archived tickets, roughly 151 of which state flow-doc absence truthfully — yielding a ~96% false-positive rate.
+- **Resolvable citation checked by a shape-only linter** was rejected on measured grounds: it catches 0 of 7 historical misses because every one of the seven could have emitted the "no flow coverage" token syntactically, while breaking the Stable, 2-release-cycle `specs/TEMPLATE/*` surface contract.
+- **Derived path-coverage declarations** were rejected on measured grounds: the very first coverage declaration drafted for this repository referenced a file path that has never existed at any commit, meaning automated derivation would have resolved coverage to false for the exact journey it was meant to protect.
 
-**The selected design's own catch rate**, measured the same way and stated rather than left implicit: the narrowed check adopted below (an absence claim's recorded search must exist, **its recorded return must be recorded, not merely concluded**, and **its recorded scope must cover the claim's scope**) catches **7 of 7** against this same confirmed class (re-derived at the cycle-3 code-review gate, `decisions.md` DEC-016, correcting a **6 of 7** figure first recorded at cycle 2). `BTG-184`, the one candidate miss, recorded a search whose *stated* scope was adequate (a listing of `docs/flows/` itself, matching a repo-wide claim) but whose statement — "confirmed by listing `docs/flows/`" — names what was searched and then records a **conclusion** ("confirmed"), not a **return**. **A recorded conclusion is not a recorded return**: the cycle-2 figure treated "confirmed by listing X" as satisfying the return-recording conjunct, which is the lighter reading and the one that lets a false "confirmed" pass; the gate ruled the other way. This closes the miss **structurally**, by the return-recording conjunct alone, without judging whether the claimed search actually ran — the content-classification `archive/BTG-113` DEC-019 forbids stays unengaged; the check remains scope and form only. Per-ticket recipe in `archive/BTG-293/spec.md` `## Measurement` M-5.
+**The selected design's own catch rate**, measured against the identical seven-ticket class: the tightened reviewer rule below (requiring that any flow-doc absence claim include a recorded search, **that its actual return be recorded rather than summarized as a conclusion**, and **that the search's scope cover the full scope of the absence claim**) catches **7 of 7** confirmed instances (re-verified at cycle-3 code review, `decisions.md` DEC-016, supersedes the **6 of 7** count noted at cycle 2). `BTG-184`, the single borderline case, documented a search whose *stated* scope was sufficient (listing `docs/flows/` for a repo-wide absence claim) but recorded only a **conclusion** ("confirmed by listing `docs/flows/`") rather than the **returned file list**. **A stated conclusion is not a recorded return**: treating "confirmed by listing X" as a valid return would allow an erroneous "confirmed" to pass uninspected. Requiring the actual return closes the gap **structurally** on form and scope alone, without engaging in forbidden content classification (`archive/BTG-113` DEC-019). See `archive/BTG-293/spec.md` `## Measurement` M-5 for the per-ticket verification recipe.
 
-Each option is argued in full in `archive/BTG-293/spec.md` under `## Design Exploration`.
+Full design exploration and tradeoff analysis are recorded in `archive/BTG-293/spec.md` under `## Design Exploration`.
 
-**Re-measurement trigger.** This ruling reverses if, across the next **three** confirmed instances of the class, the code-review gate's catch rate stays at the **0 of 7** baseline and either (a) more than one of the three escapes past every pre-merge human gate, or (b) a second `docs/flows/` document accumulates the same failure. Baselines this is measured against: **0 of 7** caught at code review, **5 of 7** at the maintainer gate, **1 of 7** escaped past every pre-merge gate — all in this repository, at the commit named above. Either limb is checkable by a reader other than this ruling's author, without needing to agree with the author about anything else.
+**Re-measurement trigger.** This ruling will be reopened if, across the next **three** confirmed occurrences of this class, the Code Review gate's detection rate remains at the **0 of 7** baseline and either (a) more than one of the three escapes past all pre-merge human gates, or (b) a second `docs/flows/` document experiences the same false-absence pattern. Reference baselines in this repository at commit `8085a5ee`: **0 of 7** caught at Code Review, **5 of 7** caught at Maintainer Acceptance, **1 of 7** escaped past all pre-merge gates. Both trigger conditions are objectively verifiable by any reader without relying on subjective interpretation.
 
 ## Enforcement
 
-Documentation freshness is enforced at two gates, plus an observed post-merge backstop:
+Documentation freshness is enforced across two pre-merge gates and one post-merge archival backstop:
 
-1. **Code review gate:** The code-reviewer agent checks for doc updates or explicit acknowledgment. Missing documentation is flagged as a non-blocking issue, **with one narrowed exception (BTG-293): an affirmative flow-doc-absence assertion recorded with no search, with a search whose return is recorded only as a conclusion, or with a search scoped narrower than the claim, is blocking** — see `### Ruling (BTG-293)` above and `artifacts/roles/claire-reviewer.md`'s Documentation Freshness check. Every other doc-freshness finding, including a correctly-scoped, return-recording absence claim, stays non-blocking. **Measured record for this repository, at commit `8085a5ee` (BTG-293):** the code-review gate has **not caught** the affirmative flow-doc-absence class — **0 of 7** confirmed instances were caught here.
-2. **Maintainer gate:** The maintainer evaluates whether the change impacts documented flows and whether SYSTEM_OVERVIEW.md remains accurate. Systemic neglect of documentation freshness may be escalated to blocking. **Measured record for this repository:** the maintainer gate has caught the **majority** of the confirmed instances — **5 of 7**.
-3. **Archive step (observed, not a gate):** `claire-archivist` drafts flow-doc updates post-merge and is the **observed post-merge backstop** that caught the one remaining confirmed instance not caught pre-merge (**1 of 7**).
+1. **Code review gate:** The `cadence-reviewer` agent checks for required documentation updates or an explicit no-impact acknowledgment. Missing documentation is raised as a non-blocking finding, **with one strict exception (BTG-293): an affirmative claim that no `docs/flows/` document covers the change — when recorded with no search, with a search that states only a conclusion instead of its return, or with a search scoped narrower than the claim — is a BLOCKING finding** (see `### Ruling (BTG-293)` above and `artifacts/roles/cadence-reviewer.md`'s Documentation Freshness check). All other documentation-freshness findings, including a properly scoped, return-recording absence statement, remain non-blocking. **Historical baseline in this repository at commit `8085a5ee` (BTG-293):** the Code Review gate caught **0 of 7** confirmed instances prior to the tightened return-recording check.
+2. **Maintainer gate:** The `cadence-maintainer` evaluates whether the change alters documented business flows and whether `docs/SYSTEM_OVERVIEW.md` remains an accurate map of the system. Chronic or systemic neglect of documentation currency may be escalated to a blocking finding. **Historical baseline in this repository:** the Maintainer gate caught **5 of 7** confirmed instances.
+3. **Archive step (observed backstop, not a pre-merge gate):** `cadence-archivist` drafts proposed flow-doc updates after merge and served as the **post-merge backstop** that caught the remaining instance not intercepted pre-merge (**1 of 7**).
 
-The figures above describe **this repository**'s measured record only, at the commit named above; an adopting repository's own record may differ. See this section's `### Ruling (BTG-293)` above and `archive/BTG-293/spec.md` `## Measurement` for the full figures and reproduction recipes.
+The historical catch numbers above describe **this repository** at commit `8085a5ee`; an adopting repository's metrics may vary. Consult `### Ruling (BTG-293)` above and `archive/BTG-293/spec.md` `## Measurement` for full reproduction details.
 
 ## Flow Documentation Lifecycle
 
-1. **New flow:** When a spec introduces a new end-to-end business flow, create `docs/flows/{flow-name}.md` from the template.
-2. **Modified flow:** When a spec modifies an existing flow's sequence, update the relevant flow doc.
-3. **Deprecated flow:** When a flow is no longer active, move its doc to `docs/flows/archive/` and remove it from SYSTEM_OVERVIEW.md.
-4. **Related specs:** Append a link to the implementing spec in the flow doc's "Related Specs" section after merge.
+1. **New flow:** Whenever a specification introduces a net-new end-to-end business journey, create `docs/flows/{flow-name}.md` from the flow template.
+2. **Modified flow:** Whenever a specification alters the step sequence or boundary contracts of an existing flow, update the corresponding `docs/flows/{flow-name}.md` document in the same change.
+3. **Deprecated flow:** When a business flow is retired, move its documentation file to `docs/flows/archive/` and remove its active entry from `docs/SYSTEM_OVERVIEW.md`.
+4. **Related specs:** Upon archival, append a reference link to the implementing specification under the flow document's "Related Specs" section.

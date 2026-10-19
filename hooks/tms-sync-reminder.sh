@@ -1,7 +1,7 @@
 #!/bin/sh
-# PostToolUse hook for CLAIRE metadata.yaml tracker sync reminder.
+# PostToolUse hook for CADENCE metadata.yaml tracker sync reminder.
 # Supports both Antigravity (toolCall.args.TargetFile) and Claude Code (tool_input.file_path).
-# Inert outside CLAIRE repositories (requires docs/agentic-sdlc/CLAIRE_ORG.md with a bound tracker).
+# Inert outside CADENCE repositories (requires docs/agentic-sdlc/CADENCE_ORG.md with a bound tracker).
 
 fail_safe() { exit 0; }
 trap fail_safe EXIT
@@ -35,7 +35,7 @@ if [ -z "$cwd" ]; then
 fi
 [ -n "$cwd" ] || cwd=$(pwd)
 
-org="$cwd/docs/agentic-sdlc/CLAIRE_ORG.md"
+org="$cwd/docs/agentic-sdlc/CADENCE_ORG.md"
 if [ ! -f "$org" ]; then
   [ "$is_agy" -eq 1 ] && printf '{}'
   exit 0
@@ -67,7 +67,7 @@ if [ "$is_agy" -eq 1 ]; then
   exit 0
 fi
 
-agent_msg="The metadata.yaml for ${ticket} (${norm}) just changed. Per CLAIRE_ORG.md §9 tracker binding, project this metadata.yaml change to the bound tracker in the current session."
+agent_msg="The metadata.yaml for ${ticket} (${norm}) just changed. Per CADENCE_ORG.md §9 tracker binding, project this metadata.yaml change to the bound tracker in the current session."
 printf '{"systemMessage":"%s","hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}' \
   "$agent_msg" "$agent_msg"
 exit 0

@@ -1,29 +1,29 @@
 # Database Migration Workflow
 
-This document describes the developer workflow for authoring database migrations using the expand/contract pattern. Migrations are authored by the `claire-migration-author` agent (invoked via `/claire-migrate` or automatically by the implementer agent) and executed automatically by the CI/CD pipeline.
+This guide defines the engineering workflow for authoring database schema and data migrations using the **expand/contract** pattern. Migrations are authored by the `cadence-migration-author` agent (invoked directly via `/cadence-migrate` or delegated automatically by `cadence-implementer`) and applied unattended by the CI/CD deployment pipeline.
 
 ## Overview
 
-The expand/contract pattern splits schema changes into two releases:
+The expand/contract pattern decouples schema evolution across two distinct releases:
 
-1. **Expansion** — Additive, backwards-compatible changes ship with the feature. Both the old and new application versions work against the expanded schema simultaneously.
-2. **Contraction** — Destructive cleanup ships in a follow-up release after production verification confirms the deprecated schema elements are unused.
+1. **Expansion** — Additive, backwards-compatible schema changes ship alongside the feature implementation. Both the prior application version and the new application version operate safely against the expanded schema during rollout.
+2. **Contraction** — Destructive cleanup (dropping retired columns, tightening nullability, removing legacy tables/indexes) ships in a subsequent release only after production telemetry confirms the deprecated elements have zero active reads or writes.
 
-This eliminates downtime, enables safe rollback, and removes the need for coordinated "big bang" deployments.
+This two-phase discipline eliminates deployment downtime, preserves instant application-level rollback, and removes fragile "stop-the-world" database cutovers.
 
 ## Workflow 1: Authoring Expansion Migrations with a Feature
 
 ### When This Happens
 
-Any time a feature requires schema changes (new tables, new columns, new indexes, new relationships).
+Whenever a ticket's specification introduces schema changes (new tables, new columns, new indexes, or new foreign-key relationships).
 
 ### Deployment Strategies
 
-The spec-author determines which strategy applies during specification (the Deployment Compatibility Analysis):
+During `/cadence-spec`, `cadence-spec-author` classifies the required migration rollout strategy inside the Deployment Compatibility Analysis:
 
 #### Strategy A: Simple Expansion (most common)
 
-Old code naturally tolerates the expanded schema. The migration and feature code deploy together.
+The currently deployed application version naturally tolerates the expanded schema. The expansion migration and the feature code ship and deploy together in a single MR.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -37,7 +37,7 @@ Old code naturally tolerates the expanded schema. The migration and feature code
 
 #### Strategy B: Prep-Required Expansion (three-phase deployment)
 
-Old code or new code cannot safely handle both schema states. An interim compatibility release deploys first to make the application tolerant of both states.
+Either the existing production code or the new feature code cannot safely operate across both schema states simultaneously. An interim compatibility release is deployed first so all running instances tolerate both the pre-migration and post-migration schemas.
 
 ```
 ┌──────────────┐     ┌──────────────────────┐     ┌──────────────────────┐
@@ -51,70 +51,66 @@ Phase 2: Run expansion migration + deploy feature code (safe because Phase 1 is 
 Phase 3: Drop deprecated columns after production verification (1-2 sprints later)
 ```
 
-**When is Prep-Required?**
-- Old code INSERTs rows without populating a new column that new code expects to be non-null
-- New code READs from columns that don't exist yet (race condition in blue/green cutover)
-- Both versions write to the same entity with semantically different values
-- A dual-write pattern is needed during transition (write to both old and new columns)
+**When is Prep-Required triggered?**
+- Currently running pods `INSERT` rows without populating a newly added column that new feature pods expect to be populated
+- New feature pods `SELECT` from columns that do not yet exist during a rolling or blue/green deployment window
+- Old and new application instances write semantically different representations to the same entity
+- A dual-write bridge is required during cutover (writing to both legacy and replacement columns)
 
 ### Process (Simple Expansion)
 
-1. **Spec describes schema changes.** The spec's proposed design (in `spec.md`) identifies what entities are new or modified, what columns are being added, and what data migrations are needed. The Deployment Compatibility section classifies this as "Simple."
+1. **`spec.md` defines the schema changes.** The Proposed Design section in `spec.md` specifies which entities are added or modified, which columns or indexes are introduced, and whether a data backfill is needed. The Deployment Compatibility section classifies the rollout as "Simple."
 
-2. **Implementer modifies entity classes.** During TDD implementation, the implementer agent adds new entity properties, updates DbContext configuration, and adds DbSet registrations as the code requires.
+2. **`cadence-implementer` updates domain/ORM entities.** During red-green-refactor TDD cycles, the implementer adds entity properties, updates `DbContext` mappings, and registers `DbSet` properties required by the scenarios.
 
-3. **Migration-author generates expansion migrations.** This happens automatically (via the implementer's Phase 2.5) or manually via `/claire-migrate {ticket-id}`. The agent:
-   - Discovers the project structure (DbContext, migrations directory, DB provider)
-   - Runs `dotnet ef migrations add` to scaffold from the model diff
-   - Verifies all operations are additive and backwards-compatible
-   - Adds idempotency guards to custom SQL
-   - Separates schema and data migrations into distinct files
-   - Runs the apply/rollback/reapply verification cycle
+3. **`cadence-migration-author` generates expansion migrations.** Triggered automatically during `cadence-implementer` Phase 2.5 or explicitly via `/cadence-migrate {ticket-id}`, the migration-author agent:
+   - Discovers the repository's ORM layout (`DbContext`, migrations directory, startup project, database provider)
+   - Runs `dotnet ef migrations add` to scaffold the migration from the entity model diff
+   - Verifies that every DDL operation is strictly additive and backwards-compatible
+   - Wraps custom SQL statements in idempotency guards
+   - Splits schema (DDL) and data backfill (DML) operations into separate migration files
+   - Executes the local `apply → rollback → reapply` verification cycle
 
-4. **Expansion migration ships in the same MR as feature code.** The migration is committed separately from application code but included in the same merge request. This ensures the schema change is reviewed alongside the code that depends on it.
+4. **Expansion migration ships in the feature MR.** The migration files are committed in their own atomic commit on the feature branch and reviewed alongside the application code in the same MR.
 
-5. **CI/CD applies the migration automatically.** During deployment, the pipeline runs `dotnet ef database update` (or the application calls `context.Database.Migrate()` at startup). No human intervention required.
+5. **CI/CD applies the migration automatically.** During deployment, the pipeline runs `dotnet ef database update` (or the service invokes `context.Database.Migrate()` on startup) with zero manual intervention.
 
-6. **Both application versions work simultaneously.** During a rolling deployment, old pods (running the previous version) coexist with new pods (running the new version). Because expansion only adds nullable columns or columns with defaults, old code ignores the new columns and continues functioning.
+6. **Old and new application instances coexist safely.** Throughout a rolling deployment, prior-version pods ignore the newly added nullable/defaulted columns while new-version pods read and write them normally.
 
 ### Process (Prep-Required Expansion)
 
-1. **Spec describes schema changes AND interim code.** The Deployment Compatibility section classifies this as "Prep-required" and specifies what interim code is needed (null-safe reads, dual-writes, application-level defaults).
+1. **`spec.md` specifies both the schema expansion and the interim compatibility code.** The Deployment Compatibility section classifies the change as "Prep-required" and details the required bridge logic (null-safe fallbacks, dual-writes, or application-level default synthesis).
 
-2. **Implementer produces interim compatibility code (Phase 2.25).** This code:
-   - Makes the current application tolerant of both pre-migration and post-migration schema states
-   - Uses patterns like null-safe fallbacks, dual-writes, or conditional column access
-   - Is tested against both schema states
-   - Ships as a separately deployable commit tagged `[prep-release]`
+2. **`cadence-implementer` authors interim compatibility code (Phase 2.25).** This bridge code:
+   - Makes the running application tolerant of both pre-migration and post-migration schema states
+   - Implements null-safe reads, dual-writes, or conditional column handling
+   - Is verified by automated tests against both schema states
+   - Is committed as a standalone deployable commit tagged `[prep-release]`
 
-3. **Interim code deploys to production first.** This is the critical ordering requirement. The prep release must be running on ALL pods before the expansion migration executes. This ensures:
-   - Old pods (running prep code): handle both old and new schema safely
-   - During cutover: no pod is caught with incompatible code against the migrated schema
+3. **Prep release deploys to 100% of production pods first.** Every production instance must be running the prep release before the expansion migration executes, guaranteeing that no running pod encounters an incompatible schema state during cutover.
 
-4. **Migration-author generates expansion migrations (Phase 2.5).** Same as simple expansion, but the agent additionally verifies:
-   - Interim compatibility code is committed
-   - The migration does not conflict with dual-write patterns
-   - Deployment ordering is documented
+4. **`cadence-migration-author` generates the expansion migration (Phase 2.5).** Follows the same verification rules as Simple Expansion while additionally confirming that:
+   - The `[prep-release]` compatibility commit is present
+   - The DDL/DML migration aligns cleanly with any active dual-write logic
+   - Deployment sequencing is documented in `submission.md`
 
-5. **Migration + feature code deploy together (Phase 2).** Once the prep release is stable in production, the expansion migration and full feature code deploy. At this point:
-   - Prep-release pods: handle new schema via their compatibility code (correct but suboptimal)
-   - Feature pods: use new schema natively
-   - Transition completes when all pods are on the feature release
+5. **Expansion migration + full feature code deploy together (Phase 2).** Once the prep release is active across production, the expansion migration and feature implementation roll out:
+   - Prep-release pods continue operating safely via their compatibility bridge
+   - Feature-release pods use the expanded schema natively
+   - Cutover finishes once all pods run the feature release
 
-6. **Remove interim compatibility code.** After full deployment, the dual-write/fallback code is dead weight. It can be removed:
-   - In the same feature MR (if the team is confident in rapid full-fleet rollout)
-   - In a follow-up MR (safer — allows rollback to prep-release state if issues arise)
+6. **Retire interim bridge code.** Once the feature release is fully deployed, the temporary dual-write/fallback bridge can be removed either in a follow-up MR (recommended, preserving clean rollback to the prep release) or at the end of the rollout.
 
-### What Gets Deferred
+### What Gets Deferred to Contraction
 
-If the feature logically requires removing old columns, renaming columns, or tightening nullability, those operations are NOT included in the expansion. Instead:
-- The agent logs them in `specs/{ticket-id}/decisions.md` as deferred contraction work
-- The metadata is tagged with `contraction-pending`
-- The spec's follow-up checklist tracks when contraction is safe to ship
+Whenever a feature logically retires legacy columns, renames fields, or tightens column nullability, those destructive operations are **excluded** from the expansion migration. Instead:
+- `cadence-migration-author` records the deferred destructive operations in `specs/{ticket-id}/decisions.md`
+- `specs/{ticket-id}/metadata.yaml` is tagged with `contraction-pending`
+- The specification's follow-up checklist defines the production verification criteria required before contraction can run
 
 ### Naming Convention
 
-EF Core manages execution order via timestamps in the migration's Designer file. The ticket-based naming prefix satisfies the policy's traceability requirement (see `docs/policies/migration-policy.md` §6).
+EF Core orders migration execution via the timestamp prefix in each migration's `.Designer.cs` file, while the ticket-prefixed migration name provides end-to-end traceability (see `docs/policies/migration-policy.md` §6):
 
 ```
 {TicketId}_Expand_{PascalCaseDescription}    -- schema (DDL)
@@ -139,33 +135,33 @@ TT6547_Data_BackfillCampaignStatusFromLegacy
 
 ### When This Happens
 
-After the expansion has been running in production for at least 1 sprint and the verification checklist is satisfied.
+After the expansion migration has run in production for at least 1 full sprint and every item on the production verification checklist has been confirmed.
 
 ### Prerequisites
 
-Before running `/claire-migrate {ticket-id} --contract`, verify:
+Before invoking `/cadence-migrate {ticket-id} --contract`, verify:
 
-- [ ] Expansion migration has been deployed to production for >= 1 sprint
-- [ ] Query logs confirm zero reads/writes to deprecated columns for >= 1 week
-- [ ] No rollback to the pre-expansion state is planned
-- [ ] Application code no longer references the deprecated schema elements
-- [ ] The `contraction-pending` tag exists in `specs/{ticket-id}/metadata.yaml`
+- [ ] Expansion migration has been running in production for `>= 1` sprint
+- [ ] Database query telemetry confirms zero reads or writes against the deprecated columns/tables for `>= 1` week
+- [ ] No rollback to the pre-expansion application version is planned
+- [ ] Application source code contains zero references to the deprecated schema elements
+- [ ] The `contraction-pending` tag is present in `specs/{ticket-id}/metadata.yaml` (or `archive/{ticket-id}/metadata.yaml`)
 
 ### Process
 
-1. **Developer runs `/claire-migrate {ticket-id} --contract`.** This invokes the migration-author agent in contract mode.
+1. **Invoke `/cadence-migrate {ticket-id} --contract`.** Launches `cadence-migration-author` in contraction mode.
 
-2. **Agent reads deferred operations.** It reads `specs/{ticket-id}/decisions.md` to find the contraction decision entry listing what to remove.
+2. **Agent loads deferred contraction scope.** Reads `decisions.md` for the ticket to locate the recorded list of deprecated columns, constraints, or tables slated for removal.
 
-3. **Agent confirms readiness.** It asks the developer to confirm the verification checklist is satisfied.
+3. **Agent verifies readiness.** Prompts the operator to confirm that all production verification prerequisites above are satisfied.
 
-4. **Agent generates contraction migration.** It produces the destructive migration (drop columns, tighten nullability, remove indexes) with a complete Down() method that restores the expanded schema state.
+4. **Agent scaffolds the contraction migration.** Generates the cleanup migration (dropping retired columns/indexes or tightening nullability) along with a complete `Down()` method capable of restoring the expanded schema structure.
 
-5. **Agent runs apply/rollback/reapply.** Same verification cycle as expansion.
+5. **Agent runs `apply → rollback → reapply`.** Executes the full reversibility and idempotency verification cycle against the local verification database.
 
-6. **Contraction ships in its own MR.** This is a separate merge request from the original feature, with its own code review cycle. The MR references the original ticket for traceability.
+6. **Contraction ships in a dedicated MR.** The contraction migration is submitted as its own standalone MR with its own Gate 2 / Gate 3 review cycle, citing the originating ticket ID for lineage.
 
-7. **Tag is removed.** On successful merge, `contraction-pending` is removed from the metadata.
+7. **Clear `contraction-pending`.** Once the contraction MR merges, remove the `contraction-pending` tag from `metadata.yaml`.
 
 ### Naming Convention
 
@@ -188,42 +184,42 @@ TT6547_Contract_DropLegacyIsActiveColumn
 
 ## Workflow 3: CI/CD Pipeline Integration
 
-### What the Pipeline Does
+### What the Deployment Pipeline Executes
 
-The deployment pipeline handles migration execution. The migration-author agent does NOT run migrations against any environment other than a local development database for verification.
+The CI/CD deployment pipeline owns migration execution across shared environments. `cadence-migration-author` never runs migrations against staging or production databases — it runs verification exclusively against an isolated local development database.
 
 **Pipeline responsibilities:**
-- Runs `dotnet ef database update` using the environment-specific connection string (provided via secrets management)
-- Executes migrations in order (earliest timestamp first)
-- Records successful migrations in `__EFMigrationsHistory`
-- On failure: the pipeline can roll back via `dotnet ef database update {PreviousMigration}`
+- Executes `dotnet ef database update` using the target environment's connection string injected from the secrets manager
+- Applies pending migrations in strict chronological timestamp order
+- Records applied migrations in `__EFMigrationsHistory`
+- Supports automated schema rollback via `dotnet ef database update {PreviousMigration}` if a deployment step fails
 
-**Pipeline does NOT:**
-- Require manual console app execution
-- Require a human to run SQL scripts
-- Need environment-specific migration branches
-- Execute data migrations separately from schema migrations (EF Core handles ordering via timestamps)
+**Pipeline never requires:**
+- Ad-hoc console runner scripts
+- Manual SQL execution by an operator
+- Per-environment migration branches
+- Separate manual orchestration between DDL and DML migrations (EF Core timestamp ordering sequences both automatically)
 
-### What the Migration-Author Guarantees
+### Guarantees Enforced by `cadence-migration-author`
 
-Every migration produced by the agent is safe for unattended pipeline execution:
+Every migration authored by the agent is verified safe for unattended CI/CD execution:
 
-1. **Reversible** — Complete Down() method for every Up() operation
-2. **Idempotent** — Conditional guards on all custom SQL; safe for retry after interrupted deployment
-3. **Non-interactive** — No prompts, no user input, no manual seed data
-4. **Self-contained** — No external dependencies beyond the database connection
-5. **Ordered** — Timestamp-based naming ensures deterministic execution order
-6. **Separated** — Schema and data in distinct files for independent rollback
+1. **Reversible** — Every `Up()` operation has a complete, tested `Down()` counterpart
+2. **Idempotent** — Custom SQL statements include conditional existence guards so retries after an interrupted deploy succeed cleanly
+3. **Non-interactive** — Zero interactive prompts or manual operator steps
+4. **Self-contained** — Zero external runtime dependencies beyond the database connection
+5. **Deterministically ordered** — Timestamp-prefixed Designer metadata guarantees reproducible execution order
+6. **Cleanly separated** — DDL schema changes and batched DML data backfills live in separate migration files for independent rollback
 
 ### Rollback Strategy
 
-If a deployment needs to be reverted:
+When a production deployment must be reverted:
 
-1. **Application rollback:** ArgoCD (or equivalent) rolls back to the previous container image
-2. **Schema rollback:** Pipeline runs `dotnet ef database update {PreviousMigration}` to revert the schema
-3. **Safety:** Because expansion migrations are additive, rolling back the application WITHOUT rolling back the schema is also safe (old code simply ignores new columns)
+1. **Application rollback:** The deployment controller (e.g., ArgoCD or ECS) rolls back immediately to the prior container image
+2. **Schema rollback (only if needed):** The pipeline executes `dotnet ef database update {PreviousMigration}` to revert the database schema
+3. **Zero-downtime safety:** Because expansion migrations are strictly additive, rolling back the application container **without** rolling back the database schema is safe by construction — the prior application version simply ignores the newly added nullable/defaulted columns
 
-This means application rollback is instantaneous — schema rollback is only needed if the new columns actively cause problems (e.g., trigger size, storage cost).
+Application rollback is therefore instantaneous; database schema rollback is required only if a newly added index or trigger itself causes database resource contention.
 
 ---
 
@@ -231,26 +227,26 @@ This means application rollback is instantaneous — schema rollback is only nee
 
 | Scenario | Command | Ships In |
 |----------|---------|----------|
-| Simple expansion (new columns) | `/claire-migrate TT-1234` | Same MR as feature |
-| Feature needs data backfill | `/claire-migrate TT-1234` (agent separates automatically) | Same MR as feature |
-| Prep-required expansion | Implementer Phase 2.25 + 2.5 | Prep MR first, then feature MR |
-| Old columns ready to remove | `/claire-migrate TT-1234 --contract` | Separate follow-up MR |
-| Implementer auto-generates | (automatic via Phase 2.5) | Same MR as feature |
+| Simple schema expansion (new nullable/defaulted columns) | `/cadence-migrate TT-1234` | Same MR as feature |
+| Feature requires data backfill | `/cadence-migrate TT-1234` (agent splits DDL & DML automatically) | Same MR as feature |
+| Prep-required expansion | `cadence-implementer` Phase 2.25 + Phase 2.5 | Prep MR first, then feature MR |
+| Deprecated columns ready for removal | `/cadence-migrate TT-1234 --contract` | Separate follow-up MR |
+| Implementer auto-invocation | (automatic during `/cadence-implement` Phase 2.5) | Same MR as feature |
 
 | Migration Type | Allowed Operations | Forbidden Operations |
 |----------------|-------------------|---------------------|
-| Expand | Add table, add nullable column, add column with default, add index, add FK (nullable) | Drop, rename, tighten nullability, narrow type |
-| Data | INSERT, UPDATE, DELETE (1,000–10,000 row batches per `docs/policies/migration-policy.md`) | CREATE, ALTER, DROP |
-| Contract | Drop column/table/index, tighten nullability, rename | (all allowed — this is the cleanup phase) |
+| Expand | Add table, add nullable column, add column with default, add index, add nullable FK | Drop, rename, tighten nullability, narrow column type |
+| Data | Batched `INSERT`, `UPDATE`, `DELETE` (`1,000–10,000` rows per batch per `docs/policies/migration-policy.md`) | `CREATE`, `ALTER`, `DROP` |
+| Contract | Drop column/table/index, tighten nullability, rename retired elements | (all cleanup operations permitted after production verification) |
 
 ---
 
 ## Finding Pending Contraction Work
 
-To find all specs with pending contraction migrations:
+To list all tickets with pending contraction migrations awaiting production cleanup:
 
 ```bash
-grep -rl "contraction-pending" specs/*/metadata.yaml
+grep -rl "contraction-pending" specs/*/metadata.yaml archive/*/metadata.yaml
 ```
 
-Review each spec's `decisions.md` for the verification checklist before proceeding.
+Inspect each ticket's `decisions.md` verification checklist before running `/cadence-migrate {ticket-id} --contract`.

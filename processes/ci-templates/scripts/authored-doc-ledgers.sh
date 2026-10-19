@@ -20,7 +20,7 @@
 #
 # and an exemption matches only when the offending line CONTAINS its anchor. A
 # path-wide or empty anchor would excuse every future line of a growing file --
-# the shape PROD_CLAIRE-020 records going quietly blind, and the reason
+# the shape PROD_CADENCE-020 records going quietly blind, and the reason
 # BTG176_MCP_KEY_LEDGER carries THREE rows for one release note rather than one.
 # The gate refuses such a row by name (seam
 # authoreddoc.disposition.unledgered_site), so the rule is enforced rather than
@@ -55,26 +55,26 @@
 # the historical record of the change, and a record that could not name the
 # thing it removed would be useless.
 BTG176_MCP_KEY_LEDGER=(
-  'docs/policies/claire-surfaces.md|the `claire-mcp-youtrack` remote-http row|the two registered surface rows RECORD the removal by name. A registry that could not name what it retired would leave an adopter unable to tell a removal from an omission'
-  'ci-templates/scripts/tests/btg-176-lib/structural.sh|claire-mcp-youtrack|S-1.2 sweeps the shipped adapter for any surviving MCP identifier -- an ABSENCE assertion, so the key appears as the needle it searches for and never as an expectation'
-  'ci-templates/scripts/tests/btg-176-lib/surface.sh|claire-mcp-youtrack|S-1.1 asserts the skill body no longer names the MCP server registration -- the same absence shape as the row above'
-  'ci-templates/scripts/tests/btg-176-lib/mcp-manifest.sh|claire-mcp-youtrack|this scenario and its ledger; the sweep must be able to name its own subject'
-  'ci-templates/scripts/tests/btg-176-lib/mcp-consumers.sh|claire-mcp-youtrack|S-16.5 and S-16.6 assert that no re-founded sibling still names the removed row OUTSIDE A COMMENT -- the key is the needle those absence checks search for'
-  'ci-templates/scripts/tests/btg-176-lib/record.sh|claire-mcp-youtrack|S-7.1 and S-7.2 read the manifest to decide whether the row is ABSENT or PRESENT-with-a-reason; the key is the subject of that question, and both branches are asserted'
-  'docs/ADR/0024-mcp-manifest-supports-an-additive-remote-http-transport-form.md|`claire-mcp-youtrack` row from `artifacts/mcp/mcp.manifest`|the superseded ADR names the consumer it LOST. A supersession that could not say which row went would leave a reader unable to check the claim'
-  'docs/migrations/youtrack-mcp-registration-removal.md|claire-mcp-youtrack|the migration note RECORDS the removal for adopters and names the key they must retire. A migration note that could not name the registration being withdrawn would leave an adopter unable to find the entry in their own runtime config -- the same record-not-expectation shape as the registry and superseded-ADR rows above'
-  'docs/agentic-sdlc/intent-insights.md|claire-mcp-youtrack|the promoted intent insight RECORDS what this ticket removed and why. An append-only discovery register that could not name its own subject would record nothing checkable -- the same record-not-expectation shape as the rows above'
+  'docs/policies/cadence-surfaces.md|the `cadence-mcp-youtrack` remote-http row|the two registered surface rows RECORD the removal by name. A registry that could not name what it retired would leave an adopter unable to tell a removal from an omission'
+  'ci-templates/scripts/tests/btg-176-lib/structural.sh|cadence-mcp-youtrack|S-1.2 sweeps the shipped adapter for any surviving MCP identifier -- an ABSENCE assertion, so the key appears as the needle it searches for and never as an expectation'
+  'ci-templates/scripts/tests/btg-176-lib/surface.sh|cadence-mcp-youtrack|S-1.1 asserts the skill body no longer names the MCP server registration -- the same absence shape as the row above'
+  'ci-templates/scripts/tests/btg-176-lib/mcp-manifest.sh|cadence-mcp-youtrack|this scenario and its ledger; the sweep must be able to name its own subject'
+  'ci-templates/scripts/tests/btg-176-lib/mcp-consumers.sh|cadence-mcp-youtrack|S-16.5 and S-16.6 assert that no re-founded sibling still names the removed row OUTSIDE A COMMENT -- the key is the needle those absence checks search for'
+  'ci-templates/scripts/tests/btg-176-lib/record.sh|cadence-mcp-youtrack|S-7.1 and S-7.2 read the manifest to decide whether the row is ABSENT or PRESENT-with-a-reason; the key is the subject of that question, and both branches are asserted'
+  'docs/ADR/0024-mcp-manifest-supports-an-additive-remote-http-transport-form.md|`cadence-mcp-youtrack` row from `artifacts/mcp/mcp.manifest`|the superseded ADR names the consumer it LOST. A supersession that could not say which row went would leave a reader unable to check the claim'
+  'docs/migrations/youtrack-mcp-registration-removal.md|cadence-mcp-youtrack|the migration note RECORDS the removal for adopters and names the key they must retire. A migration note that could not name the registration being withdrawn would leave an adopter unable to find the entry in their own runtime config -- the same record-not-expectation shape as the registry and superseded-ADR rows above'
+  'docs/agentic-sdlc/intent-insights.md|cadence-mcp-youtrack|the promoted intent insight RECORDS what this ticket removed and why. An append-only discovery register that could not name its own subject would record nothing checkable -- the same record-not-expectation shape as the rows above'
   # --- the release note for the version that shipped the removal (BTG-190) ---
   #
   # THREE ROWS, NOT ONE PER FILE. The three occurrences are three different
   # statements, so each is anchored on its own sentence: a file-wide anchor here
   # would excuse every future line of a release note that is still being read by
   # adopters, which is the blind spot this ledger exists to remove.
-  'docs/releases/v4.0.10.md|the `claire-mcp-youtrack` registration is removed|the release headline RECORDS what v4.0.10 shipped. A release note that could not name the registration it withdrew would leave an adopter unable to tell a removal from an omission -- the same record-not-expectation shape as the registry, superseded-ADR and migration-note rows above'
+  'docs/releases/v4.0.10.md|the `cadence-mcp-youtrack` registration is removed|the release headline RECORDS what v4.0.10 shipped. A release note that could not name the registration it withdrew would leave an adopter unable to tell a removal from an omission -- the same record-not-expectation shape as the registry, superseded-ADR and migration-note rows above'
   'docs/releases/v4.0.10.md|MCP registration is removed (BTG-176)|the Breaking Changes entry RECORDS the removal against the ticket that made it; the key is the subject of the breaking change being declared, not an expectation that the row exists'
-  'docs/releases/v4.0.10.md|retire it with `/upgrade-claire`|the upgrade instruction tells an adopter which entry to retire from their OWN runtime config. This one cannot be genericised at all: an adopter who is not told the key cannot find the registration to remove'
-  'ci-templates/scripts/tests/youtrack-mcp.test.sh|key=claire-mcp-youtrack transport=http|SYNTHETIC fixtures built by mk_two_row_manifest and its siblings. That harness was RE-FOUNDED as the remote-http transport-FORM harness (DEC-053 R-3): its rows are written into mktemp manifests it owns, so they exercise the engine and assert nothing about the shipped manifest'
-  'ci-templates/scripts/tests/youtrack-mcp.test.sh|"claire-mcp-youtrack"|the round-trip assertions over those same synthetic manifests -- same reason as the row above'
+  'docs/releases/v4.0.10.md|retire it with `/upgrade-cadence`|the upgrade instruction tells an adopter which entry to retire from their OWN runtime config. This one cannot be genericised at all: an adopter who is not told the key cannot find the registration to remove'
+  'ci-templates/scripts/tests/youtrack-mcp.test.sh|key=cadence-mcp-youtrack transport=http|SYNTHETIC fixtures built by mk_two_row_manifest and its siblings. That harness was RE-FOUNDED as the remote-http transport-FORM harness (DEC-053 R-3): its rows are written into mktemp manifests it owns, so they exercise the engine and assert nothing about the shipped manifest'
+  'ci-templates/scripts/tests/youtrack-mcp.test.sh|"cadence-mcp-youtrack"|the round-trip assertions over those same synthetic manifests -- same reason as the row above'
   # --- the one row BTG-191's relocation of this ledger makes necessary ---
   #
   # The array above now LIVES in ci-templates/scripts/authored-doc-ledgers.sh,
@@ -82,7 +82,7 @@ BTG176_MCP_KEY_LEDGER=(
   # sweeps. A ledger must be able to name its own subject, exactly as the
   # btg-176-lib rows above are excused for naming theirs. Anchored on the key
   # itself, which is what those sibling rows anchor on too.
-  'ci-templates/scripts/authored-doc-ledgers.sh|claire-mcp-youtrack|this file IS the ledger; every row above names the removed key as the needle it searches for, never as an expectation. Same record-not-expectation shape as the btg-176-lib rows it was moved from, at its new address (BTG-191)'
+  'ci-templates/scripts/authored-doc-ledgers.sh|cadence-mcp-youtrack|this file IS the ledger; every row above names the removed key as the needle it searches for, never as an expectation. Same record-not-expectation shape as the btg-176-lib rows it was moved from, at its new address (BTG-191)'
 )
 
 # The GATE's ledger is a SUPERSET of the array above, not a replacement for it.
@@ -96,29 +96,29 @@ BTG176_MCP_KEY_LEDGER=(
 #   2. The gate's needle is WIDER than that harness's. btg-176 sweeps for ONE key
 #      by name -- the row its own ticket removed. The gate reads the manifest's
 #      documented ownership grammar instead (`key=<server-key>` MUST start
-#      `claire-`; artifacts/mcp/mcp.manifest states it as the classifier's
-#      sentinel) and reports any `claire-mcp-*` key the manifest does not
+#      `cadence-`; artifacts/mcp/mcp.manifest states it as the classifier's
+#      sentinel) and reports any `cadence-mcp-*` key the manifest does not
 #      carry, so a FUTURE removal is covered on the day it lands with no edit
 #      here. A per-key needle would have to be edited every time, which is the
 #      hand-maintained denylist the Simplicity facet names as an anti-pattern.
 #
 # Widening the needle surfaced FIVE further occurrences inside the gate's scan
 # scope, every one of them a RECORD of BTG-075's removal of
-# `claire-mcp-atlassian`. They were found by RUNNING the widened predicate over
+# `cadence-mcp-atlassian`. They were found by RUNNING the widened predicate over
 # the committed corpus, not predicted: three registry/registry-note lines and two
 # lines of the release note for the version that shipped the removal.
 #
 # Each is anchored on its OWN sentence, never on its file. Two of the three files
 # are registries that gain a row per ticket and the third is a release note
 # adopters still read; a path anchor on any of them would excuse every line those
-# files ever gain -- the PROD_CLAIRE-020 shape this ledger's own grammar forbids.
+# files ever gain -- the PROD_CADENCE-020 shape this ledger's own grammar forbids.
 ADG_MCP_KEY_LEDGER=(
   "${BTG176_MCP_KEY_LEDGER[@]}"
-  'docs/policies/claire-surfaces.md|the `claire-mcp-atlassian` row is deleted from|the /claire-sync-jira registry row RECORDS the BTG-075 removal as an adopter-visible consequence. A registry that could not name what it retired leaves an adopter unable to tell a removal from an omission -- the same reason its `claire-mcp-youtrack` sibling row above is excused'
-  'docs/policies/claire-surfaces.md|the `claire-mcp-atlassian` docker row was REMOVED from|the MCP-manifest registry row RECORDS the same removal against the ticket that made it. A SECOND row rather than a wider anchor on the first: these are two different statements on two different lines, and one anchor spanning both would be a file-wide excuse in all but name'
-  'docs/policies/surface-registry.md|the existing `claire-mcp-atlassian` **docker row is byte-unchanged**|the adopter-owned registry RECORDS the state of the docker row at the point BTG-059 added the remote-http form. The claim is only checkable because it names the row it is about'
-  'docs/releases/v4.0.5.md|BTG-075 removes the `claire-mcp-atlassian` row from|v4.0.5 is the release that SHIPPED the removal, and its notes are an immutable record of what shipped (BTG-190 DEC-006). The sanctioned disposition for a release note that trips a guard is a ledger row, never an edit to the note'
-  'docs/releases/v4.0.5.md|**`claire-mcp-atlassian` is removed from|the Breaking Changes entry of that same release note. Its own row, on its own sentence: a release note is read top to bottom by adopters and each statement is separately load-bearing, which is why the youtrack ledger above carries THREE rows for one file rather than one'
+  'docs/policies/cadence-surfaces.md|the `cadence-mcp-atlassian` row is deleted from|the /cadence-sync-jira registry row RECORDS the BTG-075 removal as an adopter-visible consequence. A registry that could not name what it retired leaves an adopter unable to tell a removal from an omission -- the same reason its `cadence-mcp-youtrack` sibling row above is excused'
+  'docs/policies/cadence-surfaces.md|the `cadence-mcp-atlassian` docker row was REMOVED from|the MCP-manifest registry row RECORDS the same removal against the ticket that made it. A SECOND row rather than a wider anchor on the first: these are two different statements on two different lines, and one anchor spanning both would be a file-wide excuse in all but name'
+  'docs/policies/surface-registry.md|the existing `cadence-mcp-atlassian` **docker row is byte-unchanged**|the adopter-owned registry RECORDS the state of the docker row at the point BTG-059 added the remote-http form. The claim is only checkable because it names the row it is about'
+  'docs/releases/v4.0.5.md|BTG-075 removes the `cadence-mcp-atlassian` row from|v4.0.5 is the release that SHIPPED the removal, and its notes are an immutable record of what shipped (BTG-190 DEC-006). The sanctioned disposition for a release note that trips a guard is a ledger row, never an edit to the note'
+  'docs/releases/v4.0.5.md|**`cadence-mcp-atlassian` is removed from|the Breaking Changes entry of that same release note. Its own row, on its own sentence: a release note is read top to bottom by adopters and each statement is separately load-bearing, which is why the youtrack ledger above carries THREE rows for one file rather than one'
 )
 
 # ======================================================================
@@ -144,7 +144,7 @@ ADG_MCP_KEY_LEDGER=(
 # 300, two of them registered Stable surfaces.
 
 # The 12 operative representations of the file-size measure, enumerated in
-# spec.md's Compatibility Impact. BTG-198 swapped CLAUDE.md -> CLAIRE_DIRECTIVES.md
+# spec.md's Compatibility Impact. BTG-198 swapped CLAUDE.md -> CADENCE_DIRECTIVES.md
 # (count unchanged): the measure MOVED with the shipped directive content when
 # CLAUDE.md became adopter-owned, and an enumeration that stayed pointed at the old
 # home would match nothing over a scan set holding an enumerated representation --
@@ -153,18 +153,18 @@ ADG_MCP_KEY_LEDGER=(
 # comment recording why a past split happened, which DEC-006 exempts by an
 # attributed criterion (see the exemption ledger under S-3.3).
 REPS=(
-  "docs/agentic-sdlc/CLAIRE_ORG.md"
-  "CLAIRE_DIRECTIVES.md"
-  "docs/agentic-sdlc/scout-reference.md"
-  "docs/agentic-sdlc/CLAIRE_ORG_TEMPLATE.md"
+  "docs/agentic-sdlc/CADENCE_ORG.md"
+  "CADENCE_DIRECTIVES.md"
+  "docs/agentic-sdlc/chord-reference.md"
+  "docs/agentic-sdlc/CADENCE_ORG_TEMPLATE.md"
   "specs/TEMPLATE/spec.md"
-  "specs/CLAIRE.md"
-  "artifacts/roles/claire-spec-author.md"
-  "artifacts/roles/claire-reviewer.md"
-  ".claude/agents/claire-spec-author/AGENT.md"
-  ".claude/agents/claire-reviewer/AGENT.md"
-  "ci-templates/scripts/tests/fixtures/opencode-golden/.opencode/agents/claire-spec-author.md"
-  "ci-templates/scripts/tests/fixtures/opencode-golden/.opencode/agents/claire-reviewer.md"
+  "specs/CADENCE.md"
+  "artifacts/roles/cadence-spec-author.md"
+  "artifacts/roles/cadence-reviewer.md"
+  ".agents/agents/cadence-spec-author/AGENT.md"
+  ".agents/agents/cadence-reviewer/AGENT.md"
+  "ci-templates/scripts/tests/fixtures/opencode-golden/.opencode/agents/cadence-spec-author.md"
+  "ci-templates/scripts/tests/fixtures/opencode-golden/.opencode/agents/cadence-reviewer.md"
 )
 
 
@@ -192,8 +192,8 @@ PROVENANCE_ANCHORS=(
   "single coherent concern and both stay under the DX <300-line target"
   "the DX <300-line target. BEHAVIOR-PRESERVING extraction: the functions move"
   "under the DX <300-line target). They run in this shell's scope"
-  "upgrade-claire.sh under the DX <300-line cap (DEC-005). Args:"
-  "loop, PI-031 R-1, to keep upgrade-claire.sh under the 300-line DX target"
+  "upgrade-cadence.sh under the DX <300-line cap (DEC-005). Args:"
+  "loop, PI-031 R-1, to keep upgrade-cadence.sh under the 300-line DX target"
   "The guard shares this line to stay net-zero against the 400-line ceiling"
   "past the DX <400-line ceiling, triggering the"
   "signal to split it — the DX facet's <400-line ceiling"
@@ -209,7 +209,7 @@ PROVENANCE_ANCHORS=(
   # still caught.
   "step 10c's file-size question became CLASS-AWARE"
   "the file-size question MOVED from the Simplicity bullet"
-  # ADR_CLAIRE-0061's Context section restates the pre-change ceiling to explain the
+  # ADR_CADENCE-0061's Context section restates the pre-change ceiling to explain the
   # problem it records a decision about. Archival-time site (this ADR did not
   # exist when the ticket was authored): it is not one of the 12 operative
   # representations of the CURRENT rule and does not restate it as live policy
@@ -217,7 +217,7 @@ PROVENANCE_ANCHORS=(
   # provenance comments above, not a carrier this change must keep reconciled.
   "states a single \`<400 lines\` whole-file ceiling for \"agent/skill"
   # v4.0.8's release note RESTATES the pre-change measure in order to describe the
-  # change BTG-090 made to it. Archival-time site, the same status as ADR_CLAIRE-0061's
+  # change BTG-090 made to it. Archival-time site, the same status as ADR_CADENCE-0061's
   # Context above: a release note is a dated record of what one version shipped,
   # not a carrier of the current rule, and it is not one of the operative
   # representations this sweep keeps reconciled. The statement was CHECKED against
@@ -254,7 +254,7 @@ PROVENANCE_ANCHORS=(
   # BTG-332 code-review cycle 3 B3: upgrade-vocab.sh (423 lines) was over the
   # ceiling. Three dated-provenance comments record WHY the DEC-033/DEC-036
   # reference-swap concern moved to a new colocated sidecar, upgrade-vocab-ref.sh
-  # -- upgrade-vocab.sh's own split-marker comment, upgrade-claire.sh's new
+  # -- upgrade-vocab.sh's own split-marker comment, upgrade-cadence.sh's new
   # source-guard comment for the sidecar, and the new sidecar's own header. Each
   # anchor covers its one site in all three trees (neutral source, the compiled
   # Claude mirror, and the OpenCode golden mirror carry the text byte-identically).
@@ -277,8 +277,8 @@ NON_MEASURE_ANCHORS=(
 # ======================================================================
 #
 # THE ROWS ARE NOT HERE. They are DATA, and they live in
-# ci-templates/scripts/authored-doc-exemptions.txt, which `/claire-adopt`
-# copies with its rows stripped and `/claire-upgrade` excludes from merges.
+# ci-templates/scripts/authored-doc-exemptions.txt, which `/cadence-adopt`
+# copies with its rows stripped and `/cadence-upgrade` excludes from merges.
 #
 # WHY, stated where the rows used to be so the next reader does not put them
 # back. Every row of this ledger names a path in THIS repository and quotes a

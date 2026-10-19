@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Claude Code adapter -- hooks sub-module (BTG-008). The ONLY home for the
-# Claude Code hook primitives (ADR_CLAIRE-0008 R7 / DEC-002): the compiled hooks tree
-# path (.claude/claire-hooks/), the settings.json JSON shape, the concrete
+# Claude Code hook primitives (ADR_CADENCE-0008 R7 / DEC-002): the compiled hooks tree
+# path (.claude/cadence-hooks/), the settings.json JSON shape, the concrete
 # hook event names (Stop / PostToolUse) and matcher (Edit|Write), and the
 # ${CLAUDE_PROJECT_DIR} command form. Sourced by the compiler (for the verbatim
 # hook emit) and by adopt/upgrade/eject (for the settings.json render/upsert/
@@ -14,10 +14,10 @@
 #   cc_hook_settings_remove <settings-file> [hooks-manifest]
 #   cc_hook_relocate_files <target-root> <hooks-manifest>
 #
-# Ownership sentinel (DEC-002): a settings.json hook entry is CLAIRE-owned iff
-# its `command` references .claude/claire-hooks/. The pre-BTG-008 legacy set is
-# a `command` referencing .claude/hooks/<known-basename> (from hooks.manifest).
-# All settings writes are ATOMIC (temp + mv) and FAIL-LOUD (IMPOSSIBLE_STATE
+# Ownership sentinel (DEC-002): a settings.json hook entry is CADENCE-owned iff
+# its `command` references .claude/cadence-hooks/. The pre-BTG-008 legacy set is
+# a `command` referencing .agents/hooks/<known-basename> (from hooks.manifest).
+# All settings writes are ATOMIC (temp + mv) and FAIL-LOUD (UNSOUND_CONDITION
 # hook.settings.unparseable) on a present-but-non-well-formed file -- never a
 # partial/corrupt write. Pure POSIX shell; no `jq` (DEC-002 / Alternative 4).
 
@@ -35,22 +35,22 @@ fi
 # shellcheck source=/dev/null
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/claude-code-settings-verify.sh"
 
-# --- compile: emit one hook verbatim into .claude/claire-hooks/ -----------
+# --- compile: emit one hook verbatim into .claude/cadence-hooks/ -----------
 # A hook compiles by a VERBATIM copy -- no frontmatter, no body placeholder
 # expansion (DEC-001). The native tree literal lives here (the adapter), never
 # in a core compile module.
 cc_adapter_emit_hook() {
   local f="$1" out_root="$2"
   local name; name="$(basename "$f")"
-  local dir="$out_root/.claude/claire-hooks"
+  local dir="$out_root/.claude/cadence-hooks"
   mkdir -p "$dir"
   cp "$f" "$dir/$name"
   if [[ ! -f "$dir/$name" ]]; then
-    emit_seam LINEAGE_GAP compile.output.missing_artifact "hook $name did not land in $dir"
-    echo "FAIL: hook $name did not land in .claude/claire-hooks/" >&2
+    emit_seam DELTA_AUDIT_GAP compile.output.missing_artifact "hook $name did not land in $dir"
+    echo "FAIL: hook $name did not land in .claude/cadence-hooks/" >&2
     return 1
   fi
-  echo "  emit hook -> .claude/claire-hooks/$name"
+  echo "  emit hook -> .claude/cadence-hooks/$name"
 }
 
 # --- neutral hooks.manifest reader ------------------------------------------
@@ -87,7 +87,7 @@ cc_hook_map_matcher() {
   esac
 }
 
-# The known CLAIRE hook basenames (from the manifest) -- the legacy-migration
+# The known CADENCE hook basenames (from the manifest) -- the legacy-migration
 # detection set and the relocation removal set. Echoes one basename per line.
 cc_hook_known_basenames() {
   local manifest="$1" ev sc to
@@ -95,26 +95,26 @@ cc_hook_known_basenames() {
 }
 
 # cc_hook_relocate_files <target-root> <hooks-manifest> -- remove ONLY the known
-# CLAIRE basenames from <target-root>/.claude/hooks/ (pre-BTG-008 legacy loc).
+# CADENCE basenames from <target-root>/.agents/hooks/ (pre-BTG-008 legacy loc).
 # NEVER globs, NEVER removes an adopter's own hook, NEVER removes the .claude/
 # hooks/ dir. Echoes each removed rel path (the caller emits the relocated seam).
-# Idempotent. The .claude/ literal lives here in the adapter (ADR_CLAIRE-0008 R7).
+# Idempotent. The .claude/ literal lives here in the adapter (ADR_CADENCE-0008 R7).
 cc_hook_relocate_files() {
   local target="$1" manifest="$2" b
   while IFS= read -r b; do
     [[ -n "$b" ]] || continue
-    if [[ -f "$target/.claude/hooks/$b" ]]; then
-      rm -f "$target/.claude/hooks/$b" && echo ".claude/hooks/$b"
+    if [[ -f "$target/.agents/hooks/$b" ]]; then
+      rm -f "$target/.agents/hooks/$b" && echo ".agents/hooks/$b"
     fi
   done < <(cc_hook_known_basenames "$manifest")
 }
 
 # cc_json_wellformed + the preservation postcondition: see claude-code-settings-verify.sh.
-# --- render the canonical CLAIRE entries as an EVENT/ENTRY intermediate ----
+# --- render the canonical CADENCE entries as an EVENT/ENTRY intermediate ----
 # One EVENT block per manifest row (the abstract event mapped to its concrete
-# Claude Code event + matcher). The command points at .claude/claire-hooks/
-# (the ownership sentinel). Deterministic serialization CLAIRE controls.
-cc_hook_render_claire() {
+# Claude Code event + matcher). The command points at .claude/cadence-hooks/
+# (the ownership sentinel). Deterministic serialization CADENCE controls.
+cc_hook_render_cadence() {
   local manifest="$1" ev sc to cev matcher
   cc_hook_manifest_rows "$manifest" | while read -r ev sc to; do
     cev="$(cc_hook_map_event "$ev")"; [[ -n "$cev" ]] || continue
@@ -127,7 +127,7 @@ cc_hook_render_claire() {
     echo '          {'
     echo '            "type": "command",'
     echo '            "shell": "bash",'
-    printf '            "command": "bash \\"${CLAUDE_PROJECT_DIR}/.claude/claire-hooks/%s\\"",\n' "$sc"
+    printf '            "command": "bash \\"${CLAUDE_PROJECT_DIR}/.claude/cadence-hooks/%s\\"",\n' "$sc"
     printf '            "timeout": %s\n' "$to"
     echo '          }'
     echo '        ]'
@@ -137,8 +137,8 @@ cc_hook_render_claire() {
   done
 }
 
-# Build an ERE matching a legacy pre-BTG-008 command path .claude/hooks/<known>
-# for the manifest's known CLAIRE basenames. Empty if no manifest/basenames.
+# Build an ERE matching a legacy pre-BTG-008 command path .agents/hooks/<known>
+# for the manifest's known CADENCE basenames. Empty if no manifest/basenames.
 cc_hook_legacy_regex() {
   local manifest="$1" b b_esc re=""
   [[ -f "$manifest" ]] || { echo ""; return 0; }
@@ -147,15 +147,15 @@ cc_hook_legacy_regex() {
     b_esc="$(printf '%s' "$b" | sed 's/\./[.]/g')"
     re="${re:+$re|}$b_esc"
   done < <(cc_hook_known_basenames "$manifest")
-  # NB-3: anchored on the ${CLAUDE_PROJECT_DIR}/.claude/hooks/ command form
+  # NB-3: anchored on the ${CLAUDE_PROJECT_DIR}/.agents/hooks/ command form
   # ([$][{]...[}] = literal braces in ERE) so a deeper vendor path is not matched.
   [[ -n "$re" ]] && echo "[$][{]CLAUDE_PROJECT_DIR[}]/[.]claude/hooks/($re)" || echo ""
 }
 
 # --- the surgical parse-to-model + reserialize core --------------------------
 # Reads <infile> (canonical settings.json, or /dev/null for absent), DROPS every
-# CLAIRE-owned hook entry (command references .claude/claire-hooks/, or a
-# legacy .claude/hooks/<known> path via <legacy_re>), then re-inserts the entries
+# CADENCE-owned hook entry (command references .claude/cadence-hooks/, or a
+# legacy .agents/hooks/<known> path via <legacy_re>), then re-inserts the entries
 # from <specfile> (empty for remove). Preserves every non-hooks top-level key and
 # every project-owned hook entry byte-for-byte; cleans emptied event arrays + an
 # emptied hooks object. Prints the rewritten JSON to stdout. Depth-tracked,
@@ -169,10 +169,10 @@ _cc_settings_rewrite() {
         if(c=="\""){instr=1;continue}
         if(c=="{"||c=="[")depth++; else if(c=="}"||c=="]")depth-- } }
     function stripcomma(s){ sub(/,[[:space:]]*$/,"",s); return s }
-    function is_claire(t){ if(index(t,"${CLAUDE_PROJECT_DIR}/.claude/claire-hooks/")>0)return 1
+    function is_cadence(t){ if(index(t,"${CLAUDE_PROJECT_DIR}/.claude/cadence-hooks/")>0)return 1
       if(legacyre!="" && t ~ legacyre)return 1; return 0 }
     function finalize_entry(  t){ t=stripcomma(eb)
-      if(!is_claire(t)){ proj_ent[curev]=proj_ent[curev] (proj_ent[curev]!=""?SUBSEP:"") t } }
+      if(!is_cadence(t)){ proj_ent[curev]=proj_ent[curev] (proj_ent[curev]!=""?SUBSEP:"") t } }
     function printblock(b,suf,  a,m,j){ m=split(b,a,"\n")
       for(j=1;j<=m;j++){ if(j==m)print a[j] suf; else print a[j] } }
     BEGIN{ depth=0;instr=0;esc=0;mode="OUT";n_tb=0;n_ev=0;n_spec=0;n_item=0;hooks_seen=0
@@ -212,7 +212,7 @@ _cc_settings_rewrite() {
       for(i=1;i<=ne;i++){ e=merged[i]; if(proj_ent[e]!="" || spec_ent[e]!="")evfinal[++nec]=e }
       has_hooks=(nec>0)?1:0
       # NB-2: a "hooks" item that becomes empty (all entries removed) is dropped;
-      # if hooks were absent in the input but CLAIRE entries exist (add on a file
+      # if hooks were absent in the input but CADENCE entries exist (add on a file
       # with no hooks key), append the hooks item last.
       if(has_hooks && !hooks_seen){ n_item++; item_kind[n_item]="hooks" }
       # Effective item count (topblocks always count; the hooks item iff has_hooks).
@@ -239,7 +239,7 @@ _cc_settings_upsert() {
   local file="$1" manifest="$2" infile spec legacy_re tmp
   if [[ -f "$file" && -s "$file" ]]; then
     if ! cc_json_wellformed "$file"; then
-      emit_seam IMPOSSIBLE_STATE hook.settings.unparseable "$file"
+      emit_seam UNSOUND_CONDITION hook.settings.unparseable "$file"
       echo "cc_hook_settings: refusing -- $file is present but not well-formed JSON; edit it manually." >&2
       return 1
     fi
@@ -247,24 +247,24 @@ _cc_settings_upsert() {
   else
     infile="/dev/null"
   fi
-  spec="$(mktemp)"; cc_hook_render_claire "$manifest" > "$spec"
+  spec="$(mktemp)"; cc_hook_render_cadence "$manifest" > "$spec"
   legacy_re="$(cc_hook_legacy_regex "$manifest")"
   tmp="$(mktemp)"
   if ! _cc_settings_rewrite "$infile" "$spec" "$legacy_re" > "$tmp"; then
     rm -f "$spec" "$tmp"; return 1
   fi
-  if [[ -s "$spec" ]] && ! grep -q '/.claude/claire-hooks/' "$tmp"; then
-    emit_seam LINEAGE_GAP hook.settings.postcondition_missing "$file"
-    echo "cc_hook_settings: the CLAIRE entries did not land in $file." >&2
+  if [[ -s "$spec" ]] && ! grep -q '/.claude/cadence-hooks/' "$tmp"; then
+    emit_seam DELTA_AUDIT_GAP hook.settings.postcondition_missing "$file"
+    echo "cc_hook_settings: the CADENCE entries did not land in $file." >&2
     rm -f "$spec" "$tmp"; return 1
   fi
   # B1 preservation postcondition: a non-canonical input that the pure-shell
   # engine cannot parse without dropping adopter content is REFUSED (no write,
   # source untouched) -- never a best-effort partial edit (AC-3 / DEC-002 / R-1).
   if [[ "$infile" != "/dev/null" ]] && ! cc_settings_preservation_ok "$infile" "$tmp" "$legacy_re"; then
-    emit_seam IMPOSSIBLE_STATE hook.settings.unparseable "$file"
+    emit_seam UNSOUND_CONDITION hook.settings.unparseable "$file"
     echo "cc_hook_settings: refusing -- $file is well-formed but NON-CANONICAL; a surgical" >&2
-    echo "  edit would drop project-owned content. Canonicalize .claude/settings.json (CLAIRE" >&2
+    echo "  edit would drop project-owned content. Canonicalize .claude/settings.json (CADENCE" >&2
     echo "  pretty-printed layout, 2-space indent) and retry." >&2
     rm -f "$spec" "$tmp"; return 1
   fi
@@ -280,7 +280,7 @@ cc_hook_settings_remove() {
   local file="$1" manifest="${2:-}" legacy_re tmp
   [[ -f "$file" && -s "$file" ]] || return 0   # absent/empty -> no-op
   if ! cc_json_wellformed "$file"; then
-    emit_seam IMPOSSIBLE_STATE hook.settings.unparseable "$file"
+    emit_seam UNSOUND_CONDITION hook.settings.unparseable "$file"
     echo "cc_hook_settings_remove: refusing -- $file is present but not well-formed JSON." >&2
     return 1
   fi
@@ -290,7 +290,7 @@ cc_hook_settings_remove() {
   # B1 preservation postcondition (see _cc_settings_upsert): refuse a non-canonical
   # file rather than ship a content-dropping deliverable.
   if ! cc_settings_preservation_ok "$file" "$tmp" "$legacy_re"; then
-    emit_seam IMPOSSIBLE_STATE hook.settings.unparseable "$file"
+    emit_seam UNSOUND_CONDITION hook.settings.unparseable "$file"
     echo "cc_hook_settings_remove: refusing -- $file is well-formed but NON-CANONICAL;" >&2
     echo "  a surgical edit would drop project-owned content. Canonicalize it and retry." >&2
     rm -f "$tmp"; return 1

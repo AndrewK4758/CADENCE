@@ -1,82 +1,82 @@
 # Workflow Step 00 — Problem
 
-> Part of the per-step workflow guide series. This document details the **Problem** step, the entry point of the CLAIRE workflow. For the whole-workflow overview, see [`../getting-started.md`](../getting-started.md) §2.3.
+> Part of the per-step workflow guide series. This guide covers the **Problem** step — the entry point of the CADENCE lifecycle. For the end-to-end workflow map, see [`../getting-started.md`](../getting-started.md) §2.3.
 
 | | |
 |---|---|
 | **Step** | Problem (the intent issue) |
-| **Who** | Anyone (the requestor / author) |
-| **Produces** | An intent issue with a maintainer verdict of *Proceed* (or *Modify*) |
-| **Leads to** | [Triage](#where-this-goes-next) — where the spec stub `specs/{ticket-id}/problem.md` is created |
+| **Who** | Anyone (the requester / contributor) |
+| **Produces** | An intent issue carrying a maintainer verdict of *Proceed* (or *Modify*) |
+| **Leads to** | [Triage](#where-this-goes-next) — where the repository spec stub `specs/{ticket-id}/problem.md` is initialized |
 
 ---
 
 ## Purpose
 
-The Problem step exists to answer one question before any work begins: **is this worth doing, and does it belong here?** It captures *what is wrong* and *what success looks like* — in business terms, not solution terms — and gets an explicit go/no-go from the maintainer.
+The Problem step answers one fundamental question before any engineering effort is invested: **is this work worth doing, and does it belong in this repository?** It frames *what is broken or missing* and *what a successful outcome looks like* — in business and user terms rather than implementation details — and secures an explicit go/no-go ruling from the maintainer.
 
-It is the **social contract** of the workflow: *"I intend to work on this; is that useful?"* Nothing downstream — no spec, no code, no review — happens until this contract is agreed. The step is deliberately cheap so that a bad-fit idea is caught in three sentences rather than after a spec is written.
+Think of it as the **social contract** at the front door of the workflow: *"I intend to solve this problem; does that align with project intent?"* Nothing downstream — no specification, no code, no review — begins until this contract is confirmed. Keeping this step to three to five sentences ensures that an out-of-scope idea is redirected in two minutes rather than after a full specification has been drafted.
 
 ## Preconditions
 
-Before filing, the author reads [`PROJECT_INTENT.md`](../../../PROJECT_INTENT.md) at the repo root and confirms the idea plausibly fits:
+Before filing an intent issue, read [`PROJECT_INTENT.md`](../../../PROJECT_INTENT.md) at the repository root and verify that the proposal fits:
 
-- **Mission** — what the project exists to do.
-- **Scope / Non-Goals** — what belongs here and what is explicitly refused.
-- **Architecture Invariants** — structural commitments the change must not violate.
+- **Mission** — what the project exists to accomplish.
+- **Scope / Non-Goals** — which capabilities belong here and which are explicitly excluded.
+- **Architecture Invariants** — structural commitments that no change may violate.
 
-If the idea clearly falls outside intent, the author has three honest paths instead of filing: redirect it to an adjacent project, propose an intent amendment (`PROJECT_INTENT.md` §10), or accept that this is not the right home. Do not try to slip out-of-scope work past this step — the maintainer reviews against intent, and the mismatch surfaces here or at the maintainer gate regardless.
+If the proposal falls outside `PROJECT_INTENT.md`, choose one of three constructive paths instead of filing a standard work item: route it to the appropriate adjacent project, propose a formal intent amendment (`PROJECT_INTENT.md` §10), or set the idea aside. Never try to slip out-of-scope work past intake — both `/cadence-triage` and the Maintainer Acceptance gate check alignment against `PROJECT_INTENT.md`.
 
 ## What happens
 
-1. **Observe the problem.** Start from an observable symptom, gap, or pain — a support-ticket trend, a broken behavior, a missing capability, an operational inefficiency. Not an assumed root cause and not a pre-chosen solution.
-2. **Check intent fit.** Read `PROJECT_INTENT.md` (above) and decide the idea belongs here.
-3. **File the intent issue.** Write the short proposal described below and file it **in the issue tracker (Jira)** — not in the forge. Intent issues live in the tracker; the forge (GitLab/GitHub) is for the change proposal (MR/PR) later, not for capturing the problem.
-4. **Receive the maintainer's verdict** and act on it (see [Maintainer response](#maintainer-response)).
+1. **Observe the problem.** Start from a concrete, observable symptom, user friction point, or operational gap — such as a support trend, a regression, a missing capability, or an operational bottleneck — rather than an unverified root-cause guess or a pre-selected technical solution.
+2. **Verify intent alignment.** Check `PROJECT_INTENT.md` (above) to confirm this repository is the right home.
+3. **File the intent issue.** Draft the concise four-part proposal below and file it **in the bound issue tracker** (e.g., Jira or YouTrack per `CADENCE_ORG.md` §9) — not as a merge request in the forge. Intent issues originate in the tracker; the forge (GitLab/GitHub/SourceHut) is used later when submitting the change proposal (`submission.md`).
+4. **Receive the maintainer's ruling** and follow its disposition (see [Maintainer response](#maintainer-response)).
 
-The Problem step is complete when the maintainer returns **Proceed** (or **Modify** with an agreed adjustment). Only then does the work advance to **Triage**, where the `specs/{ticket-id}/` folder and its `problem.md` stub are first created.
+The Problem step concludes once the maintainer returns **Proceed** (or **Modify** with an agreed scope adjustment). Only then does the item enter **Triage** (`01-triage.md`), where `specs/{ticket-id}/` and its `problem.md` stub are created in the repository.
 
 ## The intent issue — anatomy
 
-An intent issue is **three to five sentences**, not a specification. It is a proposal, not a design. It includes:
+An intent issue is **three to five sentences total**, never a full design document. It contains four concise elements:
 
-- **Problem** — what is wrong, missing, or unclear (one to two sentences). State the observable symptom, not the assumed cause.
-- **Proposed approach** — a sketch, not a design (two to three sentences).
-- **Surfaces affected** — which public surfaces, if any, would change (endpoints, events, schemas, shared contracts). State "no public surfaces" if that is the case.
-- **Ask** — what you need from the maintainer: confirmation to proceed, guidance, a redirect, or a "not now."
+- **Problem** — what is broken, missing, or unclear (one to two sentences focusing on observable symptoms).
+- **Proposed approach** — a high-level sketch of the direction, not a detailed architecture (two to three sentences).
+- **Surfaces affected** — which public or registered surfaces, if any, would be touched (endpoints, events, schemas, shared contracts, CLI flags). Write "no public surfaces" when none are affected.
+- **Ask** — what you need from the maintainer: confirmation to proceed, architectural guidance, a redirect, or a "not now."
 
-Frame the desired outcome in business terms — *"users can Y without Z"* — rather than *"build feature X."* The solution is decided later, in the Spec step; committing to one here defeats the purpose of the gate.
+State the desired outcome in user or business terms — *"operators can Y without manual Z"* — rather than *"add table X."* Concrete technical design belongs in the Spec step (`02-spec.md`); locking in an implementation here short-circuits design exploration.
 
-> **Relationship to `problem.md`.** The intent issue is the seed; the fuller [`problem.md`](../../../specs/TEMPLATE/problem.md) artifact (Business Context, Affected Users, Desired Outcome, Acceptance Criteria, Constraints, Out of Scope, plus the elicitation probes) is populated **later**, starting at Triage and refined via [`/claire-elicit`](../../../CLAUDE.md). Do not attempt to fill the whole template at this step — you would be specifying before the go/no-go.
+> **Relationship to `problem.md`.** The intent issue serves as the initial seed; the full [`problem.md`](../../../specs/TEMPLATE/problem.md) repository artifact (Business Context, Affected Users, Desired Outcome, Acceptance Criteria, Constraints, Out of Scope, and elicitation probes) is populated **downstream**, beginning at Triage (`01-triage.md`) and refined through [`/cadence-elicit`](../../../AGENTS.md). Do not fill out the full `problem.md` template prior to receiving the maintainer's go/no-go.
 
 ## How to file an intent issue
 
-Intent issues live in the **issue tracker**, not in the forge and not under `specs/`. This project's tracker is an on-prem **Jira Server / Data Center** instance (see [`../../policies/ticket-management-system.md`](../../policies/ticket-management-system.md)). There is no `specs/{ticket-id}/` folder yet — that is created downstream at Triage — so at this step you are creating a *tracker issue*, nothing in the repo.
+Intent issues are created in the **bound issue tracker** (`CADENCE_ORG.md#tracker-binding`), not in the code forge and not by manually creating folders under `specs/`. Because `specs/{ticket-id}/` is initialized downstream during `/cadence-triage`, this step creates only the *tracker issue* (or hands the text to `/cadence-triage` to reserve the tracker key first).
 
-There are two supported routes. Both end in the same place: a tracker issue the maintainer can rule on.
+Two routes are supported, and both produce a tracked issue under the authoritative tracker key:
 
-**Route A — file directly in Jira (the default for requestors).**
+**Route A — file directly in the issue tracker (default for requesters).**
 
-1. Create a new issue in the project's Jira tracker. **Always file it as issue type `Issue`** — not Story, Task, Bug, or any other type — and **create it in the backlog only, never directly into a sprint.** An intent issue is an ungated proposal awaiting a maintainer verdict; it does not belong to committed sprint work until it has passed this gate and been triaged.
-2. **Summary** — the one-line problem framing, in business terms (*"users can Y without Z"*), not a solution title.
-3. **Description** — the four parts from [the anatomy above](#the-intent-issue--anatomy): **Problem**, **Proposed approach**, **Surfaces affected**, **Ask**. Three to five sentences total; do not paste the `problem.md` template.
-4. Assign or flag it for the maintainer and submit.
+1. Open a new issue in the project's bound tracker (e.g., Jira). **Always file it with issue type `Issue`** — not Story, Task, or Bug — and **place it in the backlog only, never directly into an active sprint.** An intent issue is an unapproved proposal awaiting a maintainer verdict; it must not enter committed sprint work until it passes this gate and completes Triage.
+2. **Summary** — a one-line problem statement phrased in outcome terms (*"users can Y without Z"*), not an implementation title.
+3. **Description** — the four elements from [the anatomy above](#the-intent-issue--anatomy): **Problem**, **Proposed approach**, **Surfaces affected**, and **Ask** (three to five sentences total).
+4. Assign or flag the issue for the maintainer.
 
-The issue now carries a real Jira key (e.g. `CTS-42`). On a **Proceed**/**Modify** verdict it enters the repo at Triage, where the triage agent **imports** that Jira issue — fetching its Summary and Description — and seeds `specs/CTS-42/problem.md` from it. You do not reserve or invent the key; Jira owns the number space.
+The tracker assigns an authoritative key (for example, `CTS-42`). Once the maintainer rules **Proceed** or **Modify**, `/cadence-triage CTS-42` **imports** that tracker issue — reading its Summary and Description via the bound tracker skill (`CADENCE_ORG.md` §9/§10) — and seeds `specs/CTS-42/problem.md` from it. Never invent or guess a ticket number locally when a tracker is bound.
 
-**Route B — hand the text to `/claire-triage` (for contributors already working in the repo).**
+**Route B — pass the proposal inline to `/cadence-triage` (for contributors already working in the CLI).**
 
-If you are inside the repo with the agentic tooling and would rather not open Jira by hand, pass the same four-part text to [`/claire-triage "..."`](../../../CLAUDE.md). The triage skill **reserves** a fresh key from Jira *before* creating the stub, so the tracker and the repo stay in step. Note this front-loads Triage — the maintainer go/no-go still governs whether the work proceeds past this step.
+When you are already inside your agentic CLI environment (`.agents/` or `.gemini/` on Antigravity) and want to originate and triage in one flow, pass your four-part proposal text directly to [`/cadence-triage "..."`](../../../AGENTS.md). Under a `reserve-from-tracker` binding (`CADENCE_ORG.md` §10), `/cadence-triage` **reserves** the next authoritative key from the tracker *before* creating `specs/<id>/problem.md` + `metadata.yaml`, keeping the tracker and repository strictly paired.
 
-> **Which route?** Route A keeps the intent gate cheap and tracker-first, which is why it is the default: the maintainer rules before any repo artifact exists. Use Route B only when you are already mid-flow in the repo and want the key reserved for you. If Jira is unreachable during Route B, `/claire-triage` stops and reports rather than guessing a number — never fabricate a key.
+> **Which route should I pick?** Route A keeps the initial intent check ultra-lightweight in the tracker before any repository files are touched. Choose Route B when you already have maintainer alignment (or are a maintainer originating in-scope work) and want the tracker key reserved and triaged in a single command. If the bound tracker is unreachable during Route B, `/cadence-triage` halts loudly rather than fabricating a local number.
 
-Whichever route you use, the number space is authoritative in **Jira**, not in the local `specs/` sequence — the two have diverged, so never assume the next local folder number is your ticket's key.
+Under either route, when an external allocator is bound in `CADENCE_ORG.md` §10, the tracker owns the number space — never guess the next ticket ID by incrementing folder names in `specs/`.
 
-> **Type and placement — non-negotiable.** An intent issue is **always** filed as Jira issue type **`Issue`** and lives **only in the backlog — never in a sprint.** This holds for every route and every change size, including the owning team and lightweight-track work. It stays in the backlog until the maintainer returns *Proceed*/*Modify* and Triage pulls it forward; putting an ungated proposal into a sprint commits work that has not passed the intent gate.
+> **Issue type and backlog placement — non-negotiable.** Every intent issue is filed as tracker type **`Issue`** and placed **in the backlog, never directly into an active sprint.** This rule applies across all routes, all change tiers, and all contributors (including core maintainers). Work moves into an active sprint only after passing the intent gate and completing Triage.
 
 ## Maintainer response
 
-The maintainer returns exactly one verdict:
+The maintainer evaluates the intent issue against `PROJECT_INTENT.md` and records one of five verdicts:
 
 | Verdict | Meaning | What you do |
 |---|---|---|
@@ -86,32 +86,33 @@ The maintainer returns exactly one verdict:
 | **Decline** | Does not fit intent. | Stop here. The verdict cites the relevant Non-Goal or Scope-Out entry. |
 | **Amend first** | Would require changing intent. | Propose an intent amendment before any work. |
 
-A *Decline* or *Amend first* is not a rejection of the contributor — it is a redirect to the right shape of conversation.
+A *Decline* or *Amend first* disposition redirects energy before code is written — it is a healthy governance outcome, never a personal rebuke.
 
 ## Definition of done
 
-- [ ] Idea checked against `PROJECT_INTENT.md` (mission, scope, non-goals, invariants).
-- [ ] Intent issue filed **in the tracker (Jira), not the forge**, with all four parts: Problem, Proposed approach, Surfaces affected, Ask.
-- [ ] Filed as issue type **`Issue`** and placed **in the backlog, not a sprint**.
-- [ ] Problem framed as an observable outcome, not a pre-chosen solution.
-- [ ] Maintainer verdict received and recorded.
-- [ ] Verdict is **Proceed** or **Modify** (any other verdict ends or reroutes the work here).
+- [ ] Proposal checked against `PROJECT_INTENT.md` (mission, scope, non-goals, architecture invariants).
+- [ ] Intent issue filed **in the bound tracker (not the forge)** containing all four elements: Problem, Proposed approach, Surfaces affected, and Ask.
+- [ ] Filed as issue type **`Issue`** and placed **in the backlog, not an active sprint**.
+- [ ] Problem framed around an observable user/system outcome rather than a pre-selected implementation.
+- [ ] Maintainer verdict received and recorded on the issue.
+- [ ] Verdict is **Proceed** or **Modify** (any other verdict concludes or redirects the item here).
 
 ## What this step is NOT
 
-- **Not a specification.** No Zachman grid, no PRISM decomposition, no test plan — those belong to the Spec step.
-- **Not solution design.** The proposed approach is a one-line sketch, not an architecture.
-- **Not `specs/{ticket-id}/` creation.** The spec folder and `problem.md` stub are created at **Triage**, not here.
-- **Not skippable.** Every change files an intent issue, including the owning team and lightweight-track changes.
+- **Not a technical specification.** No Contextual Grounding Matrix (6W×4L), no CHORD decomposition, and no Gherkin test plan — those belong to the Spec step (`02-spec.md`).
+- **Not architecture design.** The proposed approach is a two-sentence directional sketch, not class signatures.
+- **Not manual `specs/{ticket-id}/` creation.** The repository spec directory and `problem.md` stub are created at **Triage** (`01-triage.md`), never manually at this step.
+- **Not optional.** Every change starts with an intent issue, including core team and lightweight-track work.
 
 ## Where this goes next
 
-On a **Proceed**/**Modify** verdict, the work enters **Triage**, where the triage agent classifies the issue, assesses scope and impact, assigns a change tier, and creates the `specs/{ticket-id}/problem.md` stub. See [`getting-started.md`](../getting-started.md) §2.3 for the full step-by-step workflow and the per-tier applicability matrix.
+Once the maintainer rules **Proceed** or **Modify**, the ticket advances to **Triage** ([`01-triage.md`](01-triage.md)), where `/cadence-triage` classifies the work item, checks for duplicates and prior insights via `repo-scout` / `local_semantic_embed`, assigns the change tier, and initializes `specs/{ticket-id}/problem.md` and `metadata.yaml`. See [`../getting-started.md`](../getting-started.md) §2.3 for the full lifecycle overview.
 
 ## Related documents
 
-- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and tier matrix.
-- [`../contributor_experience_guide.md`](../contributor_experience_guide.md) — "Filing an intent issue" and the lightweight vs. standard tracks.
-- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — how the change is right-sized once triaged.
-- [`../../../PROJECT_INTENT.md`](../../../PROJECT_INTENT.md) — the intent every Problem is measured against.
-- [`../../../specs/TEMPLATE/problem.md`](../../../specs/TEMPLATE/problem.md) — the artifact populated downstream, starting at Triage.
+- [`01-triage.md`](01-triage.md) — the next step in the workflow.
+- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier matrix.
+- [`../contributor_experience_guide.md`](../contributor_experience_guide.md) — "Filing an intent issue" and lightweight vs. standard tracks.
+- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — how changes are right-sized at Triage.
+- [`../../../PROJECT_INTENT.md`](../../../PROJECT_INTENT.md) — the repository charter every Problem is evaluated against.
+- [`../../../specs/TEMPLATE/problem.md`](../../../specs/TEMPLATE/problem.md) — the repository template populated starting at Triage.

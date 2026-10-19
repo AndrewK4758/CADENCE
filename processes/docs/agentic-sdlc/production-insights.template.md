@@ -1,10 +1,10 @@
 # Production Insights Register
 
-Cross-ticket register of production and bug-triage insights mapped to SCOUT dimensions.
+Cross-ticket ledger of production-defect and bug-triage insights mapped to CHORD behavioral dimensions (`PROD-NNN`).
 
 ## Entry Criteria
-- `field-observed`: Observed in a live or staging environment.
-- `execution-reproduced`: Reproduced via automated test or local execution.
-- `categorically-reachable`: Proven reachable by static path analysis.
+- `field-observed`: Observed directly in a live production or staging environment.
+- `execution-reproduced`: Reproduced deterministically via an automated test or local execution.
+- `categorically-reachable`: Proven reachable through static code-path analysis.
 
 ## Entries

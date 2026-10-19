@@ -1,30 +1,32 @@
 # Non-Blocking Finding Classes
 
-**Status:** Normative. Read by `claire-reviewer`, `claire-maintainer`, `/claire-review` step 6,
-`/claire-maintain` step 6b, `/claire-archive` steps 1b and 2e, and `claire-archivist` step 6.
-This is the single statement of the five classes, the high-value bar, the entry token format,
-who classifies, and the routing rules. Every consumer **points** at this document; none restates
-it (Behavior 6).
+**Status:** Normative. Consumed by `cadence-reviewer`, `cadence-maintainer`, `/cadence-review` step 6,
+`/cadence-maintain` step 6b, `/cadence-archive` steps 1b and 2e, and `cadence-archivist` step 6.
+This policy is the single authoritative definition of the five non-blocking finding classes, the
+high-value bar, the bracketed entry grammar, classification ownership, and disposition routing.
+Every consuming skill and role **points** to this document; none restates it (`CADENCE_DIRECTIVES.md` Behavior 6).
 
 ## The organizing principle
 
-A real defect inside the diff is **blocking**. A non-blocking finding inside the diff is
-therefore not a defect. Only a defect this change will not fix warrants a ticket.
+Any real defect inside the diff under review is **blocking**. Consequently, a non-blocking finding
+inside the diff is never a defect. Only a genuine defect that this change will not fix warrants
+filing a follow-up ticket.
 
 ## The five classes
 
 | Class | Definition | Offered as a candidate? | Disposed where |
 |---|---|---|---|
-| `out-of-scope-defect` | A real defect this change will not fix -- outside its footprint, or a residual a gate rules out of scope (ADR_CLAIRE-0043) -- that clears the high-value bar below | Yes | The gate's disposition step |
-| `adr-owed` | An ADR is owed for a decision **this change** makes | Never at review or maintain | `/claire-archive` step 1b only |
+| `out-of-scope-defect` | A real defect this change will not fix -- outside its footprint, or a residual a gate rules out of scope (ADR_CADENCE-0043) -- that clears the high-value bar below | Yes | The gate's disposition step |
+| `adr-owed` | An ADR is owed for a decision **this change** makes | Never at review or maintain | `/cadence-archive` step 1b only |
 | `nit` | Stylistic or cosmetic preference. No defect | Never | Logged |
 | `hygiene` | Routine upkeep: boundary docs, doc freshness, naming, an evidence-confirmation request | Never | Logged |
 | `observation` | Context, credit, or a question with no action owed | Never | Logged |
 
 ## The high-value bar (`out-of-scope-defect` only)
 
-**"Would this be filed if it were found on its own?"** A defect that fails this bar is classed
-by its nature (`nit` / `hygiene` / `observation`), never `out-of-scope-defect`.
+**"Would this be filed if it were found on its own?"** Any issue that does not clear this bar is
+classified according to its actual nature (`nit` / `hygiene` / `observation`), never as
+`out-of-scope-defect`.
 
 ## Entry format
 
@@ -33,72 +35,84 @@ N. [<class>] <location> -- <description>
 N. [adr-owed] <decision ref> -- ADR must cover: <scope>; waits on: <precondition | none>
 ```
 
-The token is one of the five exact lowercase strings. Anything else -- absent, misspelled,
-capitalized, two tokens, or an `adr-owed` entry missing either clause -- is **UNCLASSED**.
+The bracketed `<class>` token must be one of the five exact lowercase strings above. Any deviation
+-- missing token, misspelling, uppercase characters, multiple tokens, or an `adr-owed` entry omitting
+either required clause -- renders the entry **UNCLASSED**.
 
 ## Who classifies
 
-The authoring role classifies **its own entries only**. Neither role re-classes the other's
-entries, and no skill re-classes any entry. A role that disagrees with another role's class
-raises its own new finding (in its own class) that cites the other entry; it never rewrites it.
+Each authoring role classifies **only its own entries**. Neither review role re-classifies the
+other's entries, and no orchestrating skill re-classifies any entry. If a role disagrees with
+another role's classification, it records a separate finding under its own class citing the earlier
+entry; it never edits the original entry in place.
 
 ## Routing at a disposition step
 
-1. **Unlabelled entry:** an entry with **no disposition yet** and no valid class token halts the
-   step before enumerating; an entry that already carries a disposition is a legacy record and is
-   exempt from this halt, classed or not. Emit `finding.class.unlabelled` naming each entry (gate,
-   authoring role, entry text). Request a label from the human at the gate: an empty or
-   unrecognized answer re-prompts exactly once, and a second miss records Deferred naming
-   `finding.class.unlabelled`, never classed by default. A valid supplied label is appended beside
-   the entry in `## Discussion` as `(class: <token>; supplied by <operator> at <gate>,
-   <YYYY-MM-DD>)`, leaving the entry's own text unchanged, where `<operator>` resolves from `git
-   config user.name`/`user.email`, else the OS login, else the literal string `identity could not
-   be determined` -- never left blank. **This note is the entry's class** from that point on, at
-   every later disposition step, at any gate: every later halt check, the candidate filter
-   (step 2), the tally (step 3), `/claire-archive`'s exit criterion for `Follow-ups created` and
-   for `adr-owed` items, and -- when the token is `adr-owed` -- presentation at `/claire-archive`
-   step 1b, all read it exactly as if the entry's own text carried that bracket token. With no
-   confirmation channel at all, record Deferred naming the cause. Never default either way.
-2. **Filter:** candidates = `out-of-scope-defect` entries carrying no disposition yet (plus, at
-   `/claire-archive`, `adr-owed` items deferred at step 1b).
+1. **Unlabelled entry:** any entry carrying **no disposition yet** and lacking a valid class token
+   halts the disposition step before candidate enumeration begins; entries that already carry a
+   recorded disposition are legacy records and are exempt from this halt regardless of whether they
+   carry a class token. Emit `finding.class.unlabelled` naming each unclassed entry (gate,
+   authoring role, verbatim entry text). Prompt the human at the gate to supply a class label: an
+   empty or unrecognized response re-prompts exactly once, and a second invalid response records
+   `Deferred` citing `finding.class.unlabelled` rather than guessing a default class. When the
+   operator supplies a valid class token, append `(class: <token>; supplied by <operator> at <gate>,
+   <YYYY-MM-DD>)` beside the entry in `## Discussion` while leaving the entry's original text
+   untouched, where `<operator>` resolves from `git config user.name` / `user.email`, falling back
+   to the OS login name, or finally the literal string `identity could not be determined` -- never
+   left blank. **That appended annotation serves as the entry's authoritative class** at all
+   subsequent disposition steps across every gate: later halt checks, candidate filtering (step 2),
+   the cumulative tally (step 3), `/cadence-archive`'s exit checks for `Follow-ups created` and
+   `adr-owed` items, and -- when the supplied token is `adr-owed` -- presentation at
+   `/cadence-archive` step 1b, all treat the annotation identically to an inline bracketed token. If
+   no interactive confirmation channel is available, record `Deferred` naming the cause. Never
+   default in either direction.
+2. **Filter:** candidate set = all `out-of-scope-defect` entries that carry no disposition yet
+   (plus, at `/cadence-archive`, any `adr-owed` items deferred during step 1b).
 3. **Tally clause:** `N non-blocking findings logged (nit a, hygiene b, observation c, adr-owed d)`,
-   cumulative across gates. Zero-count classes are omitted; the counts sum to N. Carried on the
-   `None owed` form, and on every other form whenever at least one finding has been logged.
-4. **Prior-work check** (before presenting): search `specs/` (open) and `archive/` (completed)
-   for the candidate; present exactly one verdict -- `new`, `duplicate of <id>`, or
-   `fold into <id>` -- citing the matched id. **Fold eligibility:** an open match is fold-eligible
-   only at `draft` or `triaged`. At any later open status, the verdict turns on the match's
-   relationship to the candidate, never on status alone: a match that already **covers** the
-   candidate (the candidate adds nothing the target does not already describe) is presented as
-   `duplicate of <id>`, regardless of the match's status; a match that does **not** cover the
-   candidate -- fold-shaped, but the target has moved past `draft`/`triaged` and so can no longer
-   safely absorb it -- is presented as `new`, citing the target as related, **never**
-   `duplicate of <id>` and **never** `fold into <id>`. An archived match is related context and
-   never by itself suppresses a candidate -- it is presented as `new`. A `new` verdict records the
-   search's return (terms, both roots, hit count), never only a conclusion. If the check cannot
-   run, halt with `followup.dedupe.check_unavailable`; never present a candidate as `new` by
-   default.
-5. **Confirmed outcomes:** `new` -> the gate writes the candidate's description to its draft path,
-   then invokes `/claire-triage --file-only <draft-path>` (BTG-345). `duplicate` -> files
-   nothing; record `Duplicate of <id> -- ...`. `fold into` -> re-check the target's fold
-   eligibility (open, at `draft` or `triaged`, per Routing step 4) at write time, append a dated
-   line to its `problem.md` `## Notes`, then record `Folded into <id> -- ...`, then run the bound
-   `CLAIRE_ORG.md` §9 tracker sync for `<id>` at the end of the operation -- a failed projection is
-   reported, never silently skipped (no tracker bound => nothing to sync, say so). A target that
-   has moved on by write time is re-presented as `new` with the target cited, never folded. Never
-   record a fold whose target write did not land; a failed target write is recorded Deferred,
-   never Folded.
+   accumulated across all gates. Classes with a count of zero are omitted, and the listed counts
+   sum to `N`. This tally clause is included on the `None owed` disposition form, and on every other
+   disposition form whenever one or more non-blocking findings have been logged.
+4. **Prior-work check** (executed before presenting candidates): search both `specs/` (active work)
+   and `archive/` (completed work) for each candidate, and present exactly one deduplication verdict
+   -- `new`, `duplicate of <id>`, or `fold into <id>` -- citing the matched ticket ID. **Fold
+   eligibility:** an open ticket is eligible to absorb a fold only when its status is `draft` or
+   `triaged`. At any later open status, the verdict depends on whether the existing ticket already
+   encompasses the candidate, never on status alone: a match that already **covers** the candidate
+   (meaning the candidate adds nothing beyond what the target ticket already specifies) is presented
+   as `duplicate of <id>` regardless of the target's lifecycle stage; a match that does **not**
+   yet cover the candidate -- fold-shaped in topic, but the target ticket has progressed past
+   `draft`/`triaged` and can no longer safely expand its scope -- is presented as `new` with the
+   target cited as related context, **never** `duplicate of <id>` and **never** `fold into <id>`. An
+   archived match provides historical context only and never suppresses a live defect -- it is
+   always presented as `new`. Every `new` verdict records the search's actual return (search terms,
+   both searched roots, and hit count), never merely a bare conclusion. If the prior-work search
+   cannot execute, halt with `followup.dedupe.check_unavailable`; never default a candidate to `new`
+   without searching.
+5. **Confirmed outcomes:** `new` -> the gate writes the candidate's description to its draft file
+   path and invokes `/cadence-triage --file-only <draft-path>` (BTG-345). `duplicate` -> files no
+   ticket and records `Duplicate of <id> -- ...`. `fold into` -> re-verify the target ticket's fold
+   eligibility (`draft` or `triaged` status per step 4) at write time, append a dated bullet to the
+   target's `problem.md` under `## Notes`, record `Folded into <id> -- ...`, and execute the bound
+   `CADENCE_ORG.md` §9 tracker sync for `<id>` at the end of the operation -- reporting any failed
+   tracker projection loudly rather than skipping it silently (if no tracker is bound, state so
+   explicitly). If the target ticket has advanced past `draft`/`triaged` by write time, re-present
+   the candidate as `new` citing the target rather than folding into an in-flight spec. Never record
+   `Folded into <id>` unless the write to the target's `problem.md` succeeded; a failed write
+   records `Deferred`, never `Folded`.
 
 ## `adr-owed` at archive
 
-Presented at `/claire-archive` step 1b with its recorded precondition and the current evidence on
-it. The human either **promotes** it (archivist step 6 authors the ADR, citing the source ticket
-and entry, never re-judging whether one is owed) or **defers** it with a named reason, in which
-case it joins step 2e's candidates under the ordinary `out-of-scope-defect` filing path. An
-`adr-owed` item is never skipped silently, and a recorded deferral or precondition is never by
-itself a bar to promotion once its stated reason no longer holds.
+Every `adr-owed` finding is presented at `/cadence-archive` step 1b alongside its recorded
+precondition and the current evidence satisfying or blocking that precondition. The human operator
+either **promotes** it (`cadence-archivist` step 6 then authors the new ADR citing the source ticket
+and finding entry, without re-evaluating whether an ADR is warranted) or **defers** it with an
+explicitly stated reason, in which case the item enters step 2e's candidate queue to be filed as a
+tracked follow-up ticket via the standard `out-of-scope-defect` path. An `adr-owed` finding is never
+dropped silently, and a previously recorded deferral or precondition never blocks promotion once its
+stated condition is met.
 
-A valid `adr-owed` label supplied at `/claire-archive` step 2e.a -- an entry classed only after
-step 1b already ran, so 1b never saw it -- is recorded Deferred naming the reason "classed after
-/claire-archive step 1b", and is admitted to step 2e's candidates exactly as a step 1b deferral
-is; it is never left with no path to promotion or disposition.
+If a valid `adr-owed` label is supplied during `/cadence-archive` step 2e.a -- meaning the finding
+was unclassed until after step 1b had already completed -- it is recorded as `Deferred` with the
+reason `"classed after /cadence-archive step 1b"` and routed directly into step 2e's candidate queue
+just like a step 1b deferral, ensuring no `adr-owed` item is ever stranded without a promotion or
+filing path.

@@ -1,101 +1,38 @@
 # Comment Discipline -- Keep a Comment Only If Deleting It Loses Information
 
-**Status:** Normative. Applies to inline code comments a change adds or modifies. It does not
-require or authorize retroactive rewriting of comments that predate the change carrying this
-policy (see Scope).
+**Status:** Normative. Governs inline source-code comments added or modified by a change. This policy neither requires nor authorizes retroactive sweeps of pre-existing comments that predate the change adopting it (see Scope).
 
 ## The rule
 
-Keep a comment only if deleting it would lose information a reader cannot recover from the code
-itself, the governed record (`archive/`, `docs/`), or git history.
+Retain an inline comment only when deleting it would discard information a reader cannot recover directly from the code itself, the governed repository record (`archive/`, `docs/`), or Git history.
 
 ## What survives
 
-A comment that passes the rule above is one of: an unrecorded "why" (a rationale not already
-captured elsewhere); a non-obvious ordering or concurrency constraint; a workaround for an
-external defect; a boundary comment's required minimum fields (see `C7` below); or an API
-documentation comment on a registered public surface (see `C8` below). Everything else fails the
-rule and is not written. A pre-existing comment that fails the rule is deleted only when a later,
-unrelated change already needs to rewrite that specific comment for its own reasons (see Scope) --
-never swept proactively.
+A comment satisfies the retention rule above only when it captures one of the following: an unrecorded "why" (design rationale not already captured in a governed artifact); a non-obvious ordering or concurrency constraint; a workaround for an external library or platform defect; the required minimum fields of a boundary comment (see `C7` below); or an API documentation contract on a registered public surface (see `C8` below). All other comments fail the retention test and must not be written. A pre-existing comment that fails this rule is removed only when a later, unrelated change already has to edit that specific comment for its own reasons (see Scope) -- never cleaned up via proactive sweeps.
 
 ## Conventions
 
-- **C1 -- Fix the code before commenting it.** A comment that explains *what* code does is
-  resolved by renaming or restructuring the code, never by writing or keeping the comment.
-- **C2 -- Big "why"s go in the record; the comment is a pointer.** A rationale longer than one
-  line is recorded as a `decisions.md` DEC entry. The comment is reduced to the pointer
-  `ABC-123 DEC-4` (form `{TICKET-ID} DEC-{N}`). DEC entries are immutable once recorded; a
-  superseding decision is a new entry that references the old one, so the pointer keeps resolving.
-- **C3 -- No change narrative.** A comment never describes the change instead of the code:
-  "added for X", "previously did Y", "fixed per review", "moved from Z", "no longer needed
-  because...". That narrative belongs in the commit message and `submission.md`. Narrative is
-  defined by what the comment *describes* (the diff) rather than by phrase-matching a banned word
-  list -- a comment that uses a temporal word to describe the code itself ("previously-allocated
-  buffer") is not narrative.
-- **C4 -- Pointers cite ids, never ticket-artifact paths.** A pointer cites `ABC-123`,
-  `ABC-123 S-2.3` or `ABC-123 DEC-4`, never a `specs/<id>/...` or `archive/<id>/...` path. Ids
-  stay valid after a ticket is archived; paths do not. A stable `docs/` path is not a
-  ticket-artifact path and is not covered by this convention.
-- **C5 -- Test tags cite the ticket id and scenario id(s).** A test carries a one-line tag, in a
-  comment or in its own name, naming the ticket id and the scenario id(s) it covers (for example
-  `// ABC-123 S-2.3`, or both ids for a test covering two scenarios: `// ABC-123 S-2.3, S-2.4`).
-  The Gherkin `Given`/`When`/`Then` text itself lives only in `test-plan.md` and is never restated
-  as a comment. At Low tier, where there is no `test-plan.md`, the tag cites the acceptance
-  criterion instead: `// ABC-123 AC-2`.
-- **C6 -- Ticketed TODOs; no commented-out code.** A `TODO` comment always carries a ticket id; a
-  `TODO` with no ticket id is not written. Commented-out code is deleted rather than kept, because
-  git history already retains it.
-- **C7 -- Boundary comments carry only their minimum fields.** A header comment on a
-  boundary-crossing file carries its bounded context/flow and a citation to the external
-  invariant it relies on -- by id or `docs/flows/` anchor, never restated (BTG-341 DEC-008); a
-  docstring on a boundary-crossing function carries its upstream inputs, downstream effects
-  and a ticket-id reference. Both carry only these fields -- any elaboration, including the
-  invariant's own text, belongs in the referenced `docs/flows/` document, not inline. A comment
-  carrying its required fields is complete regardless of length; it is never flagged as missing
-  or deficient for being short, and citing rather than restating the invariant is never itself a
-  missing-field finding.
-- **C8 -- Registered public-surface doc comments are contract, not commentary.** API
-  documentation comments that are part of a registered public surface's published contract (XML
-  doc comments, Javadoc, JSDoc, docstrings on an exported API, or the stack's equivalent) are
-  exempt from the content-removing conventions above -- the delete test, C1, C2's length rule, and
-  C7's boundary terseness -- because shortening or deleting them would remove contract content.
-  They stay bound by C3, C4 and C6. "Registered" is a declared fact (the adopter's own
-  `docs/policies/surface-registry.md` or this repository's `docs/policies/claire-surfaces.md`),
-  never inferred from a surface merely being public. A boundary docstring that is also a
-  registered contract gets the C8 exemption for its contract text, but C7's required fields are
-  still required.
+- **C1 -- Fix the code before commenting it.** Any comment that explains *what* the code does is resolved by renaming identifiers or restructuring the code for clarity, never by writing or preserving the comment.
+- **C2 -- Big "why"s go in the record; the comment is a pointer.** Any rationale exceeding a single line belongs in `decisions.md` as a `DEC` entry. The inline comment is reduced to a compact pointer such as `ABC-123 DEC-4` (format `{TICKET-ID} DEC-{N}`). Because `DEC` entries are append-only and immutable once recorded — with any superseding decision logged as a new entry referencing the prior one — the inline pointer remains permanently resolvable.
+- **C3 -- No change narrative.** An inline comment must never narrate the diff instead of describing the code: phrases like "added for X", "previously did Y", "fixed per review", "moved from Z", or "no longer needed because..." belong in the commit message and `submission.md`. Change narrative is identified by what the comment *describes* (the historical transition) rather than by banning specific temporal words -- a comment using a temporal adjective to describe runtime state ("previously-allocated buffer") is valid domain description, not change narrative.
+- **C4 -- Pointers cite ids, never ticket-artifact paths.** Inline pointers cite `ABC-123`, `ABC-123 S-2.3`, or `ABC-123 DEC-4`, never a file path under `specs/<id>/...` or `archive/<id>/...`. Ticket and scenario identifiers remain stable across archival, whereas filesystem paths move when a ticket transitions from `specs/` to `archive/`. Stable documentation paths under `docs/` are not ticket-artifact paths and remain permissible.
+- **C5 -- Test tags cite the ticket id and scenario id(s).** Every test carries a single-line tag, either in a comment or encoded in the test name itself, citing the ticket ID and the scenario ID(s) it verifies (for example `// ABC-123 S-2.3`, or `// ABC-123 S-2.3, S-2.4` when a single test covers two scenarios). The full Gherkin `Given`/`When`/`Then` prose lives exclusively in `test-plan.md` and is never duplicated inside test comments. At Low tier, where no `test-plan.md` is authored, the test tag cites the acceptance criterion from `problem.md` instead: `// ABC-123 AC-2`.
+- **C6 -- Ticketed TODOs; no commented-out code.** Every `TODO` comment must cite a tracked ticket ID; a bare `TODO` without a ticket identifier is never written. Commented-out source code must be deleted outright because Git history already preserves prior code states.
+- **C7 -- Boundary comments carry only their minimum fields.** A file-level header comment on a boundary-crossing file states only its bounded context/flow and a citation to the external invariant it depends upon -- referenced by ID or `docs/flows/` anchor, never restated inline (BTG-341 DEC-008); a function-level docstring on a boundary-crossing operation states only its upstream inputs, downstream effects, and a ticket-ID reference. Both forms carry strictly these minimum fields -- any further explanation, including the prose of the invariant itself, belongs in the linked `docs/flows/` document rather than inline. A boundary comment containing its required fields is complete regardless of brevity; reviewers must never flag it as incomplete for being concise, nor treat citing an invariant instead of restating it as a missing-field defect.
+- **C8 -- Registered public-surface doc comments are contract, not commentary.** Structured API documentation comments that form part of a registered public surface's published contract (XML doc comments, Javadoc, JSDoc, exported API docstrings, or the stack's equivalent) are exempt from the brevity and deletion rules above -- the delete test, C1, C2's single-line limit, and C7's boundary terseness -- because truncating or removing them would alter published contract documentation. They remain governed by C3, C4, and C6. Whether a surface is "registered" is an explicit, declared fact (listed in the adopter's `docs/policies/surface-registry.md` or the framework's `docs/policies/cadence-surfaces.md`), never inferred merely from `public` visibility. A boundary docstring that simultaneously serves as a registered public contract receives the C8 exemption for its contract prose while still requiring C7's mandatory boundary fields.
 
 ## Behavior 6 applies to comments
 
-A comment that a change makes inaccurate is updated or deleted in the same change that falsifies
-it (`CLAIRE_DIRECTIVES.md` Behavior 6). This holds even when the falsified comment sits in a file
-outside the change's own Files Affected list -- Behavior 6 outranks "touch only what you must" for
-a fact the change itself falsified.
+Any existing comment rendered inaccurate by a code change must be updated or deleted in the exact same change that falsifies it (`CADENCE_DIRECTIVES.md` Behavior 6). This obligation applies even when the stale comment resides in a file outside the ticket's primary Files Affected list -- Behavior 6 supersedes "touch only what you must" whenever the change itself falsifies a stated fact.
 
 ## Scope
 
-This policy governs inline code comments only -- not `spec.md`, `problem.md`, or other prose/spec
-documents. It applies **prospectively only**: it does not require or authorize a sweep of
-comments that predate the change that adopts it. An existing comment is brought into conformance
-only when an unrelated, later change already needs to rewrite that specific comment for its own
-reasons.
+This policy governs inline source-code comments exclusively -- not `spec.md`, `problem.md`, or other markdown governance and specification documents. It applies **prospectively only**: adopting this policy neither requires nor permits a repository-wide cleanup sweep of pre-existing comments. Legacy comments are brought into compliance only when a subsequent change already needs to modify that specific comment for independent reasons.
 
 ## What the pointers rely on
 
-A `{TICKET-ID} S-{N}` pointer relies on scenario ids staying stable once a spec is approved. A
-`{TICKET-ID} DEC-{N}` pointer relies on `decisions.md` entries being immutable. Both rely on
-archival (`specs/<id>/` to `archive/<id>/`) leaving ticket ids unchanged.
+A `{TICKET-ID} S-{N}` pointer depends on scenario identifiers remaining immutable once a specification is approved. A `{TICKET-ID} DEC-{N}` pointer depends on `decisions.md` entries remaining append-only and immutable. Both conventions rely on ticket archival (`specs/<id>/` moving to `archive/<id>/`) preserving ticket identifiers unchanged.
 
 ## Enforcement
 
-The implementer writes to this rule when it writes or rewrites a comment. The reviewer enforces
-it in both directions: it still flags missing boundary documentation (C7), and it flags -- as a
-**non-blocking** finding, scoped to comments the change under review itself added or modified -- a
-comment that fails the delete test, carries a change narrative (C3), cites a path instead of an id
-(C4), or restates governed Gherkin or acceptance-criteria text. A comment whose exact text appears
-among the diff's removed lines has moved, not been added, and is out of scope. The reviewer also
-flags, as a **non-blocking** finding, a pre-existing comment that the diff's own code change makes
-inaccurate (the Behavior 6 fold above) -- this check is in scope on a line the diff did not itself
-touch, because Behavior 6 outranks the touched-only scope for a fact the change itself falsified.
-A comment-only finding set never yields a blocking verdict.
+The `cadence-implementer` adheres to these rules whenever authoring or editing inline comments. The `cadence-reviewer` enforces the policy bidirectionally: it continues to flag missing boundary documentation (C7), and it raises -- as a **non-blocking** finding scoped strictly to comments added or modified by the diff under review -- any comment that fails the delete test, includes change narrative (C3), cites a ticket-artifact path instead of an ID (C4), or duplicates governed Gherkin or acceptance-criteria text (C5). A comment whose exact text also appears in the diff's removed lines was merely relocated, not authored anew, and is out of scope. Additionally, the reviewer flags as a **non-blocking** finding any pre-existing comment that the diff's own code modifications render false (the Behavior 6 reconciliation rule above) -- this check applies even on lines untouched by the diff, because Behavior 6 outranks touched-only scoping when the change itself falsifies a claim. A review consisting solely of comment-discipline findings never produces a blocking verdict.

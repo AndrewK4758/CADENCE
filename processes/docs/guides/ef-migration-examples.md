@@ -1,6 +1,6 @@
 # EF Core Migration Examples
 
-This document provides Entity Framework Core-specific guidance for implementing the requirements in `docs/policies/migration-policy.md`. Reference both documents when working with EF Core migrations.
+This guide provides Entity Framework Core reference patterns that implement the mandatory database migration rules defined in `docs/policies/migration-policy.md`. Consult both documents whenever authoring or reviewing EF Core schema and data migrations under CADENCE.
 
 ## Mapping Policy Concepts to EF Core
 
@@ -15,7 +15,7 @@ This document provides Entity Framework Core-specific guidance for implementing 
 
 ## Reversibility: Up() and Down()
 
-Every operation in `Up()` must have a corresponding reversal in `Down()`:
+Every schema operation declared in `Up()` must have an exact inverse operation in `Down()`:
 
 ```csharp
 protected override void Up(MigrationBuilder migrationBuilder)
@@ -62,7 +62,7 @@ protected override void Down(MigrationBuilder migrationBuilder)
 
 ## Idempotency
 
-EF Core's `__EFMigrationsHistory` table provides migration-level idempotency — if the migration is recorded as applied, EF will skip it. However, **custom `Sql()` blocks must be independently guarded** because a migration can be partially applied if interrupted between the SQL execution and the history table insert.
+EF Core's `__EFMigrationsHistory` table provides migration-level idempotency once a migration finishes — if a migration ID is already present in the history table, EF Core skips it on subsequent runs. However, **raw `migrationBuilder.Sql(...)` statements must still carry explicit existence guards** because an interrupted deployment can fail after executing custom SQL but before inserting the completion row into `__EFMigrationsHistory`.
 
 ```csharp
 // Guarded column addition
@@ -94,14 +94,14 @@ migrationBuilder.Sql(@"
 ");
 ```
 
-**When are guards required?**
-- Always required: any `migrationBuilder.Sql(...)` block with DDL
-- Not required: fluent `MigrationBuilder` methods (EF handles idempotency via the history table)
-- Recommended: `Sql()` blocks with DML that should not run twice (e.g., data transforms)
+**When are explicit SQL guards required?**
+- Always required: any `migrationBuilder.Sql(...)` call executing DDL (`CREATE`, `ALTER`, `DROP`)
+- Not required: typed fluent `MigrationBuilder` API calls (EF Core wraps and tracks these via `__EFMigrationsHistory`)
+- Strongly recommended: `migrationBuilder.Sql(...)` blocks executing DML (`UPDATE`, `INSERT`, `DELETE`) so re-runs do not corrupt or duplicate rows
 
 ## Rollback Verification
 
-Use the `dotnet ef` CLI to perform the apply-rollback-reapply cycle:
+Execute the three-step `apply → rollback → reapply` verification cycle using the `dotnet ef` CLI (when `cadence-implementer` or `cadence-migration-author` runs this verification, CLI logs are routed through `offload_log_triage` / `log-triage` to preserve verbatim command evidence):
 
 ```bash
 # Apply the new migration
@@ -114,7 +114,7 @@ dotnet ef database update {PreviousMigrationName} --project {project}
 dotnet ef database update --project {project}
 ```
 
-All three commands must succeed. If using a test database in integration tests, automate this cycle:
+All three invocations must exit zero. When your repository uses an integration test database, codify this round-trip check as an automated test:
 
 ```csharp
 [Fact]
@@ -123,7 +123,7 @@ public async Task Migration_CanBeAppliedRolledBackAndReapplied()
     // Apply
     await _context.Database.MigrateAsync();
 
-    // Rollback (requires custom tooling or raw SQL to remove from history)
+    // Rollback (via IMigrator.MigrateAsync("{PreviousMigrationName}"))
     // Implementation depends on test infrastructure
 
     // Reapply
@@ -133,7 +133,7 @@ public async Task Migration_CanBeAppliedRolledBackAndReapplied()
 
 ## Naming Convention
 
-Follow the pattern: `{Timestamp}_{TicketId}_{Description}.cs`
+Name migration files using the pattern: `{Timestamp}_{TicketId}_{Description}.cs`
 
 ```
 20260504120000_PROJ1234_AddOrderStatusColumn.cs
@@ -141,16 +141,16 @@ Follow the pattern: `{Timestamp}_{TicketId}_{Description}.cs`
 20260504120002_PROJ1234_DropLegacyOrderStatusFlag.cs
 ```
 
-Generate migrations using:
+Scaffold a new migration via:
 ```bash
 dotnet ef migrations add {TicketId}_{Description} --project {project} --output-dir Migrations
 ```
 
 ## Separation Example
 
-Feature: Add a `Status` column to `Campaigns`, backfill from a legacy `IsActive` flag, then drop the flag.
+Scenario: Add a `Status` column to `Campaigns`, backfill values from the legacy `IsActive` boolean column, and later drop `IsActive` in a contraction release.
 
-**Migration 1 — Schema (additive):**
+**Migration 1 — Schema (expand / additive):**
 ```csharp
 // 20260504120000_PROJ1234_AddOrderStatusColumn.cs
 protected override void Up(MigrationBuilder migrationBuilder)
@@ -168,7 +168,7 @@ protected override void Down(MigrationBuilder migrationBuilder)
 }
 ```
 
-**Migration 2 — Data:**
+**Migration 2 — Data (backfill):**
 ```csharp
 // 20260504120001_PROJ1234_BackfillOrderStatus.cs
 protected override void Up(MigrationBuilder migrationBuilder)
@@ -188,7 +188,7 @@ protected override void Down(MigrationBuilder migrationBuilder)
 }
 ```
 
-**Migration 3 — Schema (restrictive, later release):**
+**Migration 3 — Schema (contract / restrictive, shipped in a subsequent release):**
 ```csharp
 // 20260601120000_PROJ1234_MakeStatusNonNullableDropIsActive.cs
 protected override void Up(MigrationBuilder migrationBuilder)

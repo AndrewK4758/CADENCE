@@ -10,7 +10,7 @@
 # dangling one -- none of them derives a manifest row or resolves a tool
 # capability, which is claude-code.sh's own remaining concern.
 #
-# Bounded context: Build tooling / claire-compile flow, same as
+# Bounded context: Build tooling / cadence-compile flow, same as
 # claude-code.sh. SOURCED by claude-code.sh via a relative
 # ${BASH_SOURCE[0]}-derived path, exactly the pattern org-binding-parse.sh and
 # authored-doc-gate.sh already use for their own siblings (BTG-247 DEC-031/032).
@@ -27,15 +27,15 @@ cc_expand_body() {
     -e 's/\{\{role:([a-z0-9-]+)\}\}/`\1` subagent/g' \
     -e 's/\{\{role_kind\}\}/subagent/g' \
     -e 's/\{\{invoking_runtime\}\}/Claude/g' \
-    -e 's#\{\{artifact_path:roles:([a-z0-9-]+)\}\}#.claude/agents/\1/AGENT.md#g' \
-    -e 's#\{\{artifact_path:commands:([a-z0-9-]+)\}\}#.claude/skills/\1/SKILL.md#g' \
-    -e 's#\{\{sidecar:([a-z0-9-]+):([^}]+)\}\}#.claude/skills/\1/\2#g' \
-    -e 's#\{\{artifact_glob:roles\}\}#.claude/agents/*/AGENT.md#g' \
-    -e 's#\{\{artifact_glob:commands\}\}#.claude/skills/*/SKILL.md#g' \
+    -e 's#\{\{artifact_path:roles:([a-z0-9-]+)\}\}#.agents/agents/\1/AGENT.md#g' \
+    -e 's#\{\{artifact_path:commands:([a-z0-9-]+)\}\}#.agents/skills/\1/SKILL.md#g' \
+    -e 's#\{\{sidecar:([a-z0-9-]+):([^}]+)\}\}#.agents/skills/\1/\2#g' \
+    -e 's#\{\{artifact_glob:roles\}\}#.agents/agents/*/AGENT.md#g' \
+    -e 's#\{\{artifact_glob:commands\}\}#.agents/skills/*/SKILL.md#g' \
     -e 's#\{\{runtime_root\}\}#.claude#g' \
-    -e 's#\{\{artifact_root:roles\}\}#.claude/agents#g' \
-    -e 's#\{\{artifact_root:commands\}\}#.claude/skills#g' \
-    -e 's#\{\{artifact_root:hooks\}\}#.claude/claire-hooks#g' \
+    -e 's#\{\{artifact_root:roles\}\}#.agents/agents#g' \
+    -e 's#\{\{artifact_root:commands\}\}#.agents/skills#g' \
+    -e 's#\{\{artifact_root:hooks\}\}#.claude/cadence-hooks#g' \
     -e 's#\{\{settings_file\}\}#.claude/settings.json#g' \
     -e 's#\{\{context_import:([^}]+)\}\}#@\1#g'
 }
@@ -47,15 +47,15 @@ cc_expand_body() {
 # byte-identical. Reads stdin, writes stdout.
 cc_expand_sidecar() {
   sed -E \
-    -e 's#\{\{artifact_path:roles:([a-z0-9-]+)\}\}#.claude/agents/\1/AGENT.md#g' \
-    -e 's#\{\{artifact_path:commands:([a-z0-9-]+)\}\}#.claude/skills/\1/SKILL.md#g' \
-    -e 's#\{\{sidecar:([a-z0-9-]+):([^}]+)\}\}#.claude/skills/\1/\2#g' \
-    -e 's#\{\{artifact_glob:roles\}\}#.claude/agents/*/AGENT.md#g' \
-    -e 's#\{\{artifact_glob:commands\}\}#.claude/skills/*/SKILL.md#g' \
+    -e 's#\{\{artifact_path:roles:([a-z0-9-]+)\}\}#.agents/agents/\1/AGENT.md#g' \
+    -e 's#\{\{artifact_path:commands:([a-z0-9-]+)\}\}#.agents/skills/\1/SKILL.md#g' \
+    -e 's#\{\{sidecar:([a-z0-9-]+):([^}]+)\}\}#.agents/skills/\1/\2#g' \
+    -e 's#\{\{artifact_glob:roles\}\}#.agents/agents/*/AGENT.md#g' \
+    -e 's#\{\{artifact_glob:commands\}\}#.agents/skills/*/SKILL.md#g' \
     -e 's#\{\{runtime_root\}\}#.claude#g' \
-    -e 's#\{\{artifact_root:roles\}\}#.claude/agents#g' \
-    -e 's#\{\{artifact_root:commands\}\}#.claude/skills#g' \
-    -e 's#\{\{artifact_root:hooks\}\}#.claude/claire-hooks#g' \
+    -e 's#\{\{artifact_root:roles\}\}#.agents/agents#g' \
+    -e 's#\{\{artifact_root:commands\}\}#.agents/skills#g' \
+    -e 's#\{\{artifact_root:hooks\}\}#.claude/cadence-hooks#g' \
     -e 's#\{\{settings_file\}\}#.claude/settings.json#g' \
     -e 's#\{\{context_import:([^}]+)\}\}#@\1#g'
 }

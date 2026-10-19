@@ -48,7 +48,7 @@ emit_seam() {
 load_catalog() {
   if [[ ! -r "$CATALOG" ]]; then
     echo "chaos-citation: FATAL -- catalog not readable: $CATALOG_REL" >&2
-    emit_seam IMPOSSIBLE_STATE chaos.catalog.unreadable "$CATALOG_REL"
+    emit_seam UNSOUND_CONDITION chaos.catalog.unreadable "$CATALOG_REL"
     exit 2
   fi
   sed -n 's/^### \(CP-[0-9]\{1,\}\): \(.*\)$/\1	\2/p' "$CATALOG" > "$WORK/catalog.tsv"
@@ -58,7 +58,7 @@ load_catalog() {
     # catalog whose heading format this gate no longer understands, and it would
     # pass EVERY file vacuously -- the exact failure this gate exists to close.
     echo "chaos-citation: FATAL -- catalog parsed to zero profiles: $CATALOG_REL" >&2
-    emit_seam IMPOSSIBLE_STATE chaos.catalog.empty "$CATALOG_REL"
+    emit_seam UNSOUND_CONDITION chaos.catalog.empty "$CATALOG_REL"
     exit 2
   fi
 
@@ -81,7 +81,7 @@ load_catalog() {
     | grep -v '^$' > "$WORK/names.txt"
   if [[ ! -s "$WORK/names.txt" ]]; then
     echo "chaos-citation: FATAL -- catalog parsed to zero profile names: $CATALOG_REL" >&2
-    emit_seam IMPOSSIBLE_STATE chaos.catalog.empty "$CATALOG_REL"
+    emit_seam UNSOUND_CONDITION chaos.catalog.empty "$CATALOG_REL"
     exit 2
   fi
 
@@ -95,7 +95,7 @@ load_catalog() {
   dup="$(sort "$WORK/names.txt" | uniq -d | head -1)"
   if [[ -n "$dup" ]]; then
     echo "chaos-citation: FATAL -- two catalog entries share the normalized name \"$dup\": $CATALOG_REL" >&2
-    emit_seam IMPOSSIBLE_STATE chaos.catalog.ambiguous_name "$dup"
+    emit_seam UNSOUND_CONDITION chaos.catalog.ambiguous_name "$dup"
     exit 2
   fi
 }
@@ -106,7 +106,7 @@ load_catalog() {
 # specs/TEMPLATE/ IS EXCLUDED HERE, BY CONSTRUCTION (AC-4 / DEC-005). The
 # template's CP-NN citations are illustrative placeholders -- documentation, not
 # citations. The exclusion is a property of THIS FUNCTION, not a ledger entry a
-# later change could quietly widen: PROD_CLAIRE-020 records a blanket exemption
+# later change could quietly widen: PROD_CADENCE-020 records a blanket exemption
 # blinding a citation sweep to the very writes it should have caught, and this
 # gate refuses to ship that shape. The exclusion is filtered on one side and
 # VERIFIED on the other (see the guard below), so a breach is loud rather than
@@ -125,10 +125,10 @@ enumerate_corpus() {
   # filter is anchored at the tree root; this check is unanchored, so a TEMPLATE
   # path reachable by some other route is caught rather than quietly scanned. A
   # check written as the mirror image of its own filter can only ever agree with
-  # it, which is how an exclusion goes blind (PROD_CLAIRE-020).
+  # it, which is how an exclusion goes blind (PROD_CADENCE-020).
   if grep -q 'specs/TEMPLATE/' "$WORK/corpus.txt"; then
     echo "chaos-citation: FATAL -- a specs/TEMPLATE/ path entered the scan corpus" >&2
-    emit_seam SEAM_VIOLATION chaos.scope.template_included \
+    emit_seam BOUNDARY_FAULT chaos.scope.template_included \
       "$(grep -m1 'specs/TEMPLATE/' "$WORK/corpus.txt")"
     exit 2
   fi
@@ -139,7 +139,7 @@ enumerate_corpus() {
 # Batched through xargs the statuses collapse: "no match anywhere" (grep 1) and
 # "could not read a file" (grep 2) both surface as a single 123, and the gate
 # would have to guess which happened. Guessing here means reporting a clean
-# verdict over a file it never read -- the LINEAGE_GAP this seam exists to
+# verdict over a file it never read -- the DELTA_AUDIT_GAP this seam exists to
 # close. Per file: 0 = matches, 1 = no match (legitimate), >1 = the scan failed.
 #
 # The cost is one grep per corpus file (146 today) on a runner that already
@@ -174,7 +174,7 @@ scan_codes() {
     rc=$?
     if [[ $rc -gt 1 ]]; then
       echo "chaos-citation: FATAL -- the corpus scan failed on $f (grep exit $rc)" >&2
-      emit_seam LINEAGE_GAP chaos.scan.failed "$f"
+      emit_seam DELTA_AUDIT_GAP chaos.scan.failed "$f"
       exit 2
     fi
   done < "$WORK/corpus.txt"
@@ -203,7 +203,7 @@ scan_labels() {
     rc=$?
     if [[ $rc -gt 1 ]]; then
       echo "chaos-citation: FATAL -- the label scan failed on $f (grep exit $rc)" >&2
-      emit_seam LINEAGE_GAP chaos.scan.failed "$f"
+      emit_seam DELTA_AUDIT_GAP chaos.scan.failed "$f"
       exit 2
     fi
   done < "$WORK/corpus.txt"

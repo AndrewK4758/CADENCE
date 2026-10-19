@@ -9,9 +9,9 @@
 # The ADOPTER-mode descriptor prologue (categories 1+2 only).
 eject_footprint_header_adopter() {
   cat <<'HDR'
-# DERIVED -- do not hand-edit. The ADOPTER CLAIRE-footprint descriptor: the
-# boundary between the installed CLAIRE surface and the adopter team's own
-# project code, consumed by claire-eject.sh. Generated at adoption time.
+# DERIVED -- do not hand-edit. The ADOPTER CADENCE-footprint descriptor: the
+# boundary between the installed CADENCE surface and the adopter team's own
+# project code, consumed by cadence-eject.sh. Generated at adoption time.
 #
 # Categories 1+2 ONLY -- precise enumeration of the INSTALLED framework surface.
 # There is NO deny-by-default sweep here: an adopter's arbitrary project code is
@@ -20,7 +20,7 @@ eject_footprint_header_adopter() {
 #
 #   (1) tree_root  -- the compiled .claude/ tree roots, resolved via the runtime
 #                     binding (RC-6); NEVER a hardcoded .claude/... literal here.
-#   (2) installed  -- the installed framework surface = adopt-claire.sh COPY_PATHS.
+#   (2) installed  -- the installed framework surface = adopt-cadence.sh COPY_PATHS.
 #   (seed) -- adopter-owned documents seeded at adopt time, stripped at eject, and
 #            EXCLUDED from the upgrade merge (never merged or created -- BTG-015).
 #
@@ -37,9 +37,9 @@ HDR
 # backfill (upgrade-bootstrap.sh, BTG-008 AC-8).
 #
 # A pre-BTG-008 adopter descriptor LACKS the identity=hooks tree_root row; once
-# the compiled .claude/claire-hooks/ tree exists on disk it would LEAK at eject.
+# the compiled .claude/cadence-hooks/ tree exists on disk it would LEAK at eject.
 # When so, add that tree_root to the strip set IN MEMORY -- never mutating the
-# committed file (ADR_CLAIRE-0009). Adopter-mode only (framework-dev already strips
+# committed file (ADR_CADENCE-0009). Adopter-mode only (framework-dev already strips
 # .claude wholesale / carries the row); deduped (a descriptor already listing the
 # row adds it once). An `(backfill)` audit line, NOT a seam -- routine, expected
 # reconciliation on the normal path (BTG-015 DEC-007); its disk-probe guard also
@@ -60,12 +60,12 @@ eject_footprint_backfill_hooks_root() {
 
 # BTG-017 (DEC-001): the adopter-side footprint-STALENESS signal, read-only.
 # Reuses the BTG-016a in-memory reconciliation as the hand-list-free definition of
-# "the installed CLAIRE surface" (constraint (a) / PI-017 DEC-002 -- NO
+# "the installed CADENCE surface" (constraint (a) / PI-017 DEC-002 -- NO
 # deny-by-default hand-list, NO re-derivation, which is impossible in an adopter
 # repo). Staleness := load_descriptor had to backfill a tree_root the committed
 # descriptor omitted (a STRIP_SOURCE entry tagged "(backfill)"). Lives in this
 # sibling (not eject-footprint.sh, which sits at the 299-line DX ceiling) and runs
-# in load_descriptor's shell scope (STRIP_SOURCE is visible). ADR_CLAIRE-0009: never
+# in load_descriptor's shell scope (STRIP_SOURCE is visible). ADR_CADENCE-0009: never
 # mutates the committed descriptor.
 
 # Echo each STRIP_SOURCE entry that is a (backfill) staleness marker; return 0 if
@@ -95,12 +95,12 @@ report_footprint_staleness() {
   local stale
   stale="$(eject_footprint_stale_roots)" || return 1
   {
-    echo "claire-eject: WARNING -- stale committed footprint detected."
-    echo "claire-eject:   stale surface: $stale"
-    echo "claire-eject:   eject is UNAFFECTED -- the tree_root is backfilled in memory; the leak is closed (BTG-016a)."
-    echo "claire-eject:   Refresh: run /claire-upgrade --repair (from a CLAIRE core providing --repair; BTG-016b -- this pointer does not assert its presence in your installed core)."
-    echo "claire-eject:   If --repair is absent: upgrade to a core providing --repair, or see docs/guides/upgrade-repair-runbook.md."
-    echo "claire-eject:   The committed artifacts/footprint.generated is NOT modified (read-only; ADR_CLAIRE-0009)."
+    echo "cadence-eject: WARNING -- stale committed footprint detected."
+    echo "cadence-eject:   stale surface: $stale"
+    echo "cadence-eject:   eject is UNAFFECTED -- the tree_root is backfilled in memory; the leak is closed (BTG-016a)."
+    echo "cadence-eject:   Refresh: run /cadence-upgrade --repair (from a CADENCE core providing --repair; BTG-016b -- this pointer does not assert its presence in your installed core)."
+    echo "cadence-eject:   If --repair is absent: upgrade to a core providing --repair, or see docs/guides/upgrade-repair-runbook.md."
+    echo "cadence-eject:   The committed artifacts/footprint.generated is NOT modified (read-only; ADR_CADENCE-0009)."
   } >&2
   return 0
 }
@@ -108,24 +108,24 @@ report_footprint_staleness() {
 # The FRAMEWORK-DEV descriptor prologue (categories 1+2+3, deny-by-default).
 eject_footprint_header_framework_dev() {
   cat <<'HDR'
-# DERIVED -- do not hand-edit. The authoritative CLAIRE-footprint descriptor:
+# DERIVED -- do not hand-edit. The authoritative CADENCE-footprint descriptor:
 # the single boundary between framework material and project-owned code, shared
-# with Workstream A (update/override) and consumed by claire-eject.sh.
+# with Workstream A (update/override) and consumed by cadence-eject.sh.
 #
 # Composed (in order) from three canonical-identity sources -- regenerate with
-#   bash ci-templates/scripts/claire-eject.sh --derive-footprint
+#   bash ci-templates/scripts/cadence-eject.sh --derive-footprint
 # and verify with
-#   bash ci-templates/scripts/claire-eject.sh --check-footprint
-# (mirrors claire-compile.sh --check-manifest). PI-017 / DEC-003 (Option B).
+#   bash ci-templates/scripts/cadence-eject.sh --check-footprint
+# (mirrors cadence-compile.sh --check-manifest). PI-017 / DEC-003 (Option B).
 #
 #   (1) tree_root  -- the compiled .claude/ tree roots, resolved via the runtime
 #                     binding (RC-6); NEVER a hardcoded .claude/... literal here.
-#   (2) installed  -- the installed framework surface = adopt-claire.sh
+#   (2) installed  -- the installed framework surface = adopt-cadence.sh
 #                     COPY_PATHS (the inverse of the strip boundary).
 #   (3) framework_dev -- DENY-BY-DEFAULT (DEC-011): EVERY top-level repo entry,
-#                     EXCEPT .git and the reviewed non-CLAIRE exceptions
+#                     EXCEPT .git and the reviewed non-CADENCE exceptions
 #                     (ci-templates/scripts/eject-exceptions.conf). Complete by
-#                     construction -- a new top-level CLAIRE entry is covered
+#                     construction -- a new top-level CADENCE entry is covered
 #                     automatically; an independent completeness gate is the
 #                     backstop. (Was a hand-maintained list that failed open.)
 #   (seed) -- adopter-owned documents seeded at adopt time, stripped at eject, and

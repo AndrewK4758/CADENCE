@@ -1,9 +1,24 @@
 {
-  "claire-tms-sync-reminder": {
+  "cadence-local-offload-enforcer": {
     "enabled": true,
     "PostToolUse": [
       {
-        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+        "matcher": "run_command|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/ak/projects/sdlc/hooks/local-offload-enforcer.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "cadence-tms-sync-reminder": {
+    "enabled": true,
+    "PostToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content|Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
@@ -14,7 +29,7 @@
       }
     ]
   },
-  "claire-tms-doc-sync-stop": {
+  "cadence-tms-doc-sync-stop": {
     "enabled": true,
     "Stop": [
       {

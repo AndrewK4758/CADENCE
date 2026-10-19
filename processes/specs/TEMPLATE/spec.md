@@ -4,21 +4,21 @@
 
 Draft | In Review | Approved | Implementation | Complete | Superseded
 
-> **The review state of this document**, not the ticket's lifecycle state. `metadata.yaml`'s
-> `status:` field is authoritative for the ticket; this line tracks how far *this document* has got.
-> They are different vocabularies by design, and neither is a copy of the other.
+> **Document review status**, distinct from the ticket's lifecycle state. `metadata.yaml`'s
+> `status:` field is authoritative for the ticket; this line tracks how far *this document* has progressed.
+> They are separate vocabularies by design, and neither is a copy of the other.
 
 ## Problem Reference
 
-See [problem.md](problem.md) for the full problem statement and acceptance criteria.
+See [problem.md](problem.md) for the complete problem statement and acceptance criteria.
 
-## Zachman Framework Grounding
+## Contextual Grounding Matrix (6W×4L)
 
-This grid ensures the design is examined across all six interrogatives at the abstraction levels relevant to the project. Not every cell requires an entry -- fill in cells where the design makes a meaningful claim or decision.
+This matrix ensures the proposed design is grounded across all six interrogatives at the four abstraction layers relevant to the system. Not every cell requires an entry -- populate cells where the design makes a concrete architectural claim or decision.
 
 ### Org-Level Constants
 
-{If your organization has a CLAIRE org configuration, copy its pre-filled Zachman constants here (Where, Who, Why). If not, leave this section empty and fill everything in the grid below from codebase exploration or the problem statement.}
+{If your organization maintains a CADENCE organization configuration (`CADENCE_ORG.md`), copy its pre-populated Contextual Grounding constants here (Where, Who, Why). Otherwise, leave this subsection empty and populate the matrix below from codebase exploration or the problem statement.}
 
 ### Scope (Planner / Business Context)
 
@@ -44,86 +44,86 @@ This grid ensures the design is examined across all six interrogatives at the ab
 |---|---|---|---|---|---|
 | {ORM entities, migrations, column types} | {Classes, methods, validation rules, mappers} | {Connection strings, endpoint URLs, message queues} | {Auth scopes, JWT claims, middleware config} | {Temporal tables, background job schedules} | {Technology choices and constraints} |
 
-## SCOUT Analysis
+## CHORD Analysis
 
-SCOUT (State, Constraints, Outputs, Updates, Triggers) decomposes each acceptance criterion into behavioral primitives. The spec-author fills this table; the test-plan.md scenarios are derived from it.
+CHORD (**C**onditions, **H**andling / Triggers, **O**utcomes, **R**ules, **D**eltas) decomposes every acceptance criterion into testable behavioral primitives. The `cadence-spec-author` agent populates this analysis, and the Gherkin scenarios in `test-plan.md` are derived directly from it.
 
-### SCOUT Decomposition
+### CHORD Decomposition
 
-For each acceptance criterion from problem.md, decompose into SCOUT dimensions:
+For each acceptance criterion from `problem.md`, decompose into the five CHORD dimensions:
 
 #### AC-1: {Acceptance criterion text from problem.md}
 
 | Dimension | Description | Details |
 |---|---|---|
-| **State** | System state that must be true before the behavior executes | {E.g., "An active Order exists with at least one LineItem in Draft state"} |
-| **Constraints** | Business invariants and domain logic that govern the behavior | {E.g., "An order cannot be submitted unless all line items have a valid price"} |
-| **Outputs** | Observable outputs, notifications, or external system calls | {E.g., "Publishes order.submitted event; sends confirmation email"} |
-| **Updates** | State changes to domain entities or persistent storage | {E.g., "Order.status changes from Draft to Submitted; Order.submittedAt set to current UTC"} |
-| **Triggers** | Data, parameters, or events that trigger the behavior | {E.g., "POST /api/v1/orders/{id}/submit with valid auth token"} |
+| **Conditions** | System state and preconditions that must hold before execution (`Given`) | {E.g., "An active Order exists with at least one LineItem in Draft state"} |
+| **Handling** | Input parameters, commands, or events that trigger the behavior (`When`) | {E.g., "POST /api/v1/orders/{id}/submit with valid auth token"} |
+| **Outcomes** | Observable external responses, notifications, or downstream calls (`Then` — external) | {E.g., "Publishes order.submitted event; sends confirmation email"} |
+| **Rules** | Business invariants and domain constraints governing the behavior (`Then` — invariants) | {E.g., "An order cannot be submitted unless all line items have a valid price"} |
+| **Deltas** | Internal state mutations to domain entities or persistent storage (`Then` — internal) | {E.g., "Order.status changes from Draft to Submitted; Order.submittedAt set to current UTC"} |
 
-**Edge case derivation:** For each dimension, ask "what if this is violated?"
+**Edge case derivation:** For each CHORD dimension, ask "what happens if this dimension is violated?"
 
 | Dimension | "What If" | Example Edge Case |
 |---|---|---|
-| State | Entity missing? Wrong state? Expired? | Order does not exist; Order already cancelled |
-| Constraints | Invariant broken? Constraint exceeded? | No line items; total exceeds credit limit |
-| Outputs | External service fails? Timeout? | Email service unreachable; event bus down |
-| Updates | Concurrent modification? | Another user submitted the order simultaneously |
-| Triggers | Null? Empty? Wrong type? Unauthorized? | Missing auth token; invalid order ID format |
+| Conditions | Entity missing? Wrong state? Expired? | Order does not exist; Order already cancelled |
+| Handling | Null? Empty? Wrong type? Unauthorized? | Missing auth token; invalid order ID format |
+| Outcomes | External service fails? Timeout? | Email service unreachable; event bus down |
+| Rules | Invariant broken? Constraint exceeded? | No line items; total exceeds credit limit |
+| Deltas | Concurrent modification? | Another user submitted the order simultaneously |
 
 #### AC-2: {Next acceptance criterion}
 
 | Dimension | Description | Details |
 |---|---|---|
-| **State** | | {Fill in} |
-| **Constraints** | | {Fill in} |
-| **Outputs** | | {Fill in} |
-| **Updates** | | {Fill in} |
-| **Triggers** | | {Fill in} |
+| **Conditions** | | {Fill in} |
+| **Handling** | | {Fill in} |
+| **Outcomes** | | {Fill in} |
+| **Rules** | | {Fill in} |
+| **Deltas** | | {Fill in} |
 
-### SCOUT-to-BDD Mapping
+### CHORD-to-BDD Mapping
 
-Each SCOUT dimension maps to a behavioral test concern:
+Each CHORD dimension maps directly to a behavioral test concern:
 
-| SCOUT Dimension | BDD Role | Test Concern |
+| CHORD Dimension | BDD Role | Test Concern |
 |---|---|---|
-| State | Arrange / `Given` | Establish the system state the test requires |
-| Constraints | Assertion / `Then` | The invariant being verified |
-| Outputs | Assertion (external) | Verify calls to external services or event emissions |
-| Updates | Assertion (internal) | Verify entity state changes and persistence |
-| Triggers | Act / `When` | The action or event under test |
+| Conditions | Arrange / `Given` | Establish the required initial system state |
+| Handling | Act / `When` | Execute the action, request, or event under test |
+| Outcomes | Assertion (external) / `Then` | Verify external service calls, responses, or event emissions |
+| Rules | Assertion (invariant) / `Then` | Verify domain invariants and business rules hold |
+| Deltas | Assertion (internal) / `Then` | Verify entity mutations and persistent state updates |
 
-The test-plan.md translates each SCOUT decomposition into executable BDD scenarios. See [test-plan.md](test-plan.md) for the full specification.
+`test-plan.md` translates each CHORD decomposition into executable BDD scenarios. See [test-plan.md](test-plan.md) for the full scenario suite.
 
 ---
 
-## CLAIRE Facet Evaluation
+## CADENCE Pillar Evaluation
 
-Evaluate the proposed design against the governing facets selected for this project. If your organization has a CLAIRE org configuration with mandatory facets, include those first, then add any project-specific facets from the facet library. If two facets conflict, use the precedence matrix from your org config or the CLAIRE default: Data Integrity > Security Posture > Backwards Compatibility (when triggered) > Simplicity > Operability > DX (Agentic) > remaining facets.
+Evaluate the proposed design against the governing engineering pillars active for this repository. When your organization maintains a `CADENCE_ORG.md` configuration with mandatory pillars, include those first, followed by any repository-specific pillars from the pillar library. When two pillars conflict, resolve the trade-off using the precedence order from your organization configuration or the CADENCE default: Data & Audit Fidelity > Security Boundary Posture > Surface Compatibility (when triggered) > Structural Simplicity > Operational Resilience > Agentic Ergonomics > remaining pillars.
 
-A facet whose every measure is `Pass` may be written as `**All measures Pass.**` followed by its basis per measure group, instead of the full table below. Any `Flag` keeps the full table. The full table is always valid.
+A pillar whose every measure evaluates to `Pass` may be condensed to `**All measures Pass.**` followed by a brief justification per measure group, in place of the full table below. Any `Flag` requires retaining the full table. The full table is always valid.
 
-### Facet 1: Simplicity
+### Pillar 1: Structural Simplicity
 
 | Measure | Target | This Design | Status |
 |---|---|---|---|
 | Runtime service count | Minimum needed | {Does this change add a new service? If yes, justify.} | {Pass/Flag} |
 | State management layers | 1 (DB or primary store is source of truth) | {Does this change add a cache or secondary state store?} | {Pass/Flag} |
-| Config to add a capability | Minimal (target from facet library) | {How many files must change to wire up the new behavior?} | {Pass/Flag} |
+| Config to add a capability | Minimal (target from pillar library) | {How many files must change to wire up the new behavior?} | {Pass/Flag} |
 
-**Decision rule applied:** Between two approaches, did we pick the one that requires reading fewer files to understand?
+**Decision rule applied:** Between two valid designs, did we select the one that requires reading fewer files to understand?
 
 **Anti-patterns checked:**
 - [ ] No cache added without profiling evidence
 - [ ] No shared utility library for single-project functions
 - [ ] No abstract factory for config with only one implementation
 
-### Facet 2: Operability
+### Pillar 2: Operational Resilience
 
 | Measure | Target | This Design | Status |
 |---|---|---|---|
-| CI pipeline impact | Target from facet library; uses standard CI templates | {Does this change affect pipeline jobs?} | {Pass/Flag} |
+| CI pipeline impact | Target from pillar library; uses standard CI templates | {Does this change affect pipeline jobs?} | {Pass/Flag} |
 | Secrets handling | All via secrets manager; zero in env vars or source code | {Does this change introduce or reference secrets?} | {Pass/Flag} |
 | Health check coverage | All dependencies checked | {Does this change add a new dependency that needs a health check?} | {Pass/Flag} |
 | Logging | Structured JSON to stdout with trace/span/request IDs | {Do new log statements include correlation IDs?} | {Pass/Flag} |
@@ -141,7 +141,7 @@ A facet whose every measure is `Pass` may be written as `**All measures Pass.**`
 - [ ] No new external dependencies without health-check integration and alerting
 - [ ] No observability deferred to a follow-up ticket
 
-### Facet 3: Developer Experience -- Agentic Coding
+### Pillar 3: Agentic Ergonomics
 
 | Measure | Target | This Design | Status |
 |---|---|---|---|
@@ -157,13 +157,13 @@ A facet whose every measure is `Pass` may be written as `**All measures Pass.**`
 - [ ] No dynamic imports or metaprogramming hiding the call graph
 - [ ] No implicit conventions only documented outside the repo
 
-### Facet 4: Data Integrity
+### Pillar 4: Data & Audit Fidelity
 
 | Measure | Target | This Design | Status |
 |---|---|---|---|
 | Audit coverage | 100% of write operations produce audit records | {Do all new mutations have audit records?} | {Pass/Flag} |
 | Mutation metadata | Actor identity (from auth system, never user input) + reason | {Are actor and reason captured for every write?} | {Pass/Flag} |
-| Multi-table write sequencing | Step order, failure handling, and cache invalidation documented | {See Proposed Design and SCOUT Outputs/Updates} | {Pass/Flag} |
+| Multi-table write sequencing | Step order, failure handling, and cache invalidation documented | {See Proposed Design and CHORD Outcomes/Deltas} | {Pass/Flag} |
 | No client-side derived values | Server computes all derived values | {Does the API accept any pre-computed values from the client?} | {Pass/Flag} |
 
 **Anti-patterns checked:**
@@ -172,17 +172,17 @@ A facet whose every measure is `Pass` may be written as `**All measures Pass.**`
 - [ ] No missing audit metadata fields
 - [ ] No cascading deletes without user confirmation
 
-### Facet 5: Backwards Compatibility (include when triggered — change touches registered public surfaces or introduces new ones)
+### Pillar 5: Surface Compatibility (include when triggered — change touches registered public surfaces or introduces new ones)
 
 | Measure | Target | This Design | Status |
 |---|---|---|---|
-| Surface registry current | All public surfaces registered, resolved across **every** registry present per `docs/policies/change-tiers.md`'s *Resolving "registered surface"* rule: `docs/policies/surface-registry.md` (this project's own, **adopter-owned**) and `docs/policies/claire-surfaces.md` (the CLAIRE framework's, **core-owned**). A framework-owned surface records in the core-owned registry, never in the adopter-owned one. | {Are all affected surfaces registered? Any new surfaces to add?} | {Pass/Flag} |
+| Surface registry current | All public surfaces registered, resolved across **every** registry present per `docs/policies/change-tiers.md`'s *Resolving "registered surface"* rule: `docs/policies/surface-registry.md` (this project's own, **adopter-owned**) and `docs/policies/cadence-surfaces.md` (the CADENCE framework's, **core-owned**). A framework-owned surface records in the core-owned registry, never in the adopter-owned one. | {Are all affected surfaces registered? Any new surfaces to add?} | {Pass/Flag} |
 | Breaking change handling | Deprecation plan with sunset date and migration guide | {See Compatibility Impact section} | {Pass/Flag} |
 | Golden-file tests | Every stable API response shape has a snapshot test | {Are golden-file tests specified for affected endpoints?} | {Pass/Flag} |
 | Consumer contract tests | Every inter-service dependency has a contract test | {Are contract tests specified for affected dependencies?} | {Pass/Flag} |
 | Deprecation signals | HTTP headers, structured log warnings, metrics on deprecated surfaces | {Are runtime deprecation signals implemented for any deprecated surfaces?} | {Pass/Flag} |
 
-**Decision rule applied:** Between two approaches, did we pick the one that does not require existing consumers to change?
+**Decision rule applied:** Between two designs, did we select the one that does not require existing consumers to change?
 
 **Anti-patterns checked:**
 - [ ] No removal of response fields without checking consumer impact via surface registry
@@ -191,42 +191,42 @@ A facet whose every measure is `Pass` may be written as `**All measures Pass.**`
 - [ ] No new required fields added to existing request contracts
 - [ ] No "fix consumers later" without a tracked deprecation entry
 
-### Additional Facets
+### Additional Pillars
 
-{Include any additional facets selected for this project (Security Posture, Performance Efficiency, Testability, Replaceability). Use the same format: measures table, decision rule, anti-pattern checklist. Refer to your facet library or org config for the project-specific measures.}
+{Include any additional pillars active for this repository (Security Boundary Posture, Execution Performance, Automated Verifiability, Modular Replaceability, Origin Confidentiality). Follow the identical layout: measures table, decision rule, and anti-pattern checklist. Refer to your pillar library or `CADENCE_ORG.md` for repository-specific measures.}
 
-### Facet Conflict Resolution
+### Pillar Conflict Resolution
 
-{Document any cases where two facets disagreed and how the precedence matrix resolved it. E.g., "Data Integrity required an additional audit table (adds complexity), overriding Simplicity's preference for fewer tables -- justified because compliance is non-negotiable."}
+{Document any trade-offs where two pillars conflicted and how the precedence matrix resolved the disagreement. E.g., "Data & Audit Fidelity required an additional audit ledger table (adding schema surface), overriding Structural Simplicity's preference for fewer tables -- justified because auditability is non-negotiable."}
 
 ---
 
 ## Observability Seams
 
-Derived from SCOUT decomposition per the Observability Seams reference (`docs/agentic-sdlc/scout-reference.md`). Each seam becomes a test scenario and a production log event. See `docs/policies/observability-patterns.md` for JSON schemas and implementation patterns.
+Derived mechanically from the CHORD decomposition per the Observability Seams guide (`docs/agentic-sdlc/chord-reference.md`). Every seam translates into both a BDD test scenario and a structured production log event. See `docs/policies/observability-patterns.md` for JSON schemas and runtime emission patterns.
 
 ### Prior Production Findings
 
-{Entries from `docs/agentic-sdlc/production-insights.md` relevant to this component. "None" if no prior findings exist.}
+{Entries from `docs/agentic-sdlc/production-insights.md` relevant to this component. State "None" if no prior findings apply.}
 
-| PROD Entry | Category | SCOUT Dimension | Lesson Applied |
+| PROD Entry | Category | CHORD Dimension | Lesson Applied |
 |---|---|---|---|
-| PROD-{NNN} | {LOGIC_FAULT / LINEAGE_GAP / DRIFT_SIGNAL / SEAM_VIOLATION} | {Preconditions / Rules / Inputs / Side-effects / Mutations} | {How this spec addresses the prior finding} |
+| PROD-{NNN} | {LOGIC_FAULT / DELTA_AUDIT_GAP / DRIFT_SIGNAL / BOUNDARY_FAULT} | {Conditions / Rules / Handling / Outcomes / Deltas} | {How this specification addresses the prior finding} |
 
 ### Seam Specification
 
-For each AC's SCOUT decomposition, derive the seams mechanically. Not every AC requires all seam types — only derive what the decomposition supports.
+For each acceptance criterion's CHORD decomposition, derive the applicable seams mechanically. Not every criterion requires all four seam families — derive only what the behavioral decomposition supports.
 
 | AC | Dimension | Seam Type | Event Name | Trigger Condition | Severity |
 |---|---|---|---|---|---|
-| AC-1 | Preconditions | IMPOSSIBLE_STATE | {domain}.{op}.precondition_violated | {Specific condition under which precondition is false at runtime} | Critical |
-| AC-1 | Rules | DECISION_DRIFT | {domain}.{op}.branch_distribution | {Rate outside [X%, Y%] over 1h window} | Warning |
-| AC-1 | Side-effects | LINEAGE_GAP | {domain}.{op}.{checkpoint}_missing | {Trace completes without expected span} | Critical |
-| AC-1 | Mutations | LINEAGE_GAP | {domain}.{op}.audit_missing | {Mutation committed without audit record} | Critical |
+| AC-1 | Conditions | UNSOUND_CONDITION | {domain}.{op}.precondition_violated | {Specific condition under which precondition is false at runtime} | Critical |
+| AC-1 | Rules | RULE_DIVERGENCE | {domain}.{op}.branch_distribution | {Rate outside [X%, Y%] over 1h window} | Warning |
+| AC-1 | Outcomes | DELTA_AUDIT_GAP | {domain}.{op}.{checkpoint}_missing | {Trace completes without expected span} | Critical |
+| AC-1 | Deltas | DELTA_AUDIT_GAP | {domain}.{op}.audit_missing | {Mutation committed without audit record} | Critical |
 
-### Baseline Definitions (for DECISION_DRIFT seams)
+### Baseline Definitions (for RULE_DIVERGENCE seams)
 
-{Only include if the spec has DECISION_DRIFT seams. Each baseline defines the expected distribution of a decision branch under normal traffic.}
+{Include only when the specification declares `RULE_DIVERGENCE` seams. Each baseline defines the expected branch distribution under normal production traffic.}
 
 | Event Name | Branch | Expected Rate | Threshold | Window |
 |---|---|---|---|---|
@@ -236,7 +236,7 @@ For each AC's SCOUT decomposition, derive the seams mechanically. Not every AC r
 
 ## Existing Code Analysis
 
-{For greenfield projects, replace this section with "Architecture Decisions" documenting the key technology and pattern choices for the new system.}
+{For greenfield repositories, replace this section with "Architecture Decisions" capturing the foundational technology and structural choices for the new system.}
 
 ### Files Affected
 
@@ -249,29 +249,29 @@ For each AC's SCOUT decomposition, derive the seams mechanically. Not every AC r
 
 ### Current Behavior
 
-{Describe how the system currently behaves in the area being changed. Include relevant code paths, data flows, and integration points. Reference specific files and line numbers.}
+{Describe how the system currently operates in the affected area. Cite concrete code paths, data flows, integration boundaries, and `file:line` references.}
 
 ### Dependencies
 
-{List upstream and downstream dependencies that this change interacts with.}
+{List upstream and downstream dependencies interacting with this change.}
 
-- **Upstream:** {Services, APIs, or systems that feed data into the affected area}
-- **Downstream:** {Services, APIs, or systems that consume output from the affected area}
-- **Shared:** {Libraries, base classes, or utilities used by the affected code}
+- **Upstream:** {Services, APIs, or pipelines supplying data into the affected area}
+- **Downstream:** {Services, APIs, or consumers reading output from the affected area}
+- **Shared:** {Libraries, base types, or helpers referenced by the affected modules}
 
 ## Proposed Design
 
 ### Overview
 
-{High-level description of the approach. Name the architectural pattern (layered, hexagonal, microservices, serverless, monolith, etc.) and how this change fits within it.}
+{High-level summary of the technical approach. Name the governing architectural style (layered, hexagonal, microservices, event-driven, monolith, etc.) and explain how this change fits within it.}
 
 ### Layer / Module Changes
 
-{For each affected layer or module in the project's architecture, describe the changes. Adapt the subsections below to match your project's structure -- e.g., Domain/Application/API/Data for Clean Architecture, or Routes/Handlers/Models for an MVC app, or Functions/Events for serverless.}
+{For each affected layer or module in the repository's architecture, specify the changes. Adapt the subsections below to match your project's structure -- e.g., Domain/Application/API/Data for Clean Architecture, Routes/Handlers/Models for an MVC service, or Functions/Events for serverless.}
 
 #### {Layer/Module 1 Name}
 
-{New or modified entities, interfaces, types, or configurations.}
+{New or modified domain entities, interfaces, types, or configurations.}
 
 ```
 // Example: new type, modified interface, or configuration
@@ -279,7 +279,7 @@ For each AC's SCOUT decomposition, derive the seams mechanically. Not every AC r
 
 #### {Layer/Module 2 Name}
 
-{New or modified services, validators, handlers, or business logic.}
+{New or modified services, validators, handlers, or domain logic.}
 
 ```
 // Example: service method signature, handler definition
@@ -287,7 +287,7 @@ For each AC's SCOUT decomposition, derive the seams mechanically. Not every AC r
 
 #### {API / Route Layer}
 
-{New or modified endpoints, DTOs, request/response models, authorization.}
+{New or modified endpoints, DTOs, request/response contracts, authorization attributes.}
 
 ```
 // Example: endpoint definition
@@ -298,7 +298,7 @@ Response: { ... }
 
 #### {Data Layer}
 
-{Schema changes, migrations, seed data.}
+{Schema modifications, migrations, index additions, or seed data.}
 
 ```sql
 -- Example: schema change
@@ -306,24 +306,24 @@ Response: { ... }
 
 ### Integration Changes
 
-{Changes to external service clients, new client interfaces, event publishers/subscribers.}
+{Updates to external service clients, new client contracts, or event publishers/subscribers.}
 
 ## Design Exploration
 
-Filled by the spec-author at step 12 by converging against the explorer's independent option set in `design-options.md`. If that artifact is absent, replace this whole section body with the not-performed marker below -- never leave it blank, and never fill it as though exploration ran.
+Populated by `cadence-spec-author` at step 12 by converging against the `cadence-explorer` agent's independent option set in `design-options.md`. When `design-options.md` is absent, replace this entire section body with the verbatim not-performed marker below -- never leave this section empty, and never populate it as if independent exploration occurred.
 
 **Option set source:** design-options.md (explorer, independent) | NOT PERFORMED
 
-| Option | Structure (one line) | Novelty class | Facet fit summary |
+| Option | Structure (one line) | Novelty class | Pillar fit summary |
 |---|---|---|---|
-| {A -- name} | {where responsibility sits} | {established/adjacent/novel} | {how it lands against the facets} |
+| {A -- name} | {where responsibility sits} | {established/adjacent/novel} | {how it lands against the engineering pillars} |
 
-**Winner:** {the option, named as the explorer named it}
-**Winning axis over the runner-up:** {name the runner-up AND the facet -- not a generic dismissal}
-**Testable flip-condition:** {what would have to become true to reverse this -- checkable by someone other than the author}
-**Strongest objection to the chosen option:** {stated as strongly as the explorer steelmanned it}
-**Domestication follow-up:** {only if the winner is the novel option: success -> ADR -> local pattern -> baseline}
-**Gate 1 outcome:** {filled at Spec Review by the reviewer; see human-gates.md Gate 1 Feedback Loop}
+**Winner:** {the chosen option, named exactly as the explorer named it}
+**Winning axis over the runner-up:** {name both the runner-up option AND the decisive engineering pillar -- never a generic dismissal}
+**Testable flip-condition:** {what concrete fact would have to change to reverse this choice -- verifiable by someone other than the author}
+**Strongest objection to the chosen option:** {stated at full steelmanned strength from the explorer's analysis}
+**Domestication follow-up:** {only when the chosen winner is the novel option: success -> ADR -> local pattern -> baseline}
+**Gate 1 outcome:** {recorded at Spec Review by the human reviewer; see `human-gates.md` Gate 1 Feedback Loop}
 
 Not-performed marker, used **verbatim** when `design-options.md` is absent:
 
@@ -331,36 +331,36 @@ _Design Exploration NOT PERFORMED -- no independent option set exists for this t
 
 ## Alternatives Considered
 
-At Medium and High tier this section is **derived from the Design Exploration convergence above** -- it records how the runner-up options lost, not a set the author invented after choosing. Where the not-performed marker is present, it is a self-authored fallback and says so.
+At Medium and High tiers this section is **derived directly from the Design Exploration convergence above** -- it documents why the runner-up options were not selected, rather than inventing post-hoc strawmen after choosing. Whenever the not-performed marker is present above, this section is a self-authored fallback and explicitly states so.
 
 ### Alternative 1: {Name}
 
 - **Approach:** {Brief description}
-- **Pros:** {Why it could work}
-- **Cons:** {Why it was not chosen}
+- **Pros:** {Why it is viable}
+- **Cons:** {Why it lost to the chosen design}
 
 ### Alternative 2: {Name}
 
 - **Approach:** {Brief description}
-- **Pros:** {Why it could work}
-- **Cons:** {Why it was not chosen}
+- **Pros:** {Why it is viable}
+- **Cons:** {Why it lost to the chosen design}
 
 ## Migration Strategy
 
-{If this change requires data migration, schema migration, or feature flagging, describe the rollout plan.}
+{When this change involves data migration, schema evolution, or feature-flag rollout, specify the execution and rollback plan.}
 
-- **Breaking changes:** {Yes/No -- describe if yes}
-- **Migration required:** {Yes/No -- describe steps}
-- **Feature flag:** {Yes/No -- flag name and conditions}
-- **Rollback plan:** {How to revert if deployment fails}
+- **Breaking changes:** {Yes/No -- detail if yes}
+- **Migration required:** {Yes/No -- list expand/contract steps}
+- **Feature flag:** {Yes/No -- flag key and activation conditions}
+- **Rollback plan:** {Exact steps to revert safely if deployment fails}
 
 ## Compatibility Impact
 
-Reference: [Adopter surfaces](../../docs/policies/surface-registry.md) | [CLAIRE framework surfaces](../../docs/policies/claire-surfaces.md) | [Deprecation Policy](../../docs/policies/deprecation-policy.md)
+Reference: [Adopter surfaces](../../docs/policies/surface-registry.md) | [CADENCE framework surfaces](../../docs/policies/cadence-surfaces.md) | [Deprecation Policy](../../docs/policies/deprecation-policy.md)
 
 ### Public Surface Changes
 
-{For each public surface affected by this change, document the impact. If no public surfaces are affected, state "No public surfaces affected by this change."}
+{Document the impact on every public surface touched by this change. When no public surfaces are affected, write "No public surfaces affected by this change."}
 
 | Surface | Type | Change | Breaking? | Deprecation Required? |
 |---|---|---|---|---|
@@ -368,7 +368,7 @@ Reference: [Adopter surfaces](../../docs/policies/surface-registry.md) | [CLAIRE
 
 ### New Public Surfaces
 
-{Any new APIs, events, schemas, or configuration keys that should be registered in the surface registry. If none, state "No new public surfaces introduced."}
+{List any new APIs, events, schemas, or configuration keys that must be added to the surface registry. When none are introduced, write "No new public surfaces introduced."}
 
 | Surface | Type | Stability | Guarantee Period | Consumers |
 |---|---|---|---|---|
@@ -376,7 +376,7 @@ Reference: [Adopter surfaces](../../docs/policies/surface-registry.md) | [CLAIRE
 
 ### Deprecation Plan
 
-{For any breaking changes to existing stable surfaces. If no breaking changes, state "No deprecations required."}
+{Complete for any breaking modifications or removals of existing stable surfaces. When no breaking changes exist, write "No deprecations required."}
 
 | Surface | Current Version | Deprecated Version | Sunset Date | Migration Guide |
 |---|---|---|---|---|
@@ -384,13 +384,13 @@ Reference: [Adopter surfaces](../../docs/policies/surface-registry.md) | [CLAIRE
 
 ### Compatibility Test Requirements
 
-{Map each affected surface to the compatibility tests that must be implemented.}
+{Map every affected surface to the compatibility test suites required to guard it.}
 
 | Test Type | Surface | Description |
 |---|---|---|
-| Golden-file | {endpoint/event} | Snapshot of response shape for regression detection |
-| Consumer contract | {service dependency} | Contract test verifying producer meets consumer expectations |
-| Versioned integration | {endpoint} | Old client request against new service response |
+| Golden-file | {endpoint/event} | Snapshot of response/payload shape for regression detection |
+| Consumer contract | {service dependency} | Contract test verifying producer satisfies consumer expectations |
+| Versioned integration | {endpoint} | Replay of prior-version client request against current service response |
 
 ## Risks and Open Questions
 
@@ -404,13 +404,13 @@ Reference: [Adopter surfaces](../../docs/policies/surface-registry.md) | [CLAIRE
 
 **Gate 1 rulings:** required -- one ruling line per OQ in decisions.md (human-gates.md Gate 1).
 
-- [ ] **OQ-1:** {Question that needs resolution before or during implementation}
-- [ ] **OQ-2:** {Assign to a person or role if known}
+- [ ] **OQ-1:** {Question requiring human resolution before or during implementation}
+- [ ] **OQ-2:** {Assign to a specific person or role where known}
 
 ## Cross-References
 
 - **Problem:** [problem.md](problem.md)
 - **Test Plan:** [test-plan.md](test-plan.md)
 - **Decisions:** [decisions.md](decisions.md)
-- **ADRs:** {Link to any ADRs created as part of this spec}
-- **Related Specs:** {Link to specs for related or dependent work}
+- **ADRs:** {Links to any ADRs authored or referenced by this spec}
+- **Related Specs:** {Links to specifications for related or dependent tickets}

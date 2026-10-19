@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# org-binding-parse.sh -- the DOCUMENT half of `CLAIRE_ORG.md`'s per-prefix
+# org-binding-parse.sh -- the DOCUMENT half of `CADENCE_ORG.md`'s per-prefix
 # binding reader (BTG-179). SOURCED by `org-binding-resolve.sh`; never executed.
 #
 # Bounded context: Governance config / per-repo binding resolution.
 # Invariants relied on from outside this boundary:
-#   - `CLAIRE_ORG.md` is the single per-repo binding mechanism (ADR_CLAIRE-0010 cl.2).
+#   - `CADENCE_ORG.md` is the single per-repo binding mechanism (ADR_CADENCE-0010 cl.2).
 #   - §9 / §10 / §13 are registered Configuration Contracts whose absent-value
 #     polarities DIFFER and are never unified: §9 fail-loud, §10
 #     mint-by-convention, §13 disabled.
@@ -24,7 +24,7 @@
 #   crossref   ANSWERS the cross-section question: how §10 and §13 borrow §9's
 #              tracker vocabulary to build their own per-prefix answers
 #              (BTG-247 DEC-012 / OQ-B, authorizing the fourth module and
-#              overturning `claire-surfaces.md`'s earlier "three is terminal").
+#              overturning `cadence-surfaces.md`'s earlier "three is terminal").
 #   resolve    ANSWERS questions about a PREFIX, and is the entry point.
 #
 # WHY IT EXISTS AT ALL, and what ALL FOUR modules owe (distribution rows -- the
@@ -51,10 +51,10 @@ halt() {
 # --- section extraction --------------------------------------------------
 #
 # The three binding sections, by ORDINAL and by NAME. Both are needed because the
-# ordinal is not guaranteed to be there: `CLAIRE_ORG_TEMPLATE.md` ships these
+# ordinal is not guaranteed to be there: `CADENCE_ORG_TEMPLATE.md` ships these
 # headings UNNUMBERED (`## Tracker Binding`) and tells the adopter to rename the
 # file and "adjust the content, not the structure" -- and neither
-# `adopt-claire.sh` nor `adopt-provision.sh` renumbers. A matcher anchored on
+# `adopt-cadence.sh` nor `adopt-provision.sh` renumbers. A matcher anchored on
 # `^## <n>\.` alone finds nothing in a freshly adopted repo, and three of the four
 # modes have an absent-section answer indistinguishable from a legitimate one
 # (`allocator=unbound`, `enabled=no`, `N=0`) -- a silent wrong answer with exit 0,

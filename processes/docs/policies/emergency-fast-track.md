@@ -1,18 +1,18 @@
 # Emergency Fast-Track
 
-When production is down or a critical security vulnerability is actively exploited, the full process creates unacceptable delay. This policy defines a compressed path that trades process rigor for speed — with mandatory payback afterward.
+When a live production outage occurs or a critical security vulnerability is under active exploitation, running the full standard SDLC introduces unacceptable latency. This policy provides a compressed emergency path that trades up-front process gates for immediate remediation speed — coupled with mandatory retroactive payback within 48 hours.
 
 ## When to Use
 
-The fast-track applies **only** when all three conditions are met:
+The emergency fast-track is authorized **only** when all three of the following conditions hold simultaneously:
 
-1. **Severity:** Production is degraded or unavailable for users, OR a critical security vulnerability is actively exploitable
-2. **Urgency:** The fix cannot wait for the next normal release cycle (hours, not days)
-3. **Scope:** The fix is narrow and well-understood — you know what's broken and how to fix it
+1. **Severity:** Production availability or core functionality is degraded for users, OR a critical security vulnerability is actively exploitable in the wild.
+2. **Urgency:** Remediation cannot wait for the next standard release cycle (measured in hours, not days).
+3. **Scope:** The root cause is isolated and understood — you know precisely what failed and what minimal change restores service.
 
-If any condition is not met, use the normal process with the appropriate change tier.
+If any of these three conditions is not satisfied, use the standard CADENCE workflow at the appropriate change tier.
 
-**This is not for:** "The PM wants it by EOD," deadline pressure, features that are late, or tech debt that's suddenly annoying. Those are Medium/High tier changes with time pressure — compress by parallelizing work, not by skipping gates.
+**What never qualifies for fast-track:** "Product wants this shipped by end of day," commercial deadline pressure, behind-schedule feature work, or longstanding technical debt that has become inconvenient. Those remain Medium- or High-tier changes under schedule pressure — accelerate them by parallelizing work and tightening review turnaround, never by bypassing governance gates.
 
 ## The Fast-Track Process
 
@@ -20,63 +20,63 @@ If any condition is not met, use the normal process with the appropriate change 
 Incident declared
     │
     ▼
-Step 1: Fix        ─── Author writes the fix (no spec, no TDD ceremony)
+Step 1: Fix        ─── Author writes the minimal fix (no up-front spec, no full TDD ceremony)
     │
     ▼
-Step 2: Verify     ─── One reviewer confirms it fixes the issue and doesn't make it worse
+Step 2: Verify     ─── One human reviewer confirms the fix resolves the incident safely
     │
     ▼
 Step 3: Ship       ─── Merge and deploy immediately
     │
     ▼
-Step 4: Payback    ─── Within 48 hours: retroactive spec, tests, and documentation
+Step 4: Payback    ─── Within 48 hours: retroactive spec, full test coverage, and documentation
 ```
 
 ### Step 1: Fix
 
-- Branch directly from `main` using naming convention: `hotfix/{ticket-id}-{description}`
-- Write the minimum fix. No refactoring, no "while I'm here" improvements.
-- Add the tag `[HOTFIX]` to the commit message
-- Unit tests for the fix are required (they're fast to write and prevent regression). Integration/journey/chaos tests are deferred to payback.
+- Cut a branch directly from the production-mirror / trunk branch (`main`) using the naming pattern: `hotfix/{ticket-id}-{description}`.
+- Implement the smallest possible code change that resolves the incident. Zero opportunistic refactoring, zero "while we're here" cleanups.
+- Prefix the commit message with `[HOTFIX]`.
+- Write unit tests covering the immediate fix (unit tests execute in seconds and prevent immediate regression; use `offload_log_triage` / `log-triage` to verify clean compilation and test execution). Full integration, journey, and chaos test suites are deferred to Step 4 payback.
 
 ### Step 2: Verify (One Human Gate)
 
-One reviewer — not the author — must confirm:
+A single human reviewer — distinct from the hotfix author — verifies:
 
-- [ ] The fix addresses the reported issue
-- [ ] The fix doesn't introduce obvious new problems
-- [ ] The fix is scoped narrowly (no unrelated changes)
-- [ ] Basic tests pass
+- [ ] The patch directly addresses the active production incident
+- [ ] The patch introduces no obvious secondary regressions or side effects
+- [ ] The diff is strictly minimal (no unrelated edits)
+- [ ] Unit tests pass cleanly
 
-The reviewer does NOT need to:
-- Verify against a spec (there isn't one yet)
-- Check boundary documentation
-- Evaluate documentation freshness
-- Run the full chaos matrix
+During emergency verification, the reviewer does **not** pause to:
+- Audit against a formal specification (none exists yet)
+- Enforce boundary documentation headers
+- Check flow documentation freshness
+- Execute the full adversarial chaos matrix
 
-**Time budget:** 15 minutes. If the reviewer can't approve in 15 minutes, the fix is too complex for fast-track — split it.
+**Time budget:** 15 minutes maximum. If a reviewer cannot understand and verify the hotfix within 15 minutes, the change is too broad for fast-track — narrow it to the immediate mitigation first.
 
 ### Step 3: Ship
 
-- Merge to `main`
-- Deploy immediately via normal CD pipeline (migration job still runs first if migrations are included)
-- Skip: spec review gate, maintainer gate, deploy validation gate
+- Merge the hotfix branch into `main`.
+- Deploy immediately through the standard CD pipeline (if a database migration is included, the migration verification job still executes first).
+- Bypassed pre-deploy gates: Spec Review (Gate 1), Maintainer Acceptance (Gate 3), and full Deploy Validation (Gate 4).
 
 ### Step 4: Payback (Mandatory, within 48 hours)
 
-The fast-track is a loan against process rigor. It must be repaid:
+An emergency fast-track is a short-term loan taken against engineering rigor, and the principal must be repaid in full within 48 hours:
 
-1. **Create a retroactive spec** — `problem.md` documenting what broke, why, and what was done. Doesn't need full Zachman/SCOUT but must capture the fix's context for future readers.
-2. **Add integration/journey tests** — The unit tests from Step 1 cover the immediate fix. Add broader coverage to prevent the class of failure, not just this instance.
-3. **Update documentation** — If the fix touches a flow or introduces a workaround, update `docs/flows/` and/or `docs/SYSTEM_OVERVIEW.md`.
-4. **Feed the production insights loop** — Add an entry to `docs/agentic-sdlc/production-insights.md` categorizing the incident.
-5. **Evaluate for chaos profile** — Does this incident reveal a failure mode not covered by the existing chaos profiles? If so, propose a new profile or adjust simulator behavior.
+1. **Author a retroactive specification** — create `problem.md` capturing what failed, the root cause, and the remediation applied. While a full Contextual Grounding Matrix (6W×4L) and CHORD decomposition are not required unless the fix permanently altered cross-boundary contracts, the artifact must preserve complete diagnostic context for future maintainers.
+2. **Backfill integration and journey tests** — while Step 1's unit test guards the specific line of code, payback adds integration and journey tests that guard against the broader failure class.
+3. **Reconcile documentation** — if the hotfix altered a business flow or introduced an operational workaround, update `docs/flows/` and/or `docs/SYSTEM_OVERVIEW.md`.
+4. **Update the production insights register** — append a categorized entry to `docs/agentic-sdlc/production-insights.md` mapping the incident to its CHORD dimension (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, or `BOUNDARY_FAULT`).
+5. **Evaluate chaos profile coverage** — check whether the incident exposed a distributed failure mode absent from `docs/policies/chaos-profiles.md`; if so, add a new chaos profile or strengthen simulator assertions.
 
-Payback is tracked as a follow-up ticket with a 48-hour SLA. If the payback ticket is not completed within 48 hours, it escalates to the maintainer.
+Payback is tracked via a dedicated follow-up ticket carrying a strict **48-hour SLA**. Any payback ticket that remains incomplete after 48 hours automatically escalates to the project maintainer (see `docs/policies/conflict-resolution.md` Scenario 5).
 
 ## CI Pipeline Behavior for Hotfixes
 
-Hotfix branches (`hotfix/*`) get a compressed pipeline:
+Branches matching `hotfix/*` run a streamlined CI pipeline:
 
 | Stage | Runs? | Why |
 |---|---|---|
@@ -92,13 +92,13 @@ Hotfix branches (`hotfix/*`) get a compressed pipeline:
 
 ## Who Can Declare a Fast-Track
 
-Fast-track is not self-service. It must be declared by:
+Emergency fast-track is never self-declared by an individual contributor in isolation. It must be authorized by one of:
 
-- An on-call engineer responding to a production alert
+- An on-call engineer actively responding to a paged production incident
 - A team lead or engineering manager
-- A security team member (for security incidents)
+- A security engineer responding to an active security disclosure
 
-The declarer is recorded in the hotfix commit message:
+The authorizing individual, incident ID, and payback ticket ID are recorded directly in the hotfix commit footer:
 
 ```
 [HOTFIX] Fix payment timeout causing 500s on checkout
@@ -110,14 +110,14 @@ Payback ticket: TT-6789
 
 ## Guardrails
 
-- **No fast-track to `main` without at least one test.** A fix without a test will break again.
-- **No fast-track for schema changes without migration verify.** Migrations are irreversible in production.
-- **No stacking fast-tracks.** If you need a second hotfix before the first payback is complete, the system has a deeper problem — escalate to engineering leadership.
-- **Payback is not optional.** A hotfix without payback is tech debt created under emergency that will compound. The 48-hour SLA exists because context is freshest immediately after the incident.
+- **No fast-track merge to `main` without at least one unit test.** An untested emergency fix is a repeat outage waiting to happen.
+- **No fast-track for database schema changes without migration verification.** Production schema mutations cannot be undone if they fail midway.
+- **No stacked fast-tracks.** If a second emergency hotfix is needed in the same subsystem before the first hotfix's payback ticket is closed, the subsystem has a structural stability problem — escalate immediately to engineering leadership.
+- **Payback is mandatory.** An un-repaid hotfix leaves undocumented behavioral debt in the critical path. The 48-hour window is enforced because incident context decays rapidly once the alert clears.
 
 ## Relationship to Change Tiers
 
-Fast-track is not a tier — it's a temporary override of the tier system:
+Emergency fast-track is not a fifth change tier — it is a time-bounded inversion of the normal delivery sequence:
 
 | Aspect | Normal (any tier) | Fast-Track |
 |---|---|---|
@@ -127,13 +127,13 @@ Fast-track is not a tier — it's a temporary override of the tier system:
 | Documentation | Per tier | Deferred to payback |
 | Chaos testing | Medium+ if applicable | Deferred to payback |
 
-After payback is complete, the hotfix has equivalent coverage to a normal change — just delivered in reverse order (ship first, document after).
+Once Step 4 payback finishes, the change achieves the exact same test, documentation, and audit coverage as a standard change — executed in reverse order (mitigate first, codify second).
 
 ## Post-Incident Review
 
-Every fast-track should feed the team's incident review ritual (see `docs/agentic-sdlc/team-rituals.md`). Key questions:
+Every fast-track deployment feeds into the team's post-incident review ritual (see `docs/agentic-sdlc/team-rituals.md`), examining four diagnostic questions:
 
-- Could this failure have been caught by an existing chaos profile?
-- Was the SYSTEM_OVERVIEW.md accurate enough to diagnose quickly, or did responders waste time orienting?
-- Should this failure pattern become a new observability seam?
-- What test would have caught this before production?
+- Could an existing or newly defined chaos profile in `chaos-profiles.md` have surfaced this failure pre-merge?
+- Were `docs/SYSTEM_OVERVIEW.md` and `docs/flows/` accurate enough to orient responders immediately, or was recovery delayed by stale documentation?
+- Should this failure mode be instrumented as a permanent CHORD observability seam (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, or `BOUNDARY_FAULT`)?
+- Which specific test scenario now prevents this entire failure class from recurring?

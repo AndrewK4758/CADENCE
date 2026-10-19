@@ -7,8 +7,8 @@
 # Bounded context: Build tooling / compile-gate flow. Invariants relied on from
 # outside this boundary: `artifacts/footprint.generated` is the source of record
 # for which paths ship to an adopter; `artifacts/mcp/mcp.manifest` is the source
-# of record for which MCP server rows exist AND states the `claire-` ownership
-# sentinel its keys must carry; `docs/agentic-sdlc/CLAIRE_ORG.md` section 16's
+# of record for which MCP server rows exist AND states the `cadence-` ownership
+# sentinel its keys must carry; `docs/agentic-sdlc/CADENCE_ORG.md` section 16's
 # target clauses are the source of record for the org-token set.
 #
 # SOURCED, never executed. It defines functions only -- no `set` change, no trap,
@@ -55,7 +55,7 @@
 #     governance docs, the neutral source), and
 #   * the release-notes directory by GLOB -- it is outside the footprint
 #     (release notes do not ship to an adopter) but is the single largest source
-#     of /claire-release-authored content, so a glob covers every future cut with no
+#     of /cadence-release-authored content, so a glob covers every future cut with no
 #     edit here.
 # Only paths that exist in the tree are emitted.
 sweep_paths() {
@@ -155,11 +155,11 @@ adg_is_ledgered() {
 
 # The manifest's OWN documented ownership grammar, and the entire coupling
 # between this predicate and that declaration: `key=<server-key>` is a
-# "RESERVED-prefixed ownership sentinel (MUST start "claire-")"
+# "RESERVED-prefixed ownership sentinel (MUST start "cadence-")"
 # (artifacts/mcp/mcp.manifest). Reading the grammar rather than enumerating the
 # keys is what makes a FUTURE removal covered on the day it lands, with no edit
 # here -- the "read the manifest; do not hardcode it" decision rule.
-ADG_MCP_KEY_RE='claire-mcp-[a-z0-9][a-z0-9-]*'
+ADG_MCP_KEY_RE='cadence-mcp-[a-z0-9][a-z0-9-]*'
 
 # adg_mcp_occurrences <tree-root> <ledger-array-name> <needle-ere> <scan-root>...
 #
@@ -203,7 +203,7 @@ adg_mcp_occurrences() {
 # predicate_mcp_key <tree-root> <path>...
 #
 # One `mcp.manifest.row_referenced_but_absent: <path>:<line>` per occurrence of a
-# `claire-mcp-*` key that the tree's manifest does NOT carry and no ledger row
+# `cadence-mcp-*` key that the tree's manifest does NOT carry and no ledger row
 # anchors. A key the manifest DOES carry is a live registration, so naming it is
 # correct and is not reported -- that filter is what makes this a statement about
 # the manifest rather than about one historical key.
@@ -268,7 +268,7 @@ adg_dx_hits() {
   for p in "$@"; do
     case "$p" in
       artifacts/roles|artifacts/roles/*|artifacts/commands|artifacts/commands/*| \
-      .claude/agents|.claude/agents/*|.claude/skills|.claude/skills/*| \
+      .agents/agents|.agents/agents/*|.agents/skills|.agents/skills/*| \
       *opencode-golden*) source+=("$p") ;;
       *) prose+=("$p") ;;
     esac

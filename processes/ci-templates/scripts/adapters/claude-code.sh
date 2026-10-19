@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
 # Claude Code adapter (PI-012) -- the ONLY place concrete runtime primitives
-# are introduced (ADR_CLAIRE-0008 R7 / DEC-003). Compiles the parsed neutral-source
+# are introduced (ADR_CADENCE-0008 R7 / DEC-003). Compiles the parsed neutral-source
 # model into the Claude Code native layout:
 #
-#   role    -> .claude/agents/<name>/AGENT.md
-#   command -> .claude/skills/<name>/SKILL.md  (+ the whole colocated sidecar
+#   role    -> .agents/agents/<name>/AGENT.md
+#   command -> .agents/skills/<name>/SKILL.md  (+ the whole colocated sidecar
 #              directory copied verbatim; sidecar_script names the entry point
 #              -- PI-023 / DEC-001)
 #
@@ -16,7 +16,7 @@
 # corrected by DEC-010: the shipped path placeholder is {{artifact_root:<tree>}},
 # resolving the tree root only -- there is no {{artifact_path:}}).
 #
-# This file is sourced by claire-compile.sh; it relies on the parse helpers
+# This file is sourced by cadence-compile.sh; it relies on the parse helpers
 # (fm_value, body_block) defined there. It defines:
 #   cc_adapter_emit_role    <src-file> <out-root>
 #   cc_adapter_emit_command <src-file> <out-root> <src-root>
@@ -52,7 +52,7 @@ cc_tool_id() {
 }
 
 # --- Capability tier -> concrete model map (RC-1/AC-4 R14) -----------------
-# Sourced conceptually from CLAIRE_ORG.md#model-tier-mapping. A tier absent
+# Sourced conceptually from CADENCE_ORG.md#model-tier-mapping. A tier absent
 # here is a hard failure (AC-2 edge: never emit an empty model:).
 cc_tier_model() {
   case "$1" in
@@ -96,9 +96,9 @@ cc_tools_spaced() {
   echo "$out"
 }
 
-# Resolve a manifest path_key (e.g. commands/claire-adopt) to the emitted
-# native path Claude Code uses. roles/* -> .claude/agents/<name> ;
-# commands/* -> .claude/skills/<name>. NOTE: this is NOT wired to a body
+# Resolve a manifest path_key (e.g. commands/cadence-adopt) to the emitted
+# native path Claude Code uses. roles/* -> .agents/agents/<name> ;
+# commands/* -> .agents/skills/<name>. NOTE: this is NOT wired to a body
 # placeholder -- the shipped body path placeholder is {{artifact_root:<tree>}}
 # (tree root only; DEC-010). A whole-path-by-identity placeholder is a candidate
 # for the OpenCode adapter ticket (DEC-010 follow-up); this helper is retained
@@ -106,8 +106,8 @@ cc_tools_spaced() {
 cc_resolve_path_key() {
   local key="$1"
   case "$key" in
-    roles/*)    echo ".claude/agents/${key#roles/}" ;;
-    commands/*) echo ".claude/skills/${key#commands/}" ;;
+    roles/*)    echo ".agents/agents/${key#roles/}" ;;
+    commands/*) echo ".agents/skills/${key#commands/}" ;;
     *) echo "$key" ;;
   esac
 }
@@ -124,24 +124,24 @@ cc_resolve_path_key() {
 # Remove emitted Claude outputs that no longer have a source artifact, so a
 # role/command deleted from source does not leave a stale tree. The .claude/
 # directory-glob knowledge lives HERE (the adapter), not in core compile-manifest
-# (ADR_CLAIRE-0008 R7). Identical behavior + summary lines to the pre-generalization
+# (ADR_CADENCE-0008 R7). Identical behavior + summary lines to the pre-generalization
 # prune_orphans (byte-identical Claude golden / round-trip is the proof).
 cc_prune_orphans() {
   local src="$1" out="$2" d name
-  for d in "$out"/.claude/agents/*/; do
+  for d in "$out"/.agents/agents/*/; do
     [[ -d "$d" ]] || continue
     name="$(basename "$d")"
     if [[ ! -f "$src/roles/$name.md" ]]; then
       rm -rf "$d"
-      echo "  prune orphan role -> .claude/agents/$name (no source artifact)"
+      echo "  prune orphan role -> .agents/agents/$name (no source artifact)"
     fi
   done
-  for d in "$out"/.claude/skills/*/; do
+  for d in "$out"/.agents/skills/*/; do
     [[ -d "$d" ]] || continue
     name="$(basename "$d")"
     if [[ ! -f "$src/commands/$name.md" ]]; then
       rm -rf "$d"
-      echo "  prune orphan command -> .claude/skills/$name (no source artifact)"
+      echo "  prune orphan command -> .agents/skills/$name (no source artifact)"
     fi
   done
 }
@@ -159,7 +159,7 @@ cc_adapter_emit_role() {
 
   model="$(cc_tier_model "$tier")"
   if [[ -z "$model" ]]; then
-    emit_seam IMPOSSIBLE_STATE compile.output.missing_artifact "$f tier '$tier' has no model mapping"
+    emit_seam UNSOUND_CONDITION compile.output.missing_artifact "$f tier '$tier' has no model mapping"
     echo "FAIL: role $name tier '$tier' has no concrete-model mapping in the adapter" >&2
     return 1
   fi
@@ -170,7 +170,7 @@ cc_adapter_emit_role() {
 
   local unknown_roles
   if unknown_roles="$(cc_validate_role_refs "$f")"; then :; else
-    emit_seam SEAM_VIOLATION compile.body.unknown_role_ref "$f"
+    emit_seam BOUNDARY_FAULT compile.body.unknown_role_ref "$f"
     echo "FAIL: role $f references unknown role(s):$unknown_roles -- no roles/<name>.md source artifact" >&2
     return 1
   fi
@@ -178,13 +178,13 @@ cc_adapter_emit_role() {
   local expanded residual
   expanded="$(body_block "$f" | cc_expand_body)"
   if residual="$(printf '%s\n' "$expanded" | cc_residual_placeholders)"; then :; else
-    emit_seam SEAM_VIOLATION compile.body.residual_placeholder "$f"
+    emit_seam BOUNDARY_FAULT compile.body.residual_placeholder "$f"
     echo "FAIL: role $f has an unresolved placeholder in a normative body position:" >&2
     echo "$residual" | sed 's/^/  /' >&2
     return 1
   fi
 
-  local dir="$out_root/.claude/agents/$name"
+  local dir="$out_root/.agents/agents/$name"
   mkdir -p "$dir"
   {
     echo "---"
@@ -197,7 +197,7 @@ cc_adapter_emit_role() {
     echo ""
     printf '%s\n' "$expanded"
   } > "$dir/AGENT.md"
-  echo "  emit role -> .claude/agents/$name/AGENT.md"
+  echo "  emit role -> .agents/agents/$name/AGENT.md"
 }
 
 # --- emit a command -> SKILL.md (+ sidecar) -------------------------------
@@ -222,7 +222,7 @@ cc_adapter_emit_command() {
   if [[ -n "${FM[capability_tier]+x}" ]]; then
     model="$(cc_tier_model "${FM[capability_tier]}")"
     if [[ -z "$model" ]]; then
-      emit_seam IMPOSSIBLE_STATE compile.output.missing_artifact "$f tier '${FM[capability_tier]}' has no model mapping"
+      emit_seam UNSOUND_CONDITION compile.output.missing_artifact "$f tier '${FM[capability_tier]}' has no model mapping"
       echo "FAIL: command $name tier '${FM[capability_tier]}' has no concrete-model mapping in the adapter" >&2
       return 1
     fi
@@ -230,7 +230,7 @@ cc_adapter_emit_command() {
 
   local unknown_roles
   if unknown_roles="$(cc_validate_role_refs "$f")"; then :; else
-    emit_seam SEAM_VIOLATION compile.body.unknown_role_ref "$f"
+    emit_seam BOUNDARY_FAULT compile.body.unknown_role_ref "$f"
     echo "FAIL: command $f references unknown role(s):$unknown_roles -- no roles/<name>.md source artifact" >&2
     return 1
   fi
@@ -238,13 +238,13 @@ cc_adapter_emit_command() {
   local expanded residual
   expanded="$(body_block "$f" | cc_expand_body)"
   if residual="$(printf '%s\n' "$expanded" | cc_residual_placeholders)"; then :; else
-    emit_seam SEAM_VIOLATION compile.body.residual_placeholder "$f"
+    emit_seam BOUNDARY_FAULT compile.body.residual_placeholder "$f"
     echo "FAIL: command $f has an unresolved placeholder in a normative body position:" >&2
     echo "$residual" | sed 's/^/  /' >&2
     return 1
   fi
 
-  local dir="$out_root/.claude/skills/$name"
+  local dir="$out_root/.agents/skills/$name"
   mkdir -p "$dir"
   {
     echo "---"
@@ -258,13 +258,13 @@ cc_adapter_emit_command() {
     echo ""
     printf '%s\n' "$expanded"
   } > "$dir/SKILL.md"
-  echo "  emit command -> .claude/skills/$name/SKILL.md"
+  echo "  emit command -> .agents/skills/$name/SKILL.md"
 
   if [[ -n "$sidecar" ]]; then
     local sc_dir="$src_root/commands/$name"   # the colocated sidecar directory
     local sc_src="$sc_dir/$sidecar"           # the declared entry-point script
     if [[ ! -f "$sc_src" ]]; then
-      emit_seam LINEAGE_GAP compile.output.missing_artifact "command $name sidecar entry-point not found: $sc_src"
+      emit_seam DELTA_AUDIT_GAP compile.output.missing_artifact "command $name sidecar entry-point not found: $sc_src"
       echo "FAIL: command $name sidecar entry-point not found at $sc_src" >&2
       return 1
     fi
@@ -284,7 +284,7 @@ cc_adapter_emit_command() {
       if LC_ALL=C grep -Iq '' "$file"; then
         cc_expand_sidecar < "$file" > "$dir/$rel"
         if res="$(cc_residual_sidecar < "$dir/$rel")"; then :; else
-          emit_seam SEAM_VIOLATION compile.body.residual_placeholder "$sc_dir/$rel"
+          emit_seam BOUNDARY_FAULT compile.body.residual_placeholder "$sc_dir/$rel"
           echo "FAIL: sidecar $sc_dir/$rel has an unresolved placeholder after expansion:" >&2
           echo "$res" >&2
           return 1
@@ -294,6 +294,6 @@ cc_adapter_emit_command() {
       fi
       chmod --reference="$file" "$dir/$rel"
     done < <(find "$sc_dir" -type f -print0 | LC_ALL=C sort -z)
-    echo "  copy sidecar dir -> .claude/skills/$name/ (entry point: $sidecar)"
+    echo "  copy sidecar dir -> .agents/skills/$name/ (entry point: $sidecar)"
   fi
 }

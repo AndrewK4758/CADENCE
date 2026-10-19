@@ -1,8 +1,8 @@
 #!/bin/sh
-# Stop hook -- end-of-operation reminder for CLAIRE spec documents and metadata.yaml.
+# Stop hook -- end-of-operation reminder for CADENCE spec documents and metadata.yaml.
 # Supports both Antigravity (workspacePaths, conversationId, terminationReason -> decision:"continue")
 # and Claude Code (cwd, session_id -> decision:"block").
-# Inert outside CLAIRE repositories.
+# Inert outside CADENCE repositories.
 
 trap 'exit 0' EXIT
 set -f
@@ -32,7 +32,7 @@ fi
 
 git -C "$cwd" rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
-org="$cwd/docs/agentic-sdlc/CLAIRE_ORG.md"
+org="$cwd/docs/agentic-sdlc/CADENCE_ORG.md"
 [ -f "$org" ] || exit 0
 
 resolver="$cwd/ci-templates/scripts/org-binding-resolve.sh"
@@ -76,9 +76,9 @@ sig=$( { git -C "$cwd" diff HEAD -- $PATHS 2>/dev/null
 [ -n "$sig" ] || exit 0
 
 safe_sid=$(printf '%s' "$sid" | tr -c 'A-Za-z0-9._-' '_')
-state=$(git -C "$cwd" rev-parse --git-path "claire-doc-sync.$safe_sid" 2>/dev/null)
+state=$(git -C "$cwd" rev-parse --git-path "cadence-doc-sync.$safe_sid" 2>/dev/null)
 case "$state" in
-  "") state="$cwd/.git/claire-doc-sync.$safe_sid" ;;
+  "") state="$cwd/.git/cadence-doc-sync.$safe_sid" ;;
   /*) : ;;
   *)  state="$cwd/$state" ;;
 esac
@@ -88,7 +88,7 @@ printf '%s' "$sig" > "$state" 2>/dev/null
 [ "$active" = "true" ] && exit 0
 
 tickets=$(printf '%s\n' "$all" | sed -n 's#.*\(specs\|archive\)/\([^/]*\)/.*#\2#p' | sort -u | tr '\n' ' ' | sed 's/ *$//')
-reason="CLAIRE spec/metadata documents changed without a tracker sync for: ${tickets}. Per CLAIRE_ORG.md §9 (Projection triggers & sync discipline), run the bound sync skill for each listed ticket before finishing, unless already synced in this session."
+reason="CADENCE spec/metadata documents changed without a tracker sync for: ${tickets}. Per CADENCE_ORG.md §9 (Projection triggers & sync discipline), run the bound sync skill for each listed ticket before finishing, unless already synced in this session."
 
 if [ "$is_agy" -eq 1 ]; then
   printf '{"decision":"continue","reason":"%s"}' "$reason"

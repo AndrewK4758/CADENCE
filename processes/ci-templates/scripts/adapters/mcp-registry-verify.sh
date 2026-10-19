@@ -7,20 +7,20 @@
 # under the DX line ceiling. Ships to adopters via the ci-templates/scripts/
 # adapters COPY_PATH (whole-dir copy).
 #
-# The pure-shell surgical engine (_mcp_registry_rewrite) assumes CLAIRE's exact
+# The pure-shell surgical engine (_mcp_registry_rewrite) assumes CADENCE's exact
 # canonical pretty-printed layout (2-space indent, one container-member key per
 # line). mcp_json_wellformed only proves brace/quote balance -- NOT canonical
 # layout -- so a well-formed-but-non-canonical file (compact single-line, alt
 # indentation, inline objects) would be MISREAD, silently dropping adopter MCP
 # servers. This module adds the contract-correct, LAYOUT-AGNOSTIC guard: before
-# the atomic rename, verify "every non-CLAIRE item present in the input is
+# the atomic rename, verify "every non-CADENCE item present in the input is
 # present in the output" -- every non-container top-level key AND every
-# non-`claire-`-prefixed container member key survives. On failure the caller
+# non-`cadence-`-prefixed container member key survives. On failure the caller
 # refuses (no write, source untouched) and fails loud (AC-7 "refuse + instruct").
 
 # The reserved ownership sentinel (DEC-002): a container member key is
-# CLAIRE-owned iff it carries this prefix.
-MCP_RESERVED_PREFIX="claire-"
+# CADENCE-owned iff it carries this prefix.
+MCP_RESERVED_PREFIX="cadence-"
 
 # Reuse a shared emit_seam if the caller already defined one; else define it.
 if ! declare -F emit_seam >/dev/null 2>&1; then
@@ -99,9 +99,9 @@ _mcp_container_keys() {
 }
 
 # mcp_preservation_ok <infile> <outfile> <container>  -- returns 0 iff every
-# non-CLAIRE item in <infile> survives in <outfile>, else 1. Non-CLAIRE =
-# every top-level key EXCEPT the container (CLAIRE-managed; may be cleaned when
-# it holds only CLAIRE entries) + every container member key NOT carrying the
+# non-CADENCE item in <infile> survives in <outfile>, else 1. Non-CADENCE =
+# every top-level key EXCEPT the container (CADENCE-managed; may be cleaned when
+# it holds only CADENCE entries) + every container member key NOT carrying the
 # reserved prefix.
 mcp_preservation_ok() {
   local infile="$1" outfile="$2" container="$3" k
@@ -114,7 +114,7 @@ mcp_preservation_ok() {
     [[ "$k" == "$container" ]] && continue
     printf '%s\n' "$out_top" | grep -qxF "$k" || return 1
   done < <(_mcp_toplevel_keys "$infile")
-  # (2) every non-CLAIRE container member key survives.
+  # (2) every non-CADENCE container member key survives.
   while IFS= read -r k; do
     [[ -n "$k" ]] || continue
     case "$k" in "$MCP_RESERVED_PREFIX"*) continue ;; esac
@@ -125,8 +125,8 @@ mcp_preservation_ok() {
 
 # --- adopt-path reserved-key collision guard (AC-6 / DEC-002) ----------------
 # Echo the container member keys in <file> that carry the reserved prefix but are
-# NOT owned by CLAIRE's manifest (an adopter squatting the reserved namespace),
-# one per line. A reserved-prefixed key that IS a manifest key is CLAIRE's own
+# NOT owned by CADENCE's manifest (an adopter squatting the reserved namespace),
+# one per line. A reserved-prefixed key that IS a manifest key is CADENCE's own
 # (idempotent re-add), never a collision.
 _mcp_reserved_collisions() {
   local file="$1" manifest="$2" container="$3" k
@@ -134,7 +134,7 @@ _mcp_reserved_collisions() {
   while IFS= read -r k; do
     [[ -n "$k" ]] || continue
     case "$k" in "$MCP_RESERVED_PREFIX"*) ;; *) continue ;; esac
-    printf '%s\n' "$mkeys" | grep -qxF "$k" && continue   # CLAIRE's own -> fine
+    printf '%s\n' "$mkeys" | grep -qxF "$k" && continue   # CADENCE's own -> fine
     echo "$k"
   done < <(_mcp_container_keys "$file" "$container")
 }
@@ -143,7 +143,7 @@ _mcp_reserved_collisions() {
 # (mirrors cc_adopt_reserved_basename_guard). Returns 0 when <file> is absent/empty
 # or owns no non-manifest reserved-prefix key. Returns 1 -- warning loud+actionable,
 # emitting mcp.registry.reserved_key_collision -- when the adopter already registers
-# an MCP server under a reserved `claire-` key CLAIRE does not own. Refuse +
+# an MCP server under a reserved `cadence-` key CADENCE does not own. Refuse +
 # instruct rather than clobber the adopter's namespace-squatting entry; the caller
 # (adopt) then aborts loudly. The sync path (upgrade) does NOT call this guard.
 mcp_adopt_reserved_key_guard() {
@@ -151,11 +151,11 @@ mcp_adopt_reserved_key_guard() {
   [[ -f "$file" && -s "$file" ]] || return 0
   collide="$(_mcp_reserved_collisions "$file" "$manifest" "$container")"
   [[ -n "$collide" ]] || return 0
-  emit_seam IMPOSSIBLE_STATE mcp.registry.reserved_key_collision "$file"
+  emit_seam UNSOUND_CONDITION mcp.registry.reserved_key_collision "$file"
   echo "mcp_registry_add: refusing -- $file registers an MCP server under a RESERVED" >&2
-  echo "  CLAIRE key prefix ('${MCP_RESERVED_PREFIX}') that CLAIRE does not own:" >&2
+  echo "  CADENCE key prefix ('${MCP_RESERVED_PREFIX}') that CADENCE does not own:" >&2
   while IFS= read -r k; do printf '    %s\n' "$k"; done <<<"$collide" >&2
-  echo "  The '${MCP_RESERVED_PREFIX}' server-key prefix is CLAIRE's reserved namespace (DEC-002)." >&2
+  echo "  The '${MCP_RESERVED_PREFIX}' server-key prefix is CADENCE's reserved namespace (DEC-002)." >&2
   echo "  RENAME your MCP server to a non-'${MCP_RESERVED_PREFIX}' key and retry the adopt." >&2
   return 1
 }

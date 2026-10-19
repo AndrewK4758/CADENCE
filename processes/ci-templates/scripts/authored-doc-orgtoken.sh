@@ -6,7 +6,7 @@
 #
 # Bounded context: Build tooling / compile-gate flow. Invariants relied on from
 # outside this boundary: `artifacts/footprint.generated` is the source of record
-# for which paths ship to an adopter, and `docs/agentic-sdlc/CLAIRE_ORG.md`
+# for which paths ship to an adopter, and `docs/agentic-sdlc/CADENCE_ORG.md`
 # section 16's target clauses are the source of record for the token set.
 #
 # SOURCED, never executed. Functions only -- no `set` change, no trap, no output.
@@ -23,7 +23,7 @@
 # five of the seven Class-1 scenarios in the 2026-09-01 baseline sweep traced to
 # one org token in `docs/agentic-sdlc/production-insights.md`, a `kind=seed` file
 # installed into every adopting repository. Closing it needs a check at the
-# triage-agent's PROD-entry append and at /claire-archive's insights writes, and
+# triage-agent's PROD-entry append and at /cadence-archive's insights writes, and
 # `ci-templates/scripts/tests/` is a `framework_dev` path that does not ship, so
 # the rule could not stay there.
 #
@@ -63,7 +63,7 @@
 # read out of. This one pattern is the entire coupling between the guard and the
 # governance declaration.
 ORG_TOKEN_CLAUSE_RE='^- [*][*]Target — always ([A-Z][A-Z0-9]*), by name[.][*][*]'
-ORG_TOKEN_SOURCE_REL='docs/agentic-sdlc/CLAIRE_ORG.md'
+ORG_TOKEN_SOURCE_REL='docs/agentic-sdlc/CADENCE_ORG.md'
 
 # The ADAPTER-DECLARATION form: §16 opens one subsection per adapter it admits.
 #
@@ -89,7 +89,7 @@ ORG_ADAPTER_DECL_RE='^#{2,4}[[:space:]]+Live[ -][Vv]alidation of the .* adapter[
 # reworded. That made the WHOLE gate unrunnable, on every path including
 # `--path` over an unrelated document, for a normal and supported configuration
 # -- Live-Validation is opt-in per §16 -- and cost two composed insight entries
-# in the reporting adopter (PROD_CLAIRE-032).
+# in the reporting adopter (PROD_CADENCE-032).
 #
 # THE DISCRIMINATOR IS THE HEADING CENSUS, NEVER THE TOKEN COUNT. Deciding
 # whether the token derivation failed by counting the tokens it derived is an
@@ -99,7 +99,7 @@ ORG_ADAPTER_DECL_RE='^#{2,4}[[:space:]]+Live[ -][Vv]alidation of the .* adapter[
 # answered at all.
 #
 # NO MARKER, NO FLAG, NO `git`. The state is read from the document ITSELF, so
-# nothing is added to CLAIRE_ORG.md and §16 stays NOT a binding (DEC-003,
+# nothing is added to CADENCE_ORG.md and §16 stays NOT a binding (DEC-003,
 # confirmed at the gate as DEC-009). A template-faithful adopter -- the template
 # carries no §16 at all -- is classified correctly the day it installs, with
 # nothing to adopt and no upgrade step.
@@ -117,14 +117,14 @@ adg_org_token_state() {   # -> stdout: exactly one literal; rc always 0
 }
 
 # org_tokens <tree-root> -- the org tokens this guard sweeps, DERIVED from
-# CLAIRE_ORG.md §16's own target clauses. Echoes one token per line, in the
+# CADENCE_ORG.md §16's own target clauses. Echoes one token per line, in the
 # order §16 declares them. Returns 1, with a reason on stderr, when it derives
 # NOTHING.
 #
 # READ FROM THE TREE ROOT UNDER TEST, symmetric with adg_portable_paths "$1" -- never
 # a silent fallback to the real repository root. Deriving from $REPO_ROOT
 # unconditionally would make a synthetic-tree probe unable to test the derivation
-# at all, which is CLAIRE_DIRECTIVES.md Behavior 5's ungoverned decision, and would make
+# at all, which is CADENCE_DIRECTIVES.md Behavior 5's ungoverned decision, and would make
 # every fail-closed scenario unwritable.
 #
 # AN INCOMPLETE DERIVATION IS A LOUD FAILURE, not only an EMPTY one. Two
@@ -163,7 +163,7 @@ adg_org_token_state() {   # -> stdout: exactly one literal; rc always 0
 #
 # It is still ONE RULE in the sense that matters: one verdict, one channel, one
 # diagnostic shape. The polarity is never inverted per-branch, which is the trap
-# PROD_CLAIRE-005 and BTG-174's B-4 both took.
+# PROD_CADENCE-005 and BTG-174's B-4 both took.
 #
 # NOT ANCHORED TO THE SECTION NUMBER. The clause form is the discriminator and it
 # is unique to §16; also matching `## 16.` would add a SECOND way to derive

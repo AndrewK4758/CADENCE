@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Claude Code adapter -- MCP sub-module (BTG-057 / DEC-003). The ONLY home for the
-# Claude Code MCP-registration primitives (ADR_CLAIRE-0008 R7): the native config file
+# Claude Code MCP-registration primitives (ADR_CADENCE-0008 R7): the native config file
 # (.mcp.json at the repo root), the `mcpServers` container key, and the Claude
 # per-entry JSON shape (`command` string + `args` array + `env` object). Binds the
 # shared runtime-neutral engine (mcp-registry.sh) to those concretes. Sourced by
@@ -16,7 +16,7 @@
 # docker-stdio, `env:{...}` whose JSON key is the SERVER config key and whose value
 # references the ADOPTER's env var (`"JIRA_URL": "${JIRA_BASE_URL}"`, B1 fix /
 # DEC-011a, DEC-005), never literal secrets. The renderer is a swappable adapter
-# fn, so a schema correction stays confined here (ADR_CLAIRE-0008 clause 4) -- no runtime
+# fn, so a schema correction stays confined here (ADR_CADENCE-0008 clause 4) -- no runtime
 # literal in the shared engine.
 
 # The Claude MCP container key.
@@ -25,7 +25,7 @@ CC_MCP_CONTAINER="mcpServers"
 # shellcheck source=/dev/null
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mcp-registry.sh"
 
-# Render the CLAIRE entries as an ENTRY-block spec (one block per manifest row),
+# Render the CADENCE entries as an ENTRY-block spec (one block per manifest row),
 # in the Claude `mcpServers` member shape at canonical 4-space container-member
 # indent. Env values are ${NAME} references + the literal ENABLED_TOOLS allow-list.
 cc_mcp_render() {

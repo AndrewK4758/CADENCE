@@ -13,8 +13,8 @@
 #   mcp_registry_remove <config-file> [container-key]
 #   mcp_manifest_rows / mcp_manifest_keys / mcp_manifest_validate
 #
-# Ownership sentinel (DEC-002): a container member entry is CLAIRE-owned iff its
-# key carries the reserved prefix `claire-` (MCP_RESERVED_PREFIX). add/sync/remove
+# Ownership sentinel (DEC-002): a container member entry is CADENCE-owned iff its
+# key carries the reserved prefix `cadence-` (MCP_RESERVED_PREFIX). add/sync/remove
 # operate only on keys matching the sentinel -- never guessing. All writes are
 # ATOMIC (temp + mv) and FAIL-LOUD (mcp.config.unparseable on a non-well-formed
 # file; mcp.config.noncanonical on a well-formed-but-non-canonical file whose
@@ -57,7 +57,7 @@ mcp_manifest_rows() {
   done < "$manifest"
 }
 
-# Echo one manifest server-key per line (the CLAIRE-owned reserved-prefix set).
+# Echo one manifest server-key per line (the CADENCE-owned reserved-prefix set).
 mcp_manifest_keys() {
   local manifest="$1" row
   mcp_manifest_rows "$manifest" | while IFS='|' read -r row _; do echo "$row"; done
@@ -105,7 +105,7 @@ mcp_manifest_validate() {
     [[ -n "$k" ]] || continue
     case "$k" in
       "$MCP_RESERVED_PREFIX"*) ;;
-      *) emit_seam IMPOSSIBLE_STATE mcp.manifest.reserved_key_missing "$k"
+      *) emit_seam UNSOUND_CONDITION mcp.manifest.reserved_key_missing "$k"
          echo "mcp_manifest_validate: refusing -- manifest server-key '$k' lacks the reserved" >&2
          echo "  '${MCP_RESERVED_PREFIX}' prefix (the ownership sentinel, DEC-002)." >&2
          rc=1 ;;
@@ -115,7 +115,7 @@ mcp_manifest_validate() {
     # silently, Behavior 5). Docker rows (image=, no transport=http) are unchanged.
     if [[ "$transport" == "http" ]]; then
       if [[ -z "$url" || -z "$header" ]]; then
-        emit_seam IMPOSSIBLE_STATE mcp.manifest.remote_http_incomplete "$k transport=http"
+        emit_seam UNSOUND_CONDITION mcp.manifest.remote_http_incomplete "$k transport=http"
         echo "mcp_manifest_validate: refusing -- manifest row '$k' is transport=http but is" >&2
         echo "  missing url= or header= (a remote-http row needs both, BTG-059/DEC-008)." >&2
         rc=1
@@ -127,7 +127,7 @@ mcp_manifest_validate() {
       IFS=',' read -ra _toks <<< "$env"
       for pair in "${_toks[@]}"; do
         _mcp_env_pair_ok "$pair" && continue
-        emit_seam IMPOSSIBLE_STATE mcp.manifest.malformed_env_pair "$k env='$pair'"
+        emit_seam UNSOUND_CONDITION mcp.manifest.malformed_env_pair "$k env='$pair'"
         echo "mcp_manifest_validate: refusing -- manifest row '$k' env token '$pair' is malformed;" >&2
         echo "  each token must be '<server-key>:<adopter-var>' (both sides non-empty) or a colon-less" >&2
         echo "  '<name>' (key==source) -- never empty, empty-sided, or multi-colon (DEC-013)." >&2
@@ -140,7 +140,7 @@ mcp_manifest_validate() {
 
 # --- the surgical parse-to-model + reserialize core --------------------------
 # Reads <infile> (canonical config, or /dev/null for absent), DROPS every
-# CLAIRE-owned container member (key ^claire-), then re-inserts the entries
+# CADENCE-owned container member (key ^cadence-), then re-inserts the entries
 # from <specfile> (empty for remove). Preserves every non-container top-level key
 # and every adopter-owned container member byte-for-byte; cleans an emptied
 # container object. Prints the rewritten JSON to stdout. Depth-tracked, string-
@@ -155,11 +155,11 @@ _mcp_registry_rewrite() {
         if(c=="{"||c=="[")depth++; else if(c=="}"||c=="]")depth-- } }
     function stripcomma(s){ sub(/,[[:space:]]*$/,"",s); return s }
     function keyname(s,   t){ if(match(s,/"[^"]+"/)){ t=substr(s,RSTART+1,RLENGTH-2); return t } return "" }
-    function is_claire(k){ return (substr(k,1,length(prefix))==prefix) }
+    function is_cadence(k){ return (substr(k,1,length(prefix))==prefix) }
     function printblock(b,suf,  a,m,j){ m=split(b,a,"\n")
       for(j=1;j<=m;j++){ if(j==m)print a[j] suf; else print a[j] } }
     function finalize_entry(  t){ t=stripcomma(eb)
-      if(!is_claire(curkey)){ adopt_ent[++n_ad]=t } }
+      if(!is_cadence(curkey)){ adopt_ent[++n_ad]=t } }
     BEGIN{ depth=0;instr=0;esc=0;mode="OUT";n_tb=0;n_item=0;n_ad=0;n_spec=0;cont_seen=0
       if(specfile!=""){ blk=""; inblk=0
         while((getline line < specfile)>0){
@@ -208,7 +208,7 @@ _mcp_registry_upsert() {
   mcp_manifest_validate "$manifest" || return 1
   if [[ -f "$file" && -s "$file" ]]; then
     if ! mcp_json_wellformed "$file"; then
-      emit_seam IMPOSSIBLE_STATE mcp.config.unparseable "$file"
+      emit_seam UNSOUND_CONDITION mcp.config.unparseable "$file"
       echo "mcp_registry: refusing -- $file is present but not well-formed JSON; edit it manually." >&2
       return 1
     fi
@@ -226,19 +226,19 @@ _mcp_registry_upsert() {
   if ! _mcp_registry_rewrite "$infile" "$spec" "$container" > "$tmp"; then
     rm -f "$spec" "$tmp"; return 1
   fi
-  # Post-condition: the CLAIRE entries must have landed (LINEAGE_GAP if not).
+  # Post-condition: the CADENCE entries must have landed (DELTA_AUDIT_GAP if not).
   if [[ -s "$spec" ]] && ! grep -q "\"${MCP_RESERVED_PREFIX}" "$tmp"; then
-    emit_seam LINEAGE_GAP mcp.config.postcondition_missing "$file"
-    echo "mcp_registry: the CLAIRE entries did not land in $file." >&2
+    emit_seam DELTA_AUDIT_GAP mcp.config.postcondition_missing "$file"
+    echo "mcp_registry: the CADENCE entries did not land in $file." >&2
     rm -f "$spec" "$tmp"; return 1
   fi
   # Preservation postcondition: a non-canonical input the pure-shell engine cannot
   # parse without dropping adopter content is REFUSED (no write, source untouched)
   # -- never a best-effort partial edit (AC-7 / DEC-003).
   if [[ "$infile" != "/dev/null" ]] && ! mcp_preservation_ok "$infile" "$tmp" "$container"; then
-    emit_seam IMPOSSIBLE_STATE mcp.config.noncanonical "$file"
+    emit_seam UNSOUND_CONDITION mcp.config.noncanonical "$file"
     echo "mcp_registry: refusing -- $file is well-formed but NON-CANONICAL; a surgical" >&2
-    echo "  edit would drop adopter-owned content. Canonicalize it (CLAIRE pretty-printed" >&2
+    echo "  edit would drop adopter-owned content. Canonicalize it (CADENCE pretty-printed" >&2
     echo "  layout, 2-space indent, one server key per line) and retry." >&2
     rm -f "$spec" "$tmp"; return 1
   fi
@@ -259,7 +259,7 @@ mcp_registry_remove() {
   local file="$1" container="${2:-mcpServers}" tmp
   [[ -f "$file" && -s "$file" ]] || return 0   # absent/empty -> no-op
   if ! mcp_json_wellformed "$file"; then
-    emit_seam IMPOSSIBLE_STATE mcp.config.unparseable "$file"
+    emit_seam UNSOUND_CONDITION mcp.config.unparseable "$file"
     echo "mcp_registry_remove: refusing -- $file is present but not well-formed JSON." >&2
     return 1
   fi
@@ -267,7 +267,7 @@ mcp_registry_remove() {
   tmp="$(mktemp "$(dirname "$file")/.mcp-registry.tmp.XXXXXX")"
   if ! _mcp_registry_rewrite "$file" "" "$container" > "$tmp"; then rm -f "$tmp"; return 1; fi
   if ! mcp_preservation_ok "$file" "$tmp" "$container"; then
-    emit_seam IMPOSSIBLE_STATE mcp.config.noncanonical "$file"
+    emit_seam UNSOUND_CONDITION mcp.config.noncanonical "$file"
     echo "mcp_registry_remove: refusing -- $file is well-formed but NON-CANONICAL;" >&2
     echo "  a surgical edit would drop adopter-owned content. Canonicalize it and retry." >&2
     rm -f "$tmp"; return 1

@@ -4,10 +4,10 @@
 # ADOPTER-OWNED DATA, NOT FRAMEWORK DATA. This file is the ONE place the
 # authored-document gate's rules keep repository-SPECIFIC content: every row
 # below names a path in THIS repository and quotes a phrase from THIS
-# repository's history. `/claire-adopt` therefore copies this file with its
+# repository's history. `/cadence-adopt` therefore copies this file with its
 # ROWS STRIPPED -- an adopter receives the header, the grammar and an empty
 # ledger, and accrues their own rows against their own tree. It is create-once
-# and is excluded from `/claire-upgrade` merges, exactly like the other seed
+# and is excluded from `/cadence-upgrade` merges, exactly like the other seed
 # registers, so an adopter's rows are never overwritten by ours.
 #
 # WHY THE ROWS ARE NOT IN THE GATE ITSELF. They were, and that was a defect: the
@@ -68,11 +68,11 @@
 # MEASURED, NOT INHERITED. spec.md's step-8h sweep recorded that the only
 # non-archive occurrences were the three sync-jira-server provenance comments, and
 # concluded "No kind=installed doc contains it." That is FALSE of the tree: NINE
-# further occurrences live in FOUR shipped docs (claire-surfaces.md 1,
+# further occurrences live in FOUR shipped docs (cadence-surfaces.md 1,
 # surface-registry.md 2, production-insights.md 4, intent-insights.md 2). All
 # TWELVE rows BTG-095 froze -- 3 sidecar comments + those 9, across 7 distinct
 # files -- are pre-existing historical narrative, none is introduced by BTG-095,
-# and none can be removed here: docs/policies/claire-surfaces.md's BTG-075 clause
+# and none can be removed here: docs/policies/cadence-surfaces.md's BTG-075 clause
 # is deliberately byte-preserved by btg-083-dead-citation.test.sh S-2.1. The finding
 # is recorded in archive/BTG-095/decisions.md rather than papered over.
 #
@@ -109,7 +109,7 @@
 # nothing already excused changes what it excuses.
 #   +3 arrive with the token set itself. Generalising the derivation made every
 #      SECOND-ADAPTER occurrence in a shipping path visible for the first time. Sixteen of
-#      the eighteen in /claire-sync-youtrack's neutral source were SCRUBBED rather than
+#      the eighteen in /cadence-sync-youtrack's neutral source were SCRUBBED rather than
 #      ledgered (that is AC-1, and it is why de-hardcoding had to land first --
 #      exempting them would have meant inventing sixteen false reasons, which is
 #      exactly what BTG-174 refused to ship). The two that survive cite concrete
@@ -135,7 +135,7 @@
 # --- the BTG-175 adds when the token set stops being single-adapter ---
 #
 # TWO OF THE FOUR ARE RETIRED BY BTG-176 (DEC-054). Both anchored a live-probe
-# citation inside `artifacts/commands/claire-sync-youtrack/youtrack-{reconcile,projection}.md`,
+# citation inside `artifacts/commands/cadence-sync-youtrack/youtrack-{reconcile,projection}.md`,
 # and that ticket DELETES both files: the reversal to direct REST replaced the
 # MCP-era prose sidecars with scripts, and neither citation survives anywhere in
 # the shipped tree (verified by search, not assumed -- the reference-instance

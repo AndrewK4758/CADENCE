@@ -1,6 +1,6 @@
-# DERIVED -- do not hand-edit. The ADOPTER CLAIRE-footprint descriptor: the
-# boundary between the installed CLAIRE surface and the adopter team's own
-# project code, consumed by claire-eject.sh. Generated at adoption time.
+# DERIVED -- do not hand-edit. The ADOPTER CADENCE-footprint descriptor: the
+# boundary between the installed CADENCE surface and the adopter team's own
+# project code, consumed by cadence-eject.sh. Generated at adoption time.
 #
 # Categories 1+2 ONLY -- precise enumeration of the INSTALLED framework surface.
 # There is NO deny-by-default sweep here: an adopter's arbitrary project code is
@@ -9,7 +9,7 @@
 #
 #   (1) tree_root  -- the compiled .claude/ tree roots, resolved via the runtime
 #                     binding (RC-6); NEVER a hardcoded .claude/... literal here.
-#   (2) installed  -- the installed framework surface = adopt-claire.sh COPY_PATHS.
+#   (2) installed  -- the installed framework surface = adopt-cadence.sh COPY_PATHS.
 #   (seed) -- adopter-owned documents seeded at adopt time, stripped at eject, and
 #            EXCLUDED from the upgrade merge (never merged or created -- BTG-015).
 #
@@ -17,15 +17,15 @@
 kind=tree_root identity=roles binding_hook=artifact_root:roles
 kind=tree_root identity=commands binding_hook=artifact_root:commands
 kind=tree_root identity=hooks binding_hook=artifact_root:hooks
-kind=installed path=CLAIRE_DIRECTIVES.md
-kind=installed path=specs/CLAIRE.md
+kind=installed path=CADENCE_DIRECTIVES.md
+kind=installed path=specs/CADENCE.md
 kind=installed path=specs/TEMPLATE
 kind=seed path=docs/SYSTEM_OVERVIEW.md
 kind=installed path=docs/ADR/TEMPLATE.md
 kind=installed path=docs/flows/TEMPLATE.md
-kind=installed path=docs/agentic-sdlc/CLAIRE_ORG_TEMPLATE.md
+kind=installed path=docs/agentic-sdlc/CADENCE_ORG_TEMPLATE.md
 kind=installed path=docs/agentic-sdlc/PROJECT_INTENT_TEMPLATE.md
-kind=installed path=docs/agentic-sdlc/scout-reference.md
+kind=installed path=docs/agentic-sdlc/chord-reference.md
 kind=seed path=docs/agentic-sdlc/production-insights.md
 kind=installed path=docs/agentic-sdlc/human-gates.md
 kind=installed path=docs/agentic-sdlc/migration-workflow.md
@@ -37,7 +37,7 @@ kind=installed path=docs/policies/version-scheme/semver.md
 kind=installed path=docs/policies/version-scheme/calver-yyyy-ww.md
 kind=installed path=docs/migrations/version-scheme-binding.md
 kind=seed path=docs/policies/surface-registry.md
-kind=installed path=docs/policies/claire-surfaces.md
+kind=installed path=docs/policies/cadence-surfaces.md
 kind=installed path=docs/policies/deprecation-policy.md
 kind=installed path=docs/policies/doc-maintenance-policy.md
 kind=installed path=docs/policies/chaos-profiles.md
@@ -53,7 +53,7 @@ kind=installed path=docs/guides/submitting-changes.md
 kind=installed path=docs/guides/contributor_experience_guide.md
 kind=installed path=docs/guides/ef-migration-examples.md
 kind=installed path=docs/guides/process-metrics.md
-kind=installed path=ci-templates/scripts/claire-eject.sh
+kind=installed path=ci-templates/scripts/cadence-eject.sh
 kind=installed path=ci-templates/scripts/eject-footprint.sh
 kind=installed path=ci-templates/scripts/eject-footprint-headers.sh
 kind=installed path=ci-templates/scripts/eject-transform.sh
@@ -76,14 +76,14 @@ kind=installed path=ci-templates/scripts/org-binding-modes.sh
 kind=installed path=ci-templates/scripts/org-binding-crossref.sh
 kind=seed path=docs/agentic-sdlc/intent-insights.md
 kind=seed path=CLAUDE.md
-kind=installed path=.claire-version
+kind=installed path=.cadence-version
 kind=installed path=overlay
 kind=installed path=artifacts/footprint.generated
 kind=framework_dev path=.claude
 kind=framework_dev path=.gitattributes
 kind=framework_dev path=.github
 kind=framework_dev path=CHANGELOG.md
-kind=framework_dev path=CLAIRE_DIRECTIVES.md
+kind=framework_dev path=CADENCE_DIRECTIVES.md
 kind=framework_dev path=CLAUDE.md
 kind=framework_dev path=PROJECT_INTENT.md
 kind=framework_dev path=README.md

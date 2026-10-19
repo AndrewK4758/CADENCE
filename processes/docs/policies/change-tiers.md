@@ -1,39 +1,39 @@
 # Change Tiers — Right-Sizing the Process
 
-Not every change needs the full weight of the agentic SDLC. This policy defines four tiers based on objective triggers, each with a clear set of required and skipped process steps. The goal: appropriate rigor for the risk, no more.
+Not every modification warrants the full weight of the agentic SDLC. This policy establishes four change tiers governed by objective triggers, each defining an explicit set of required and skipped workflow steps. The objective is risk-proportional rigor — everything needed for safety, and nothing superfluous.
 
 ## Tier Assignment
 
 **Author proposes, triage validates.**
 
-1. The author states the tier in the MR description (e.g., `Tier: Low`)
-2. The triage agent (or CI check) validates the claim against objective triggers by scanning the diff
-3. If the actual change matches a higher tier's triggers, the pipeline flags a mismatch and blocks until the author either:
-   - Escalates to the correct tier (and follows its requirements)
-   - Justifies why the lower tier applies (reviewer must agree)
+1. The author declares the proposed tier in the MR description (e.g., `Tier: Low`).
+2. The triage agent (or CI gate) verifies the claim against objective triggers by inspecting the diff.
+3. If the diff activates triggers belonging to a higher tier, the pipeline flags the discrepancy and blocks progression until the author either:
+   - Escalates to the higher tier (and satisfies all of its requirements), or
+   - Documents a clear justification for why the lower tier holds (which the human reviewer must explicitly accept).
 
-Reviewers can also escalate at any gate: "This looks High, not Medium — needs full spec."
+Reviewers may also escalate a ticket at any human gate: "This exhibits High-tier blast radius, not Medium — a full specification is required."
 
 ### Policy-tooling consistency
 
-When a change modifies a tier, gate, or policy contract in this file or any other `docs/policies/` governance document — **or, since [ADR_CLAIRE-0100](../ADR/0100-the-policy-tooling-enumeration-obligation-extends-to-the-core-surface-registry-and-the-org-bindings.md), `docs/policies/claire-surfaces.md` itself (including its table SHAPE: a new table, a new column, a renamed column — not only its rows) or any `CLAIRE_ORG.md` binding, meaning any section that is a registered surface under the class predicate *a section is a registered surface iff it is a per-adopter-substituted contract that at least one CLAIRE tool or role resolves as a value, **and** is declared as a contract rather than as a practice* (both limbs bind; the second excludes a section that declares itself not a binding, even where a tool does parse it)** — the spec author must **enumerate every skill, agent, and doc that operationalizes or describes the affected policy, and confirm each honors the new contract.** Any tool or doc that does not is fixed in the same change or filed as a named follow-on ticket in the same change -- never left as a dangling risk note. Record the enumeration, which locations resolved, and its outcome in the spec's Compatibility Impact section so the check is auditable at the Code Review and Maintainer gates, not performed silently.
+When a change modifies a tier, gate, or policy contract in this file or any other `docs/policies/` governance document — **or, since [ADR_CADENCE-0100](../ADR/0100-the-policy-tooling-enumeration-obligation-extends-to-the-core-surface-registry-and-the-org-bindings.md), `docs/policies/cadence-surfaces.md` itself (including its table SHAPE: a new table, a new column, a renamed column — not only its rows) or any `CADENCE_ORG.md` binding, meaning any section that is a registered surface under the class predicate *a section is a registered surface iff it is a per-adopter-substituted contract that at least one CADENCE tool or role resolves as a value, **and** is declared as a contract rather than as a practice* (both limbs bind; the second excludes a section that declares itself not a binding, even where a tool does parse it)** — the spec author must **enumerate every skill, agent, and doc that operationalizes or describes the affected policy, and confirm each honors the new contract.** Any tool or doc that does not is fixed in the same change or filed as a named follow-on ticket in the same change -- never left as a dangling risk note. Record the enumeration, which locations resolved, and its outcome in the spec's Compatibility Impact section so the check is auditable at the Code Review and Maintainer gates, not performed silently.
 
-**Resolve the locations before you search; never assume them.** They are the runtime-neutral source of record where the repository has one -- `artifacts/commands/` (skills), `artifacts/roles/` (agents) -- and the installed definitions the host runtime actually loads, in the install tree of the runtime bound in `docs/agentic-sdlc/CLAIRE_ORG.md#runtime-binding` (Runtime Binding), which names that tree so you never have to assume a runtime. An adopting repository holds the installed definitions but NOT the runtime-neutral source, so a scope fixed to the neutral paths alone resolves to nothing there.
+**Resolve the locations before you search; never assume them.** They are the runtime-neutral source of record where the repository has one -- `artifacts/commands/` (skills), `artifacts/roles/` (agents) -- and the installed definitions the host runtime actually loads, in the install tree of the runtime bound in `docs/agentic-sdlc/CADENCE_ORG.md#runtime-binding` (Runtime Binding), which names that tree so you never have to assume a runtime (e.g., `.agents/skills/` and `.agents/agents/`, or `.gemini/` on Antigravity). An adopting repository holds the installed definitions but NOT the runtime-neutral source, so a scope fixed to the neutral paths alone resolves to nothing there.
 
 **Total non-resolution is a halt, never a finding.** If no searched location resolves any skill definition or any agent definition at all, the enumeration is broken, not empty -- halt and name every path searched. Never report "no tooling operationalizes this policy" on the strength of a path that does not exist in this repository (BTG-188).
 
-**Deliberately NOT in scope:** `docs/guides/`, `docs/flows/`, `docs/agentic-sdlc/` narrative documents and the two insight registers. No tool resolves their content as a value, so the same predicate that draws the boundary above keeps them out. This clause and `artifacts/roles/claire-spec-author.md`'s step-8h scope note are the extension's **two carriers** and must always agree; an extension recorded in only one of them is a drifted representation, not a partial answer.
+**Deliberately NOT in scope:** `docs/guides/`, `docs/flows/`, `docs/agentic-sdlc/` narrative documents and the two insight registers. No tool resolves their content as a value, so the same predicate that draws the boundary above keeps them out. This clause and `artifacts/roles/cadence-spec-author.md`'s step-8h scope note are the extension's **two carriers** and must always agree; an extension recorded in only one of them is a drifted representation, not a partial answer.
 
-This is a workflow-embedded forcing function, not a reminder: it exists because a recorded-but-unembedded lesson (PROD_CLAIRE-004's) demonstrably failed to prevent recurrence (PROD_CLAIRE-005). See [ADR_CLAIRE-0013](../ADR/0013-governance-doc-changes-enumerate-operationalizing-tooling.md) for the rationale and `artifacts/roles/claire-spec-author.md` (step 8h, "Policy-tooling consistency check") -- in an adopting repository, the installed copy of that same agent definition -- for the spec-author's operational procedure.
+This is a workflow-embedded forcing function, not a reminder: it exists because a recorded-but-unembedded lesson (PROD_CADENCE-004's) demonstrably failed to prevent recurrence (PROD_CADENCE-005). See [ADR_CADENCE-0013](../ADR/0013-governance-doc-changes-enumerate-operationalizing-tooling.md) for the rationale and `artifacts/roles/cadence-spec-author.md` (step 8h, "Policy-tooling consistency check") -- in an adopting repository, the installed copy of that same agent definition -- for the spec-author's operational procedure.
 
 ### Resolving "registered surface"
 
-Several triggers below turn on whether a change touches a **registered surface**. A *registered surface* is any surface listed in **any** surface-registry document present in the repository being classified. **CLAIRE defines exactly two such documents, and the enumeration below is the complete set** — the opening clause quantifies over *presence*, not over *membership*, so "any document present" means "each of these two that this repository has", never "these two and whatever else looks like a registry". Consult every one that is present:
+Several triggers below turn on whether a change touches a **registered surface**. A *registered surface* is any surface listed in **any** surface-registry document present in the repository being classified. **CADENCE defines exactly two such documents, and the enumeration below is the complete set** — the opening clause quantifies over *presence*, not over *membership*, so "any document present" means "each of these two that this repository has", never "these two and whatever else looks like a registry". Consult every one that is present:
 
 - `docs/policies/surface-registry.md` — this project's own, **adopter-owned** surfaces.
-- `docs/policies/claire-surfaces.md` — the CLAIRE framework's **core-owned** surfaces. Present in the framework repo and in every repo that adopted at or after v4.0.0.
+- `docs/policies/cadence-surfaces.md` — the CADENCE framework's **core-owned** surfaces. Present in the framework repo and in every repo that adopted at or after v4.0.0.
 
-**`PROJECT_INTENT.md` section 5 is NOT one of them** (BTG-275, ruled at its spec-approval gate). Its *Public Surfaces* table is the repository's **charter** — a statement of what it holds itself out as offering — not a surface-registry document, so it does not participate in this rule and a surface listed only there is not registered by that listing. `ADR_CLAIRE-0028`'s "every surface-registry **document** present" does not reach it. This was a live contradiction until BTG-275 settled it: section 5 calls `docs/policies/*.md` Stable wholesale, while `docs/policies/test-scope.md` and `docs/policies/change-tiers.md` each carry a **Beta** row, so a classifier who read section 5 as a registry reached two stabilities for one file. Where the charter and a registry row both speak, **the registry row governs** — it is what carries a guarantee period, a consumer list and a deprecation obligation.
+**`PROJECT_INTENT.md` section 5 is NOT one of them** (BTG-275, ruled at its spec-approval gate). Its *Public Surfaces* table is the repository's **charter** — a statement of what it holds itself out as offering — not a surface-registry document, so it does not participate in this rule and a surface listed only there is not registered by that listing. `ADR_CADENCE-0028`'s "every surface-registry **document** present" does not reach it. This was a live contradiction until BTG-275 settled it: section 5 calls `docs/policies/*.md` Stable wholesale, while `docs/policies/test-scope.md` and `docs/policies/change-tiers.md` each carry a **Beta** row, so a classifier who read section 5 as a registry reached two stabilities for one file. Where the charter and a registry row both speak, **the registry row governs** — it is what carries a guarantee period, a consumer list and a deprecation obligation.
 
 Three rules govern the resolution:
 
@@ -43,9 +43,9 @@ Three rules govern the resolution:
 
 If no registry document is present at all, the surface triggers cannot be evaluated. Halt and name the documents that were looked for — never treat their absence as "no registered surfaces".
 
-**This document is itself a registered surface**, and says so here rather than leaving a reader to discover it: `docs/policies/change-tiers.md` is registered **whole**, at **Beta**, with a guarantee period of **1 release cycle**, in `docs/policies/claire-surfaces.md` (BTG-275, discharging BTG-082 DEC-003). The narrower `#per-tier-spec-requirements` section carries its own row at the **same** level and period, so the two rows and this sentence give one answer. Earlier prose describing this file as *Stable* was a characterization no row ever carried and has been withdrawn.
+**This document is itself a registered surface**, and says so here rather than leaving a reader to discover it: `docs/policies/change-tiers.md` is registered **whole**, at **Beta**, with a guarantee period of **1 release cycle**, in `docs/policies/cadence-surfaces.md` (BTG-275, discharging BTG-082 DEC-003). The narrower `#per-tier-spec-requirements` section carries its own row at the **same** level and period, so the two rows and this sentence give one answer. Earlier prose describing this file as *Stable* was a characterization no row ever carried and has been withdrawn.
 
-Every trigger below that turns on registered surfaces resolves through this rule; none names a registry document of its own. Which surfaces belong in which registry is background, recorded in [the surface-registry split note](../migrations/claire-surfaces-split.md), and what changed for adopters when this rule replaced the previous single-registry wording is recorded in [the resolution migration note](../migrations/registered-surface-resolution.md) — both are background, and this rule is fully decidable without reading either.
+Every trigger below that turns on registered surfaces resolves through this rule; none names a registry document of its own. Which surfaces belong in which registry is background, recorded in [the surface-registry split note](../migrations/cadence-surfaces-split.md), and what changed for adopters when this rule replaced the previous single-registry wording is recorded in [the resolution migration note](../migrations/registered-surface-resolution.md) — both are background, and this rule is fully decidable without reading either.
 
 ---
 
@@ -130,7 +130,7 @@ values shows up.
 
 #### Release cuts
 
-A **release cut** is a commit that bumps the version badge, adds release notes under `docs/releases/v<version>.md` (`<version>` in the shape the repository's [version-scheme binding](../agentic-sdlc/CLAIRE_ORG.md#version-scheme-binding) declares -- `X.Y.Z` under `semver`, `YYYY.WW.PATCH` under `calver-yyyy-ww`), and moves `CHANGELOG.md`'s `[Unreleased]` section into a versioned entry. Release cuts qualify as Trivial in every other respect, **but they always require a `submission.md` at `specs/RELEASE-<version>/submission.md`**, written before tagging, capturing the release as a change proposal: what's being packaged, the discussion record from the cut, and the resolution (tag SHA, push timestamp, merge-into-trunk plan).
+A **release cut** is a commit that bumps the version badge, adds release notes under `docs/releases/v<version>.md` (`<version>` in the shape the repository's [version-scheme binding](../agentic-sdlc/CADENCE_ORG.md#version-scheme-binding) declares -- `X.Y.Z` under `semver`, `YYYY.WW.PATCH` under `calver-yyyy-ww`), and moves `CHANGELOG.md`'s `[Unreleased]` section into a versioned entry. Release cuts qualify as Trivial in every other respect, **but they always require a `submission.md` at `specs/RELEASE-<version>/submission.md`**, written before tagging, capturing the release as a change proposal: what's being packaged, the discussion record from the cut, and the resolution (tag SHA, push timestamp, merge-into-trunk plan).
 
 The rationale is archival: a release is the most consequential commit a project makes (it's a contract with downstream consumers), and it benefits from the same versioned, repo-resident discussion record that v3.2.0 introduced for substantive changes. The release notes capture *what shipped*; `submission.md` captures *what we proposed, debated, and decided about cutting the release.*
 
@@ -152,8 +152,8 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 | Step | Required |
 |---|---|
 | CI pipeline | Validate + Unit Tests + Doc Check |
-| Spec | `problem.md` only (acceptance criteria sufficient, no Zachman grid) |
-| SCOUT decomposition | No |
+| Spec | `problem.md` only (acceptance criteria sufficient, no Contextual Grounding Matrix (6W×4L)) |
+| CHORD decomposition | No |
 | Agents | code-reviewer only |
 | Human gates | Code Review (1 reviewer) |
 | Maintainer gate | No |
@@ -165,24 +165,24 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 
 **Examples:** Bug fix within a service, internal refactor (rename, extract method), adding validation to an existing endpoint, performance optimization that doesn't change behavior.
 
-> **`/claire-implement` at Low tier.** The `/claire-implement` skill and implementer agent read `metadata.yaml`'s `tier: Low` and accept `problem.md`'s acceptance criteria as the sole spec input -- no `spec.md`, `test-plan.md`, or `status: spec-approved` is required. The implementer derives its Implementation Order directly from the AC checklist using the standard TDD sequencing rule and applies the same strict red-green-accumulate-commit discipline. See `artifacts/commands/claire-implement.md` (Prerequisites) and `artifacts/roles/claire-implementer.md` (Inputs / Low tier).
+> **`/cadence-implement` at Low tier.** The `/cadence-implement` skill and implementer agent read `metadata.yaml`'s `tier: Low` and accept `problem.md`'s acceptance criteria as the sole spec input -- no `spec.md`, `test-plan.md`, or `status: spec-approved` is required. The implementer derives its Implementation Order directly from the AC checklist using the standard TDD sequencing rule and applies the same strict red-green-accumulate-commit discipline. See `artifacts/commands/cadence-implement.md` (Prerequisites) and `artifacts/roles/cadence-implementer.md` (Inputs / Low tier).
 
 > **Follow-up filing point, per tier.** A follow-up named at a gate is filed at a gate, via
-> `/claire-triage --file-only`, on explicit human confirmation. Which gate that is depends on the tier:
-> **Low** -- `/claire-review` is the filing point, because it is the only human gate a Low-tier ticket
-> reaches (the Low row above gives `Maintainer gate | No`); `/claire-archive` remains the completeness
-> backstop. **Trivial** -- the Trivial table gives `Agents | No`, so `/claire-review` never runs and
-> **no governed phase raises a candidate at all**. Coverage there is `/claire-archive` alone, and only for
+> `/cadence-triage --file-only`, on explicit human confirmation. Which gate that is depends on the tier:
+> **Low** -- `/cadence-review` is the filing point, because it is the only human gate a Low-tier ticket
+> reaches (the Low row above gives `Maintainer gate | No`); `/cadence-archive` remains the completeness
+> backstop. **Trivial** -- the Trivial table gives `Agents | No`, so `/cadence-review` never runs and
+> **no governed phase raises a candidate at all**. Coverage there is `/cadence-archive` alone, and only for
 > the one Trivial case that carries a change-proposal record: a release cut. That is a finding about
 > what is reachable, not an omission to be fixed later -- recorded here so a reader does not believe
-> coverage exists where it cannot. **Medium and High** -- `/claire-review`, then `/claire-maintain`, then
-> `/claire-archive`, in that order, each presenting only the candidates that carry no disposition yet.
+> coverage exists where it cannot. **Medium and High** -- `/cadence-review`, then `/cadence-maintain`, then
+> `/cadence-archive`, in that order, each presenting only the candidates that carry no disposition yet.
 > Every path records the outcome in `submission.md`'s `Follow-ups created`, which is never left
 > empty and never a bare none-shaped token. Candidates are `out-of-scope-defect` findings
-> (`docs/policies/finding-classes.md`); `adr-owed` is disposed of at `/claire-archive` only, at
+> (`docs/policies/finding-classes.md`); `adr-owed` is disposed of at `/cadence-archive` only, at
 > every tier that reaches it.
 
-> **`/claire-review` at Low tier.** The `/claire-review` skill and `claire-reviewer` agent read `metadata.yaml`'s `tier: Low` and review the change against `problem.md`'s Acceptance Criteria checklist (plus `decisions.md` if present) as the behavioral contract. `spec.md` and `test-plan.md` are not produced at Low tier, so their absence is compliant and is never flagged as a process violation; Test Coverage is verified against the AC checklist rather than a `test-plan.md`. Medium/High review is byte-preserved. If the tier is absent or unrecognized, the review falls back to the Medium/High (spec-driven) contract and notes the unresolved tier -- it never assumes Low. See `artifacts/commands/claire-review.md` (step 2) and `artifacts/roles/claire-reviewer.md` (Inputs / Low tier).
+> **`/cadence-review` at Low tier.** The `/cadence-review` skill and `cadence-reviewer` agent read `metadata.yaml`'s `tier: Low` and review the change against `problem.md`'s Acceptance Criteria checklist (plus `decisions.md` if present) as the behavioral contract. `spec.md` and `test-plan.md` are not produced at Low tier, so their absence is compliant and is never flagged as a process violation; Test Coverage is verified against the AC checklist rather than a `test-plan.md`. Medium/High review is byte-preserved. If the tier is absent or unrecognized, the review falls back to the Medium/High (spec-driven) contract and notes the unresolved tier -- it never assumes Low. See `artifacts/commands/cadence-review.md` (step 2) and `artifacts/roles/cadence-reviewer.md` (Inputs / Low tier).
 
 ---
 
@@ -206,9 +206,9 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 | Step | Required |
 |---|---|
 | CI pipeline | Full pipeline except chaos matrix |
-| Spec | Full: problem.md + spec.md + test-plan.md + decisions.md + submission.md (plus `design-options.md` when the explorer pre-step runs — an input, not a required artifact; the machine-readable table below is authoritative for `/claire-implement`) |
-| SCOUT decomposition | Yes |
-| Zachman grid | Abbreviated — System Model and Technology Model rows only (skip Scope and Business Model if the business context is obvious) |
+| Spec | Full: problem.md + spec.md + test-plan.md + decisions.md + submission.md (plus `design-options.md` when the explorer pre-step runs — an input, not a required artifact; the machine-readable table below is authoritative for `/cadence-implement`) |
+| CHORD decomposition | Yes |
+| Contextual Grounding Matrix (6W×4L) | Abbreviated — System Model and Technology Model rows only (skip Scope and Business Model if the business context is obvious) |
 | Agents | explorer, spec-author, code-reviewer, maintainer; **architect (optional)** — see note below |
 | Human gates | Spec Review + Code Review + Maintainer |
 | Integration tests | Yes |
@@ -243,9 +243,9 @@ When invoked, the architect's output (Observed/Inferred/Unknown findings, Draft 
 | Step | Required |
 |---|---|
 | CI pipeline | Full pipeline including chaos matrix |
-| Spec | Full: all artifacts (plus `design-options.md` when the explorer pre-step runs — an input, not a required artifact; the machine-readable table below is authoritative for `/claire-implement`) |
-| SCOUT decomposition | Yes, all ACs |
-| Zachman grid | Full — all four rows (Scope, Business Model, System Model, Technology Model) |
+| Spec | Full: all artifacts (plus `design-options.md` when the explorer pre-step runs — an input, not a required artifact; the machine-readable table below is authoritative for `/cadence-implement`) |
+| CHORD decomposition | Yes, all ACs |
+| Contextual Grounding Matrix (6W×4L) | Full — all four rows (Scope, Business Model, System Model, Technology Model) |
 | Agents | All: architect, explorer, spec-author, code-reviewer, maintainer, migration-author (if schema) |
 | Human gates | All 4: Spec Review + Code Review + Maintainer + Deploy Validation |
 | Integration tests | Yes |
@@ -263,14 +263,14 @@ When invoked, the architect's output (Observed/Inferred/Unknown findings, Draft 
 
 ## Per-Tier Spec Requirements
 
-**Machine-readable contract — authoritative for `/claire-implement`.**
+**Machine-readable contract — authoritative for `/cadence-implement`.**
 
-`/claire-implement` (and the `claire-implementer` role's direct-delegation Phase 0 mirror) reads **THIS table** —
+`/cadence-implement` (and the `cadence-implementer` role's direct-delegation Phase 0 mirror) reads **THIS table** —
 not the prose "What's required" tables above — to decide, before implementation begins: which spec
 artifacts a ticket of a given tier must have, whether the spec-approval human gate applies, and which
-pre-implementation `status` is valid. This table is the **sole authority** the `/claire-implement` skill
-consults for that decision. Editing a cell here changes `/claire-implement` behavior with **no** edit to the
-skill source (`artifacts/commands/claire-implement.md`).
+pre-implementation `status` is valid. This table is the **sole authority** the `/cadence-implement` skill
+consults for that decision. Editing a cell here changes `/cadence-implement` behavior with **no** edit to the
+skill source (`artifacts/commands/cadence-implement.md`).
 
 The prose tier definitions above remain the human-facing narrative. Where a reader needs the exact
 inputs the skill enforces, **this table is authoritative for the skill**; keep the two consistent, but
@@ -287,11 +287,11 @@ Notes:
 
 - **Required spec artifacts** are file-existence requirements under `specs/<ticket-id>/`. Artifacts
   present beyond the required set are used without error (never treated as forbidden).
-- **Spec-approval gate applies = Yes** means `/claire-implement` requires the spec to have passed the human
+- **Spec-approval gate applies = Yes** means `/cadence-implement` requires the spec to have passed the human
   Spec Review gate (`status: spec-approved`, or a later lifecycle status once implementation has
   begun) before proceeding. **= No** means the gate is not applied and the tier's *Valid
   pre-implementation status* (e.g. `triaged`) is sufficient to proceed past the spec gate.
-- If this section is **absent or unparseable** (e.g. an older `change-tiers.md` fork), `/claire-implement`
+- If this section is **absent or unparseable** (e.g. an older `change-tiers.md` fork), `/cadence-implement`
   **halts** with a configuration error naming this file (fail-closed) rather than assuming a
   permissive (skip all gates) or restrictive (assume a full spec) default.
 
@@ -349,7 +349,7 @@ The doc-freshness check script (`ci-templates/scripts/check-doc-freshness.sh`) c
 
 At any gate, a reviewer can escalate:
 
-> "This is classified as Low but introduces a new integration with the payment service. Escalating to Medium — please add a spec with SCOUT decomposition."
+> "This is classified as Low but introduces a new integration with the payment service. Escalating to Medium — please add a spec with CHORD decomposition."
 
 The author either complies or justifies. The reviewer has final say. Disagreements escalate to the maintainer (or tech lead if the maintainer is the author).
 

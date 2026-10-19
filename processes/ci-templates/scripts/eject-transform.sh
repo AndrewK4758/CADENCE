@@ -2,11 +2,11 @@
 #
 # eject-transform.sh -- adopter-mode transform-on-ship for the co-owned
 # .claude/settings.json (BTG-008 / DEC-005, OQ-2 Position B). Sourced by
-# claire-eject.sh in this shell's scope (SELF_DIR resolves the adapter).
+# cadence-eject.sh in this shell's scope (SELF_DIR resolves the adapter).
 #
 # Bounded context: Source-export / IP-separation flow (PI-017, Workstream B) --
 # the co-owned-config transform seam (BTG-008).
-# Upstream: called by claire-eject.sh do_eject after the copy walk, in ADOPTER
+# Upstream: called by cadence-eject.sh do_eject after the copy walk, in ADOPTER
 #   mode only (a descriptor with no kind=framework_dev rows).
 # Downstream: edits ONLY the destination copy of .claude/settings.json (source
 #   immutability preserved -- eject stays one-directional); appends a transform
@@ -28,8 +28,8 @@ _eject_settings_rel() {
 
 # eject_transform_settings <dest> <audit>
 #   In adopter mode, if the shipped <dest>/<settings-rel> exists, run
-#   cc_hook_settings_remove on that DEST COPY -- dropping CLAIRE-owned entries
-#   (command references .claude/claire-hooks/), preserving the project env block
+#   cc_hook_settings_remove on that DEST COPY -- dropping CADENCE-owned entries
+#   (command references .claude/cadence-hooks/), preserving the project env block
 #   and any adopter hook entry, cleaning an emptied event array / empty hooks
 #   object. Records the transform in the audit. Fails LOUD (non-zero) if the
 #   dest copy is non-canonical (cc_hook_settings_remove refuses) rather than
@@ -42,27 +42,27 @@ eject_transform_settings() {
   [[ -f "$target" ]] || return 0             # settings.json not shipped -> no-op
   hooks_adapter="$SELF_DIR/adapters/claude-code-hooks.sh"
   if [[ ! -f "$hooks_adapter" ]]; then
-    emit_seam IMPOSSIBLE_STATE eject.binding.adapter_missing "$hooks_adapter"
-    echo "claire-eject: hooks adapter sub-module not found: $hooks_adapter" >&2
+    emit_seam UNSOUND_CONDITION eject.binding.adapter_missing "$hooks_adapter"
+    echo "cadence-eject: hooks adapter sub-module not found: $hooks_adapter" >&2
     return 1
   fi
   # shellcheck source=/dev/null
   . "$hooks_adapter"
   local before after
-  before="$(grep -c '\.claude/claire-hooks/' "$target" 2>/dev/null)"; before=${before:-0}
+  before="$(grep -c '\.claude/cadence-hooks/' "$target" 2>/dev/null)"; before=${before:-0}
   if ! cc_hook_settings_remove "$target"; then
-    echo "claire-eject: refusing to ship a corrupt $rel (transform-on-ship failed)." >&2
+    echo "cadence-eject: refusing to ship a corrupt $rel (transform-on-ship failed)." >&2
     return 1
   fi
-  after="$(grep -c '\.claude/claire-hooks/' "$target" 2>/dev/null)"; after=${after:-0}
-  echo "transformed  $rel  (removed $((before - after)) CLAIRE hook entr(y/ies); adopter config preserved)" >> "$audit"
+  after="$(grep -c '\.claude/cadence-hooks/' "$target" 2>/dev/null)"; after=${after:-0}
+  echo "transformed  $rel  (removed $((before - after)) CADENCE hook entr(y/ies); adopter config preserved)" >> "$audit"
 }
 
 # ===========================================================================
 # BTG-057 -- MCP-registration co-owned-config transform-on-ship (AC-5 / DEC-006).
 # Generic dest-copy transform: source the runtime MCP shim from SELF_DIR and run
 # its sentinel-only remove on the SHIPPED <rel> config -- dropping only
-# CLAIRE-owned (reserved `claire-` key) entries, preserving every adopter MCP
+# CADENCE-owned (reserved `cadence-` key) entries, preserving every adopter MCP
 # server + non-container top-level key, cleaning an emptied container. An empty
 # resulting MCP container is an ACCEPTABLE outcome (not a failure). Records the
 # transform in the audit. Fails LOUD (non-zero + eject.mcp.transform_failed) if the
@@ -74,26 +74,26 @@ _eject_transform_mcp() {
   [[ -f "$target" ]] || return 0             # config not shipped -> no-op
   local adapter="$SELF_DIR/adapters/$adapter_rel"
   if [[ ! -f "$adapter" ]]; then
-    emit_seam IMPOSSIBLE_STATE eject.binding.adapter_missing "$adapter"
-    echo "claire-eject: MCP adapter sub-module not found: $adapter" >&2
+    emit_seam UNSOUND_CONDITION eject.binding.adapter_missing "$adapter"
+    echo "cadence-eject: MCP adapter sub-module not found: $adapter" >&2
     return 1
   fi
   # shellcheck source=/dev/null
   . "$adapter"
-  # Count CLAIRE container-member KEYS at key position (reserved-prefix key
-  # immediately followed by `:`) -- NOT a bare "claire- substring, which a
+  # Count CADENCE container-member KEYS at key position (reserved-prefix key
+  # immediately followed by `:`) -- NOT a bare "cadence- substring, which a
   # non-key adopter VALUE containing that text would inflate (review N3). The
   # canonical layout guarantees one member key per line (DEC-002 / verify module).
-  local mcp_key_re='^[[:space:]]*"claire-[^"]*"[[:space:]]*:'
+  local mcp_key_re='^[[:space:]]*"cadence-[^"]*"[[:space:]]*:'
   local before after
   before="$(grep -cE "$mcp_key_re" "$target" 2>/dev/null)"; before=${before:-0}
   if ! "$remove_fn" "$target"; then
-    emit_seam IMPOSSIBLE_STATE eject.mcp.transform_failed "$target"
-    echo "claire-eject: refusing to ship a corrupt $rel (MCP transform-on-ship failed)." >&2
+    emit_seam UNSOUND_CONDITION eject.mcp.transform_failed "$target"
+    echo "cadence-eject: refusing to ship a corrupt $rel (MCP transform-on-ship failed)." >&2
     return 1
   fi
   after="$(grep -cE "$mcp_key_re" "$target" 2>/dev/null)"; after=${after:-0}
-  echo "transformed  $rel  (removed $((before - after)) CLAIRE MCP entr(y/ies); adopter config preserved)" >> "$audit"
+  echo "transformed  $rel  (removed $((before - after)) CADENCE MCP entr(y/ies); adopter config preserved)" >> "$audit"
 }
 
 # The Claude co-owned MCP config (.mcp.json / mcpServers).
@@ -110,9 +110,9 @@ eject_transform_mcp_opencode() {
 }
 
 # --- DEC-006 (OQ-1) registry-driven transform-on-ship dispatch ---------------
-# The ADR_CLAIRE-0018 co-owned-file threshold (now 3-4 files) is crossed. Rather than add
+# The ADR_CADENCE-0018 co-owned-file threshold (now 3-4 files) is crossed. Rather than add
 # a third/fourth hardcoded special-case in do_eject (or formalize a kind=transform
-# footprint-grammar row -- the deferred BC-costed alternative, ADR_CLAIRE-0018 amendment),
+# footprint-grammar row -- the deferred BC-costed alternative, ADR_CADENCE-0018 amendment),
 # do_eject iterates this in-engine registry of co-owned-config transform fns. Each
 # fn owns its (config-path, shim) pair; adding a co-owned config later is ONE row
 # here, no do_eject change. Every fn is <dest> <audit> and fail-loud on a

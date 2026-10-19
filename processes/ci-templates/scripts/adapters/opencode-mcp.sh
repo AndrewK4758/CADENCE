@@ -30,7 +30,7 @@ OC_MCP_CONTAINER="mcp"
 # shellcheck source=/dev/null
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mcp-registry.sh"
 
-# Render the CLAIRE entries as an ENTRY-block spec in the OpenCode `mcp` member
+# Render the CADENCE entries as an ENTRY-block spec in the OpenCode `mcp` member
 # shape at canonical 4-space container-member indent. `command` is a single array
 # (no separate args); env-block JSON key = server config key, value references the
 # adopter env var (${JIRA_BASE_URL} etc., B1 fix) + the literal ENABLED_TOOLS.

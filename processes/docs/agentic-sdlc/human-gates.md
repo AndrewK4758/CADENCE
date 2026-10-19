@@ -2,300 +2,295 @@
 
 ## The Four Gates
 
-Four mandatory approval points. Agents recommend; humans decide.
+Four mandatory human approval checkpoints govern the CADENCE lifecycle. Agents analyze and recommend; humans decide.
 
-The unique value humans add at each gate is *judgment the AI cannot provide*: business context, organizational awareness, production instincts, and taste. The AI handles mechanical verification — completeness, consistency, coverage. The human handles "is this the right thing to build, and will it actually work?"
+The irreplaceable value humans bring to each gate is *judgment an AI agent cannot supply*: business context, organizational awareness, operational intuition, and architectural taste. AI agents handle mechanical verification — structural completeness, cross-artifact consistency, scenario coverage, and pre-review sweeps. Humans answer "is this the right capability to build, and will it hold up in production?"
 
-**Not all changes pass through all gates.** The process is right-sized by tier — see `docs/policies/change-tiers.md`. Trivial changes need only CI. Low changes need one code reviewer. Medium and High changes use progressively more gates. The table below applies to **Medium and High** tier changes (the full process).
+**Right-sized by tier.** Not every change traverses all four gates — see `docs/policies/change-tiers.md`. Trivial changes require only passing CI. Low-tier changes require a single code review gate. Medium and High-tier changes progress through the full gate sequence described below.
 
-**Forge-neutral language.** This document uses "MR" as the generic shorthand for *the change proposal*. On GitLab that's a Merge Request; on GitHub a Pull Request; on SourceHut a patchset thread on `lists.sr.ht`. Gate behavior is identical across forges; only the transport differs. See [`docs/guides/submitting-changes.md`](../guides/submitting-changes.md) for the three workflows. Where this document says "comment on the MR," the SourceHut equivalent is "reply on the patchset thread." Where it says "edit directly on the MR," the SourceHut equivalent is "send a v2 of the patchset."
+**Forge-neutral terminology.** This guide uses "MR" as generic shorthand for *a submitted change proposal*. On GitLab that is a Merge Request; on GitHub a Pull Request; on SourceHut a patchset thread on `lists.sr.ht`. Gate requirements are identical across forges; only the transport layer differs. See [`docs/guides/submitting-changes.md`](../guides/submitting-changes.md) for per-forge mechanics. Where this document says "comment on the MR," the SourceHut equivalent is "reply to the patchset thread"; where it says "edit directly on the MR," the SourceHut equivalent is "publish a v2 patchset."
 
-**`submission.md` as the canonical record.** The change proposal is also a versioned repository artifact: [`specs/{ticket-id}/submission.md`](../../specs/TEMPLATE/submission.md) carries the description (the same content as the MR body / PR body / cover letter), the discussion log, and the final resolution. Reviewers should treat `submission.md` as authoritative — comment in the forge / on the mailing list, but expect the substance to be mirrored back to `submission.md` so the archive carries the record after merge.
+**`submission.md` as the canonical repository record.** Every change proposal is also tracked as a versioned artifact in [`specs/{ticket-id}/submission.md`](../../specs/TEMPLATE/submission.md), which holds the proposal description (matching the MR/PR body or cover letter), the append-only review discussion, and the final gate resolution. Reviewers comment on the forge or mailing list as normal, and the substance is mirrored into `submission.md` so `archive/{ticket-id}/` preserves the complete review record after merge.
 
-## Non-Negotiable: Maintain Your Mental Model
+## Non-Negotiable: Maintain Your Architectural Mental Model
 
-**Every reviewer must be able to place a change within the overall system architecture.** If a spec or MR does not provide enough clarity for you to extend your mental model of how the system works — which bounded contexts are involved, which flows are affected, how data moves, what invariants hold — **reject it and request regeneration.**
+**Every human reviewer must be able to situate a change within the overall system architecture.** Whenever a specification or MR fails to give you enough clarity to update your mental model of the system — which bounded contexts participate, which business flows change, how data moves across boundaries, and which invariants hold — **reject it and request regeneration.**
 
-This is not optional. The purpose of human gates is to ensure humans retain architectural ownership. An approved change that no human fully understands is a change that erodes the system. Specifically:
+This requirement is absolute. Human gates exist so human engineers retain architectural ownership of the system. Approving a change that no human genuinely understands erodes architectural integrity. Specifically:
 
-- **Before approving anything**, answer: "Which context/service does this live in? Which flow does it participate in? What does it assume about the rest of the system?"
-- **If you cannot answer those questions** from the spec or MR as presented, it is incomplete. Reject it with feedback explaining what architectural context is missing.
-- **If the change introduces a new boundary, service, or flow** and you cannot trace it end-to-end in `docs/SYSTEM_OVERVIEW.md` or `docs/flows/`, require that documentation be added before approval.
-- **If the change modifies an existing flow** and the flow doc is stale or absent, require it be updated or created as part of the MR.
+- **Before approving any gate**, verify you can answer: "Which bounded context or service owns this? Which business flow does it participate in? What assumptions does it make about upstream and downstream contexts?"
+- **If you cannot answer those questions** from the specification or MR as written, the artifact is incomplete. Reject it with explicit feedback naming the missing architectural context.
+- **If the change introduces a new boundary, service, or business flow** that cannot be traced end-to-end in `docs/SYSTEM_OVERVIEW.md` or `docs/flows/`, require those system documents to be updated prior to approval.
+- **If the change alters an existing business flow** whose flow document is missing or outdated, require the flow document to be created or refreshed inside the same MR.
 
-The standard is: after approving, you could explain to a colleague what this change does to the system — not just the code — without re-reading the diff. If you cannot, you do not yet understand it well enough to approve.
+The bar for approval is simple: after signing off, you should be able to explain to a teammate what this change does to the *system* — not merely what lines changed in the diff — without re-opening the files.
 
 ---
 
-## How Project Maturity Shifts Your Focus
+## How Project Maturity Shifts Reviewer Focus
 
-Reviewer attention should weight differently depending on where the project sits in its lifecycle.
+Weight your review lens according to where the repository sits in its lifecycle:
 
-| Project State | Spec Reviewer Weights | Maintainer Focus |
+| Project State | Spec Reviewer Weights (Gate 1) | Maintainer Focus (Gate 3) |
 |---|---|---|
-| **Greenfield / early** | Business goals + simplicity. "Ship safely to learn." Defer decisions to the last responsible moment. Preserve flexibility for stakeholder feedback. | Is the scope small enough to learn from? Are we locking in decisions too early? |
-| **Mature / extending** | Architecture + fitness. Does this add warranted complexity? Does the design fit the existing system without creating debt? | Should this functionality remain in this codebase, or be pushed toward the edges or into another repo? |
+| **Greenfield / early** | Business outcome + structural simplicity. "Ship safely to learn." Defer irreversible commitments to the last responsible moment and preserve room for stakeholder iteration. | Is the scope tight enough to learn from quickly? Are we locking in abstractions prematurely? |
+| **Mature / extending** | Architectural fit + operational resilience. Does this introduce warranted complexity? Does the design respect established boundaries without accumulating technical debt? | Does this capability belong inside this repository's core, or should it live at the edge (a plugin, sidecar, or separate service/repo)? |
 
-This isn't binary — use judgment. But when in doubt: early projects err toward simplicity and learning; mature projects err toward architectural discipline and boundary enforcement.
+When in doubt: early-stage systems err toward simplicity and rapid learning; mature systems err toward boundary discipline and contract stability.
 
 ---
 
 ### Gate 1: Spec Review (Architect)
 
-**You are approving:** The design, not the implementation.
+**You are approving:** The architectural design and behavioral contract, before production code is written.
 
 #### What the AI already did
 
-The spec-author agent produced a Zachman-aligned grid, decomposed every AC through SCOUT, derived edge cases mechanically, evaluated quality facets, and drafted a test plan with Gherkin scenarios. The structure is complete.
+The `cadence-explorer` agent (at Medium/High tier) generated 2–3 structurally distinct, unranked design options in `design-options.md`, and `cadence-spec-author` grounded the system in the Contextual Grounding Matrix (6W×4L), decomposed every acceptance criterion through CHORD, mechanically derived edge cases and runtime observability seams, evaluated the active CADENCE Engineering Pillars, converged on a winning design option, and authored `test-plan.md` with ordered Gherkin scenarios.
 
 #### First: Orient in the Architecture
 
-Before evaluating anything else, answer these questions using `docs/SYSTEM_OVERVIEW.md` and `docs/flows/`:
+Before checking individual sections, answer three questions using `docs/SYSTEM_OVERVIEW.md` and `docs/flows/`:
 
-1. Which bounded context(s) does this spec operate within?
-2. Which business flow(s) does it modify or extend?
-3. What does it assume about adjacent contexts — data ownership, event contracts, invariants?
+1. Which bounded context(s) does this specification operate within?
+2. Which business flow(s) does it introduce, modify, or extend?
+3. What assumptions does it make about neighboring contexts — data ownership, event schemas, or shared invariants?
 
-If the spec does not make these answers obvious, **reject and request regeneration** with feedback: "I cannot place this change in the system architecture. Clarify which context owns this, which flows are affected, and what cross-boundary assumptions exist."
+If `spec.md` does not make those answers immediately clear, **reject and request regeneration**: "I cannot place this change within the system architecture. Clarify which bounded context owns this behavior, which flows are affected, and what cross-boundary assumptions exist."
 
 #### What only you can judge
 
-- **Architectural placement** — Can you trace this change through the system? Does it fit where the spec says it fits?
-- **Business intent fidelity** — Does this spec actually solve the problem the stakeholder described? Was anything lost in translation?
-- **Organizational context** — Roadmap conflicts, team capacity, political constraints, timing concerns
-- **Stakeholder alignment** — Would the person who raised this issue recognize this spec as their request?
-- **Decision timing** — Are we committing to something we don't need to decide yet?
+- **Architectural placement** — Can you trace this change end-to-end across the system map? Does the responsibility sit in the right layer and context?
+- **Business intent fidelity** — Does this specification solve the real problem described in `problem.md` without losing nuance?
+- **Organizational context** — Sequencing dependencies, team bandwidth, cross-team contention, and delivery timing
+- **Stakeholder alignment** — Would the requester who filed `problem.md` recognize this specification as fulfilling their need?
+- **Decision timing** — Does the specification lock in an architectural commitment that should remain open for now?
 
 #### Maturity-dependent lens
 
-**Greenfield:** Is this the minimum spec to ship and learn? Are we making premature architectural commitments? Could we defer a decision and still ship safely?
+**Greenfield:** Is this the smallest coherent design we can ship to validate the domain? Are we over-architecting before real usage patterns exist?
 
-**Mature:** Does this fit the existing architecture? Are cross-cutting concerns (auth, observability, data contracts) addressed? Does the proposed design respect existing boundaries?
+**Mature:** Does this honor existing bounded-context seams? Are cross-cutting requirements (auth, auditability, observability seams, surface compatibility) fully addressed?
 
 #### Checklist
 
 | Check | What to Look For |
 |---|---|
-| **Architectural clarity** | **Can you identify which context(s) and flow(s) this touches? If not, reject.** |
-| Zachman grid | Are the right cells filled? Do lower levels align with higher? |
-| SCOUT decomposition | Is every AC decomposed? Are edge cases derived? |
-| Facet evaluation | Are evaluations honest? Are violations justified? |
-| Compatibility impact | Are public surface changes identified? Deprecation plans drafted? |
-| Proposed design | Does it fit the architecture? Are code signatures correct? |
-| **Design Exploration** | Did an INDEPENDENT explorer produce the options, in `design-options.md`, rather than the spec-author authoring its own counter-case? Are there 2-3 STRUCTURALLY distinct options, each steelmanned on its own terms? Does the option departing from established patterns label its failure modes UNKNOWN rather than omitting or guessing them? Does the convergence record name the winner, the specific axis over the specific runner-up, a testable flip-condition, and the strongest objection to the chosen option? **Then record your own outcome** — see Feedback Loop. If the section carries the not-performed marker, that is a disclosed fallback, not a pass: decide deliberately whether to accept it. |
-| Test plan | Does the Gherkin coverage match the SCOUT output? Compatibility tests specified? |
-| Journey invariants | If declared: are they falsifiable, traced to SCOUT, and correctly mapped to chaos profiles? See [Part 8 of the journey & chaos tests guide](../guides/journey-and-chaos-tests.md#part-8-for-spec-reviewers-gate-1--journey-invariant-quality). A *journey* is an end-to-end business operation that crosses service boundaries or external dependencies (e.g., "Patient Check-In" spanning insurance verification, payment, and provider notification). *Invariants* are business truths that must hold regardless of infrastructure failures — universal constraints like "payment is never captured without prior verification" that chaos tests assert under adversarial conditions. |
+| **Architectural clarity** | **Can you identify which bounded context(s) and flow(s) this touches? If not, reject.** |
+| Contextual Grounding Matrix (6W×4L) | Are the relevant cells populated? Do the System and Technology models align with the Scope and Business models? |
+| CHORD decomposition | Is every acceptance criterion decomposed across Conditions, Handling, Outcomes, Rules, and Deltas? Are edge cases and seams derived? |
+| Engineering Pillar evaluation | Are pillar assessments candid? Are any flagged trade-offs resolved via the precedence matrix? |
+| Compatibility impact | Are affected public surfaces identified across both registries? Are deprecation plans complete where required? |
+| Proposed design | Does the design fit the codebase structure? Are interface and endpoint signatures sound? |
+| **Design Exploration** | Did an INDEPENDENT `cadence-explorer` agent produce the option set in `design-options.md` rather than `cadence-spec-author` inventing its own strawmen? Are there 2–3 STRUCTURALLY distinct options, each steelmanned on its own merits? Does any option departing from established patterns explicitly label unresolved failure modes as `UNKNOWN` rather than guessing or omitting them? Does the convergence block name the winner, the specific winning pillar axis over the specific runner-up, a falsifiable flip-condition, and the strongest objection to the winner? **Then record your Gate 1 outcome** — see Feedback Loop below. If the section carries the not-performed marker, treat that as a disclosed fallback rather than an automatic pass and decide explicitly whether to accept it. |
+| Test plan | Does the Gherkin scenario suite cover every CHORD dimension and derived seam? Are required compatibility tests specified? |
+| Journey invariants | When declared: are invariants falsifiable, traced to CHORD Rules/Conditions/Deltas, and mapped to chaos profiles? See [Part 8 of the journey & chaos tests guide](../guides/journey-and-chaos-tests.md#part-8-for-spec-reviewers-gate-1--journey-invariant-quality). A *journey* is an end-to-end business workflow spanning service boundaries or external dependencies; *invariants* are domain truths that must hold even under infrastructure chaos. |
 
 #### Feedback Loop
 
-You have two paths when the spec needs changes:
+When a specification requires adjustments, choose one of two paths:
 
-**Direct edit** — For small corrections: naming, wording, minor restructuring. Edit `spec.md` or `test-plan.md` directly on the MR.
+**Direct edit** — For localized edits: naming, prose clarity, or minor table adjustments. Edit `spec.md` or `test-plan.md` directly on the spec branch/MR.
 
-**Comment and regenerate** — For larger rethinks, missing context, or "I don't understand why X was chosen." Leave comments on the spec MR describing what's wrong or what question needs answering. Then invoke `/claire-spec` to regenerate the affected sections. The spec-author will incorporate your feedback, and SCOUT will re-derive edge cases from the revised decomposition. Re-review the updated spec.
+**Comment and regenerate** — For structural changes, missing domain constraints, or reconsidering the chosen design option. Record your feedback on the spec MR and invoke `/cadence-spec` to regenerate the affected sections so CHORD decompositions, observability seams, and Gherkin scenarios stay synchronized. Re-review the regenerated specification.
 
-Use your judgment on which path: if the change is structural enough that SCOUT decomposition or Zachman alignment would be affected, regeneration keeps the spec internally consistent.
-
-**Record your Design Exploration outcome.** Whichever path you take, append **one fixed-form line** to `specs/<ticket-id>/decisions.md` recording what you did with the spec-author's convergence. The canonical form, stated here and deliberately **not** reproduced inside any file the counting sweep reads:
+**Record your Design Exploration outcome.** Whichever review path you take, append **one fixed-form outcome line** to `specs/<ticket-id>/decisions.md` recording your disposition of the spec-author's convergence. Use this exact canonical format (stated here and intentionally omitted from files scanned by the override-rate sweep):
 
 ```
 Gate 1 Design Exploration outcome: <value> -- <one sentence of why>
 ```
 
-`<value>` is exactly one of three:
+`<value>` must be one of these three literals:
 
 | Value | Meaning |
 |---|---|
-| `accepted as recommended` | You kept the spec-author's winner, on its stated axis. |
-| `accepted with amendment` | You kept the winner but changed the reasoning, the flip-condition, or the scope of the choice. |
-| `overridden to a different option` | You selected a different option from `design-options.md`. |
+| `accepted as recommended` | You accepted the spec-author's chosen winner on its stated pillar axis. |
+| `accepted with amendment` | You kept the winning option but modified the rationale, the flip-condition, or the scope of the design. |
+| `overridden to a different option` | You selected a different architectural option from `design-options.md`. |
 
-The line is an **append**. It never edits the convergence entry it may disagree with — `decisions.md` is immutable, and a disagreement that overwrites the claim it disagrees with destroys the evidence that the gate did anything.
+This line is strictly an **append** to `decisions.md`. Never edit or overwrite the spec-author's original convergence entry — `decisions.md` is append-only, and overwriting the recommendation erases the audit trail showing how the human gate shaped the design.
 
-**Override-rate** is the count of `accepted with amendment` plus `overridden to a different option` over the total, swept across `specs/*/decisions.md` and `archive/*/decisions.md`, **excluding `specs/TEMPLATE/`** — the template would otherwise be counted by its own documented example, which is how a sentinel poisons its own sweep. A sustained near-zero override-rate over a real option set is the signal that this gate has become theater. That is a finding for a future ticket, not a defect in the spec in front of you. Whatever baseline your project starts from is a declared first hypothesis, not a measurement: correct it from your first full review window rather than defending it.
+**Override-rate tracking** measures `accepted with amendment` plus `overridden to a different option` divided by total Gate 1 outcomes across `specs/*/decisions.md` and `archive/*/decisions.md`, **excluding `specs/TEMPLATE/`** (so template examples never pollute the count). A sustained near-zero override rate across real multi-option specs is a warning signal that Gate 1 review has become rubber-stamp theater — a calibration finding for Process Retro / Agent Calibration rather than a defect in the current ticket.
 
-**Record your Gate 1 rulings (BTG-331).** A spec authored under `specs/TEMPLATE/spec.md`'s post-BTG-331 form carries the sentinel `**Gate 1 rulings:** required` in its Open Questions. When it does, append **one line per required item** to `specs/<ticket-id>/decisions.md`, in this fixed grammar:
+**Record your Gate 1 rulings (BTG-331).** Every specification authored from `specs/TEMPLATE/spec.md` carries the sentinel `**Gate 1 rulings:** required` under Open Questions. When present, append **one ruling line per required item** to `specs/<ticket-id>/decisions.md` using this exact grammar:
 
 ```
 Gate 1 ruling: <item> -- <agree|amend|override> -- <why>
 ```
 
-`<item>` is the `OQ-N` id (or `design`, when `design-options.md` exists — the BTG-201 outcome line above already covers it and needs no separate `design` line). `<why>` is your own reasoning, not restated boilerplate. `{{sidecar:claire-spec:verify-facts.sh}} --rulings <ticket-id>` derives a label from each line's content, never from who wrote it:
+`<item>` is the `OQ-N` identifier (or `design` when `design-options.md` exists — though the BTG-201 Design Exploration outcome line above already satisfies `design` without needing a duplicate line). `<why>` states your concrete reasoning. `{{sidecar:cadence-spec:verify-facts.sh}} --rulings <ticket-id>` classifies each ruling line from its content alone:
 
 | Label | Meaning |
 |---|---|
-| `diverged` | You wrote `amend` or `override` — you changed the presented default. |
-| `examined` | You wrote `agree`, and your `<why>` independently cites a resolvable path or `path:N` that the spec itself did not already cite. |
-| `accepted-as-presented` | You wrote `agree` with no such independent citation. |
+| `diverged` | You recorded `amend` or `override` — changing the proposed default. |
+| `examined` | You recorded `agree`, and your `<why>` cites an independent resolvable file path or `path:N` coordinate not already cited in `spec.md`. |
+| `accepted-as-presented` | You recorded `agree` without an independent file citation. |
 
-The label never blocks and is never a verdict on you — it is a machine-checkable trace of whether a `agree` carried contributed evidence, so a reviewer's own later audit does not have to trust self-report. `/claire-implement` only refuses to start while a **required** item (an `OQ-N`, or `design` when owed) has **no** ruling line, or a `Gate N ruling:` line fails the grammar above — never on the label. A later ruling line for the same item **supersedes** an earlier one (`decisions.md` is append-only; never edit a prior line). Gate 2 and Gate 3 may use the same grammar (`Gate 2 ruling: ...`, `Gate 3 ruling: ...`) — reported by the checker, never required.
+The derived label never blocks progression — it provides an objective audit trail of whether an `agree` ruling contributed independent codebase verification. `/cadence-implement` halts only when a **required** item (`OQ-N`, or `design` when owed) lacks a ruling line or when a `Gate N ruling:` line violates the grammar above. Because `decisions.md` is append-only, a later ruling line for the same `<item>` **supersedes** an earlier one. Gate 2 and Gate 3 reviewers may optionally record rulings using the same grammar (`Gate 2 ruling: ...`, `Gate 3 ruling: ...`).
 
 ---
 
 ### Gate 2: Code Review (Engineer)
 
-**You are approving:** The implementation against the spec.
+**You are approving:** The implementation against its governing tier contract (`spec.md` + `test-plan.md` at Medium/High tier; `problem.md` acceptance criteria at Low tier).
 
 #### What the AI already did
 
-The AI code-reviewer has already:
-- Matched every acceptance criterion to its corresponding implementation
-- Verified test coverage against each Gherkin scenario in the test plan (at Low tier, where no test plan is produced, against each `problem.md` acceptance criterion instead, per `docs/policies/change-tiers.md`)
-- Scanned the codebase for consistency and maintainability issues
-- Checked Zachman guardrails and facet compliance
-- Flagged mechanical issues (style, patterns, anti-patterns)
-- Applied the two-axis adversarial lens — verified each "this is safe because X" claim against the real source of X (real seed/config numbers, engine docs, every sibling writer, prod wiring, the canonical story file — never inherited), and located each candidate failure by its position relative to the diff (in it / in code it consumes / in code that consumes it / in unchanged code whose contract it silently changed — the last is the one diff-review misses by construction), then probed for silent-failure paths (fallbacks/stubs that mask defects, broad `except` clauses, consumed-contract assumptions, invariant completeness across all writers of newly-shared state, reused-state-across-transitions, test/config-environment fidelity, test/fake blind spots, declarative-config & runtime-engine omissions, claimed-bounds/out-of-scope recomputed against real numbers)
+Prior to your review, the local pre-review sweep (`offload_deep_review` on `:9380`) and the `cadence-reviewer` agent have already:
+- Verified every acceptance criterion against its production code implementation
+- Checked automated test coverage against every Gherkin scenario in `test-plan.md` (or against `problem.md` acceptance criteria at Low tier, per `docs/policies/change-tiers.md`)
+- Audited adherence to Contextual Grounding constraints and CADENCE Engineering Pillars (`<400`-line file ceiling, comment discipline, structured logging, audit trail coverage, CHORD observability seams)
+- Flagged mechanical, stylistic, and anti-pattern defects
+- Applied the two-axis adversarial review lens — **verify-the-claim** (checking every "this is safe because X" assumption against the authoritative source of X in seed data, config, engine docs, sibling writers, and production wiring) and **locate-the-failure** (probing for defects inside the diff, in upstream code it calls, in downstream consumers, and in unchanged sibling code whose assumptions the diff silently invalidated), plus silent-failure probes (silent fallbacks/stubs, overly broad exception handlers, partial multi-writer state updates, stale state across transitions, test-fake blind spots, and environment asset parity gaps)
 
 #### First: Orient in the Architecture
 
-Before reading the diff, answer:
+Before inspecting the code diff, verify:
 
 1. Which bounded context does this MR modify?
-2. Which flow(s) does it participate in?
-3. Does the MR description state these clearly?
+2. Which business flow(s) does it participate in?
+3. Does `submission.md` (and the MR/PR description) state both clearly up front?
 
-If you cannot answer from the MR description and spec reference alone, **send it back.** An MR that a reviewer cannot place in the system is an MR that cannot be meaningfully reviewed.
+If you cannot tell where the change lives in the system from `submission.md` and `spec.md`, **return the MR for clarification** before reviewing line-by-line code.
 
 #### What only you can judge
 
-- **System comprehension** — After reading this MR, can you explain what it does to the system (not just the code) to a colleague? If not, you don't understand it well enough to approve.
-- **Subtle correctness** — Will this actually work in production? Under load? With real data? The AI verifies the code matches the spec; you verify the code matches reality.
-- **Domain knowledge** — Business rules the AI can't verify because they live in your head, not in the spec
-- **Operational instincts** — "This will time out on the large tenant" or "This will deadlock under concurrent writes"
-- **Team awareness** — Who else is touching this area? Will this conflict with in-flight work? Does this create a maintenance burden for the team?
-- **Design taste** — Is this the right abstraction? Is the code going to be readable in six months? Would you want to debug this at 2am?
+- **System comprehension** — After reviewing the MR, can you explain its system-level effect to another engineer without looking at the diff? If not, do not approve yet.
+- **Production realism** — Will this behave safely under real production traffic, data skew, and failure modes? The AI verifies code-to-spec conformance; you verify code-to-reality conformance.
+- **Tacit domain invariants** — Edge cases and operational nuances that live in team experience rather than written specs
+- **Operational failure modes** — Lock contention, large-tenant query amplification, retry storms, or memory pressure under load
+- **In-flight coordination** — Overlapping work on adjacent branches or upcoming migrations that could collide with this change
+- **Long-term maintainability** — Is the abstraction clean, and would you feel confident debugging this module during a 2 a.m. incident?
 
 #### Checklist
 
 | Check | What to Look For |
 |---|---|
-| **Architectural orientation** | **Can you state which context and flow this MR belongs to? If not, send it back.** |
-| Spec compliance | Does each AC have a corresponding implementation? |
-| Test coverage | Does each Gherkin scenario have a test (at Low tier, where no test plan is produced, does each `problem.md` acceptance criterion have a test instead, per `docs/policies/change-tiers.md`)? Compatibility tests present? |
-| Facet compliance | File sizes, audit records, structured logging, observability, no anti-patterns |
-| TDD discipline | Does the commit history show one red-green cycle per scenario? |
-| Architecture | Layer boundaries, service patterns, data access through repository |
-| Security | Auth policies, input validation, no data leaks |
-
-The AI catches the mechanical issues in this checklist. Your review focuses on design judgment, production instincts, and subtle correctness that requires context the AI doesn't have.
+| **Architectural orientation** | **Can you name the bounded context and business flow this MR modifies? If not, send it back.** |
+| Contract compliance | Is every acceptance criterion completely implemented? |
+| Test coverage | Does every Gherkin scenario in `test-plan.md` (or every `problem.md` AC at Low tier) have a corresponding automated test? Are compatibility tests included? |
+| Pillar compliance | Authored files `<400` lines, 100% mutation audit records, structured JSON logs with correlation IDs, CHORD observability seams emitted, zero anti-patterns |
+| TDD commit history | Does git history show clean red-green-accumulate commits progressing through the Implementation Order? |
+| Layer & boundary discipline | Clean separation across domain, application, API, and persistence layers |
+| Security boundary posture | Server-side principal enforcement, input validation, zero sensitive data exposure |
 
 ---
 
 ### Gate 3: Maintainer Acceptance (Maintainer)
 
-**You are approving:** The MR's project-level impact — not code correctness (that was Gate 2).
+**You are approving:** The change proposal's repository-level fit and long-term impact — not line-level code correctness (which Gate 2 already verified).
 
 #### What the AI already did
 
-The AI maintainer agent produced a structured 8-dimension assessment covering backwards compatibility, architectural integrity, goal alignment, maintenance cost, security impact, release readiness, dependency health, and documentation currency.
+The `cadence-maintainer` agent generated an 8-dimension maintainer assessment evaluating surface compatibility, architectural integrity, `PROJECT_INTENT.md` charter alignment, ongoing maintenance cost, security boundary impact, release readiness, dependency health, and system documentation currency.
 
 #### First: Orient in the Architecture
 
-At this gate you are the guardian of architectural integrity. Before evaluating dimensions:
+At Gate 3 you act as the steward of system-wide coherence. Before reviewing the 8 dimensions:
 
-1. Open `docs/SYSTEM_OVERVIEW.md`. Locate the bounded context(s) and flow(s) this MR touches.
-2. Verify the dependency graph and interaction map still hold after this change merges.
-3. If this MR adds a new service, context, or flow — can you draw it on the existing map? If not, the documentation is incomplete and must be updated before acceptance.
+1. Open `docs/SYSTEM_OVERVIEW.md` and locate the bounded context(s) and business flow(s) touched by this MR.
+2. Confirm the context interaction map and architectural invariants still hold once this MR lands.
+3. Whenever the MR introduces a new service, bounded context, or business flow, verify you can trace it on the system map; if not, require `docs/SYSTEM_OVERVIEW.md` and `docs/flows/` updates before accepting.
 
-If the MR's impact on the system architecture is unclear to you, **postpone** with feedback requesting architectural clarification. You are the last line of defense against changes that nobody fully understands at the system level.
+If the MR's system-wide impact remains opaque, **postpone** acceptance and request architectural clarification.
 
 #### What only you can judge
 
-- **Boundary decisions** — For mature projects: should this functionality remain in this codebase, or should it be pushed toward the edges (a plugin, a sidecar, a separate service, another repo entirely)? The AI can flag complexity growth but cannot make architectural boundary decisions.
-- **Strategic fit** — Is this core mission, adjacent, or scope creep? Does it move the project toward or away from its long-term shape?
-- **Maintenance trajectory** — Not just "is this maintainable today" but "where does this put us in 6 months if we keep adding at this rate?"
-- **Team and org context** — Ownership boundaries, team capacity for ongoing maintenance, political implications of taking on new responsibility
+- **Repository boundary placement** — In a mature codebase, does this capability belong in core, or should it live in an adapter, plugin, sidecar, or separate repository?
+- **Charter alignment** — Does this advance the core mission in `PROJECT_INTENT.md`, or does it edge into a declared non-goal?
+- **Compound maintenance trajectory** — Where does our operational and cognitive load land in six months if we accept changes shaped like this one?
+- **Ownership & team capacity** — Does the owning team have the bandwidth and domain charter to support this capability long-term?
 
 #### Maturity-dependent lens
 
-**Greenfield:** Is this adding premature structure? Are we creating abstractions before we understand the domain? Keep it simple enough to throw away.
+**Greenfield:** Are we introducing rigid abstractions before the domain model has stabilized? Keep early structure lightweight enough to evolve rapidly.
 
-**Mature:** Is this the right place for this code? Could it be a library, a separate service, or pushed to a consumer? Are we making the core harder to reason about?
+**Mature:** Is this the right home for this responsibility? Does it preserve clean seams and keep the core domain model cohesive?
 
 #### Checklist
 
 | Check | What to Look For |
 |---|---|
-| **System model intact** | **Can you draw this change on the system map? Does SYSTEM_OVERVIEW.md still hold? If not, require update.** |
-| Backwards compatibility | Are public surface changes handled with deprecation plans? Surface registry updated? |
-| Architectural integrity | Does the change follow existing ADRs? Any new patterns justified? |
-| Project goal alignment | Is this core mission, adjacent, or scope creep? |
-| Maintenance cost | How many new dependencies, patterns, or infrastructure pieces? |
-| Security impact | Attack surface changes, trust boundary shifts, supply chain risk? |
-| Release readiness | CHANGELOG updated? Deprecation notices? Migration plan? Rollback documented? |
-| Dependency health | Licenses compatible? Known vulnerabilities? Maintained? |
+| **System model intact** | **Can you place this change on `docs/SYSTEM_OVERVIEW.md`? Are affected flow docs current? If not, require updates.** |
+| Surface compatibility | Are public surface modifications backed by deprecation plans and updated in the surface registry? |
+| Architectural integrity | Does the change honor ratified ADRs and `PROJECT_INTENT.md` invariants? Are new patterns warranted? |
+| Charter alignment | Does this serve the repository's mission in `PROJECT_INTENT.md` without violating Non-Goals? |
+| Maintenance cost | Are new dependencies, operational procedures, or abstractions justified by the value delivered? |
+| Security boundary impact | Any expansion of attack surface, trust-boundary shift, or supply-chain exposure? |
+| Release readiness | CHANGELOG entry drafted, migration/rollback plan verified, follow-ups dispositioned in `submission.md`? |
+| Dependency health | Compatible licenses, active maintenance, and zero known vulnerabilities? |
 
-Your decision is **Accept**, **Postpone**, or **Reject**.
+Your verdict at Gate 3 is **Accept**, **Postpone**, or **Reject**.
 
 ---
 
-### Gate 4: Deploy Validation (PM)
+### Gate 4: Deploy Validation (PM / Stakeholder)
 
-**You are approving:** The feature works as intended in a non-prod environment, matching the acceptance criteria in `problem.md`.
+**You are approving:** The deployed capability operating in a non-production environment against the acceptance criteria and `## Functional Validation` checklist in `problem.md`.
 
-This is the stakeholder's moment: does the shipped thing match what was asked for? The spec review validated intent on paper; deploy validation validates intent in practice.
+Gate 1 verified intent on paper; Gate 4 confirms that the running software delivers the intended business outcome in practice.
 
 ---
 
 ## Surface Registry & Deprecation Policy
 
-Two living documents govern backwards compatibility across the project.
+Two living governance documents protect backwards compatibility across the repository.
 
-### The surface registries — What's public and what's promised
+### The Surface Registries — What Is Public and What Is Promised
 
-**There are two, and a "registered surface" resolves across both** (`docs/policies/change-tiers.md`, *Resolving "registered surface"*): `docs/policies/surface-registry.md` holds this project's own **adopter-owned** surfaces, and `docs/policies/claire-surfaces.md` holds the CLAIRE framework's **core-owned** ones. A framework-owned surface records in the core-owned registry, in the surface's own row; a row written to the adopter-owned one announces it where no consumer of that surface reads.
+**Two registries exist, and "registered surface" resolves across the union of both** (`docs/policies/change-tiers.md`, *Resolving "registered surface"*): `docs/policies/surface-registry.md` records this repository's **adopter-owned** public surfaces, while `docs/policies/cadence-surfaces.md` records the CADENCE framework's **core-owned** surfaces. Framework-owned surfaces are registered exclusively in `cadence-surfaces.md`; project-owned APIs, events, schemas, and configs are registered in `surface-registry.md`.
 
-Between them they register every public API endpoint, event schema, DTO/response contract, database contract, and configuration key. Each entry records its stability level (Stable, Beta, Deprecated, Internal), guarantee period, known consumers, and sunset date (if deprecated).
+Each registry entry declares the surface's stability tier (`Stable`, `Beta`, `Deprecated`, `Internal`), guarantee window, known consumers, and sunset date (when deprecated).
 
-**Update policy:** The spec-author adds entries when a spec introduces new public surfaces. The maintainer reads the registry during every MR evaluation, and verifies it is updated for every surface the change adds, deprecates or alters, flagging any gap for the human gate to decide — that gate verification is the operative control, and it is unchanged. Nothing re-checks the registry after merge; the check happens before the change lands, not after.
+**Update discipline:** `cadence-spec-author` proposes registry additions or updates whenever a spec introduces or alters a public surface. `cadence-maintainer` audits the registries during every Gate 3 evaluation and flags any unrecorded surface change as a blocking gap prior to merge.
 
-### `docs/policies/deprecation-policy.md` — How to retire a surface
+### `docs/policies/deprecation-policy.md` — Retiring Public Surfaces Safely
 
-Covers minimum deprecation periods by surface type, runtime signaling requirements (HTTP `Deprecation`/`Sunset` headers, structured log warnings, `deprecated_surface_calls_total` metrics), migration documentation standards, the sunset process, version support matrix, and emergency breaking change procedures.
+Defines minimum guarantee windows by surface class, mandatory runtime deprecation signals (HTTP `Deprecation` and `Sunset` headers, structured log warnings, and `deprecated_surface_calls_total` counters), consumer migration guide standards, version support limits, and emergency breaking-change procedures.
 
 ### Compatibility Test Suites
 
-Three categories of tests verify that changes do not break existing consumers:
+Three automated test suites guard public contracts against accidental breakage:
 
 | Test Type | Purpose |
 |---|---|
-| **Golden-file tests** | Snapshot API response shapes and event payloads; CI fails on unreviewed drift |
-| **Consumer-driven contracts** | Written from the consumer's perspective; verify the producer still satisfies expectations |
-| **Versioned integration tests** | Replay requests from previous API versions against the current service |
+| **Golden-file tests** | Snapshot API response bodies and event payload shapes; CI fails on any unreviewed structural diff |
+| **Consumer-driven contracts** | Authored from the consumer's perspective; verify the producer satisfies every required field and invariant |
+| **Versioned integration tests** | Replay recorded requests from prior supported API versions against the current service implementation |
 
-These are specified in `specs/TEMPLATE/test-plan.md` and enforced as blocking issues during code review.
+These suites are planned in `specs/TEMPLATE/test-plan.md` and enforced as blocking checks during Gate 2 code review.
 
 ---
 
 ## Customization
 
-### Adding a new facet
+### Adding a New Engineering Pillar
 
-1. Define the facet in your org CLAIRE config (`docs/agentic-sdlc/CLAIRE_ORG.md`) with: definition, Zachman alignment, measures, anti-patterns, and decision rule.
-2. Add it to the precedence matrix with a position that reflects your org priorities.
-3. The spec template (`specs/TEMPLATE/spec.md`) already has open-slot facet guidance — no template change needed.
+1. Define the pillar in your organization's `docs/agentic-sdlc/CADENCE_ORG.md` with its definition, Contextual Grounding alignment, concrete measures, anti-patterns, and one-sentence decision rule.
+2. Insert the pillar into the Precedence Matrix at the rank matching your organization's risk posture.
+3. `specs/TEMPLATE/spec.md` includes an `### Additional Pillars` section out of the box — no template structural change is needed.
 
-### Modifying a template
+### Modifying a Specification Template
 
-Edit the files in `specs/TEMPLATE/`. All agents read these templates when creating new spec directories. Changes take effect immediately for the next `/claire-triage` or `/claire-spec` run.
+Edit the template files under `specs/TEMPLATE/`. All CADENCE agents read these templates when initializing new ticket directories, so adjustments take effect immediately on the next `/cadence-triage` or `/cadence-spec` invocation.
 
-### Tuning agent behavior
+### Tuning Agent Behavior
 
-Edit the agent's `AGENT.md` file in `.claude/agents/{agent-name}/`. Key tuning points:
+Agent definitions in `.agents/agents/{agent-name}/AGENT.md` (and projected runtime trees such as `.gemini/` or `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`) are compiled from the runtime-neutral source under `artifacts/roles/{agent-name}/` via `ci-templates/scripts/cadence-compile.sh`. Edit the neutral source under `artifacts/roles/` and recompile. Key tuning points per role:
 
-- **explorer:** Adjust how many options are required, what counts as structurally distinct, and the UNKNOWN-labelling rule for unresolved failure modes — but not the no-ranking constraint, which is the role's whole point
-- **spec-author:** Adjust step order, add domain-specific instructions, change model selection
-- **architect:** Adjust repo-to-concern mappings, contract dimensions to check, epistemic classification thresholds, and Gherkin draft contract format
-- **implementer:** Adjust TDD constraints, add language-specific guidance
-- **code-reviewer:** Adjust review dimensions, change what counts as [BLOCKING] vs [SUGGESTION]
-- **maintainer:** Adjust evaluation dimensions, blocking criteria, deprecation policy references, and post-decision actions
-- **migration-author:** Adjust project structure discovery (DbContext, migrations directory) and expand/contract safety rules
-- **triage-agent:** Adjust classification rules, integration sources
-- **archivist:** Adjust what triggers ADR promotion, sync targets
+- **`cadence-explorer`:** Tune the number of required options, structural distinctness rules, and `UNKNOWN` failure-mode labeling — while preserving the strict no-ranking rule that guarantees independent exploration
+- **`cadence-spec-author`:** Adjust workflow step ordering, add domain-specific modeling rules, or tune pillar evaluation depth
+- **`cadence-architect`:** Configure cross-repository boundary mappings, contract dimensions, epistemic classification thresholds, and draft Gherkin contract formats
+- **`cadence-implementer`:** Add language- or framework-specific TDD conventions and test-runner invocation rules
+- **`cadence-reviewer`:** Tune review dimensions, adversarial verification probes, and `[BLOCKING]` vs `[SUGGESTION]` thresholds
+- **`cadence-maintainer`:** Adjust the 8 assessment dimensions, charter-enforcement rules, and post-decision actions
+- **`cadence-migration-author`:** Customize ORM/database discovery and expand/contract safety checks
+- **`cadence-triage-agent`:** Adjust classification heuristics, scope sizing rules, and tracker seed-read handling
+- **`cadence-archivist`:** Customize ADR promotion criteria, insight extraction, and external tracker sync hooks
 
-### Adding a new skill
+### Adding a New Skill
 
-Create `.claude/skills/{skill-name}/SKILL.md` with the standard frontmatter:
+Author the neutral command source under `artifacts/commands/{skill-name}/` and compile to `.agents/skills/{skill-name}/SKILL.md` (or create a project-local skill in `.agents/skills/{skill-name}/SKILL.md`) with standard YAML frontmatter:
 
 ```yaml
 ---
@@ -307,12 +302,11 @@ allowed-tools: Read Write Edit Glob Grep Bash
 ---
 ```
 
-Then add the task steps below the frontmatter.
+Follow the frontmatter with the numbered execution steps.
 
-> **What `arguments:` does and does not give you.** The key declares argument
-> **names** for documentation and hint purposes and confers **no binding
-> guarantee**: a `$name` token in the body is advisory prose, not a substitution
-> primitive. A command **must not rely on** such a placeholder to carry a value
-> that is not a single bare token; where a command needs free text, take it off
-> the argument channel and pass a bare path instead. The canonical statement is
-> `artifacts/SCHEMA.md`, *What `arguments:` is, and what it is not* (BTG-281).
+> **What `arguments:` does and does not guarantee.** The `arguments:` list declares parameter
+> **names** for user hints and documentation only and provides **no shell-like binding guarantee**:
+> a `$name` token inside the skill body is advisory prose rather than a guaranteed interpolation
+> primitive. A skill **must never rely on** an inline argument token to transport multi-word free
+> text; whenever a command needs free-form prose, read it from a file path passed as a single bare
+> token. See `artifacts/SCHEMA.md`, *What `arguments:` is, and what it is not* (BTG-281).

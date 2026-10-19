@@ -1,30 +1,30 @@
 # Project Intent
 
-> **This is a template.** Copy it to the root of your repository as `PROJECT_INTENT.md` on first CLAIRE adoption, then fill in each section with your project's specifics. Replace this preamble with a one-line repo description when the document is ready.
+> **This is a template.** Copy it to the root of your repository as `PROJECT_INTENT.md` upon initial CADENCE adoption, then populate each section with your project's charter specifics. Replace this callout with a one-sentence repository summary once the document is complete.
 >
-> Sections marked **(Required)** must be completed before the maintainer agent can evaluate MRs against intent. Sections marked **(Recommended)** strengthen the document but are not blocking.
+> Sections marked **(Required)** must be populated before the `cadence-maintainer` agent can evaluate MRs against repository intent. Sections marked **(Recommended)** sharpen architectural governance but are non-blocking.
 
 ## How to use this document
 
-`PROJECT_INTENT.md` is the standing answer to the question every intent issue asks: *does this work belong here?* It captures the project's mission, scope, quality stance, architectural commitments, and contribution posture so that contributors can self-select and the maintainer can decide consistently.
+`PROJECT_INTENT.md` provides the standing answer to the question every incoming proposal asks: *does this work belong in this repository?* It records the project's mission, scope boundaries, quality priorities, architectural invariants, and contribution posture so contributors can self-orient and the maintainer can evaluate changes consistently.
 
-It is a living document. Major changes follow the **Amendment Process** (Section 10). Minor edits — clarifying wording, fixing links, expanding examples — can be made by any maintainer at any time.
+It is a living charter. Structural changes follow the **Amendment Process** (Section 10). Editorial updates — clarifying phrasing, repairing links, expanding examples — may be committed by any maintainer at any time.
 
-The document grounds three audiences:
+The charter serves three audiences:
 
-- **Contributors** read it before filing an intent issue to decide whether their idea fits.
-- **The maintainer agent** reads it to evaluate MRs for goal alignment, scope, and architectural fit.
-- **The owning team** reads it when deciding what work to take on, so the project does not drift from its purpose.
+- **Contributors** consult it before filing an issue to verify that their proposal fits the repository's mission.
+- **The `cadence-maintainer` agent** reads it during Gate 3 to assess MRs for charter alignment, scope adherence, and architectural fit.
+- **The owning team** uses it when prioritizing intake so the codebase does not drift from its core purpose.
 
-If a section is empty, fill it in or remove it. Do not leave placeholders in the published version.
+Fill in or remove any empty optional sections; never leave un-substituted placeholders in the committed root `PROJECT_INTENT.md`.
 
 ---
 
 ## 1. Mission **(Required)**
 
-*One paragraph. What does this project exist to do, and who benefits when it does it well? This is the "why," not a feature list. A reader unfamiliar with the project should be able to read this section and explain the project's purpose to someone else.*
+*One paragraph. What does this project exist to accomplish, and who benefits when it succeeds? State the core "why," not a feature catalog. Any engineer unfamiliar with the codebase should be able to read this paragraph and explain the project's purpose to a colleague.*
 
-> **Example.** This service ingests claims data from upstream payer systems, normalizes it into the canonical claims schema, and exposes it to downstream reporting and analytics consumers. The team it serves is the analytics platform; the value it provides is one consistent claims source so that downstream consumers do not each have to handle payer-specific quirks.
+> **Example.** This service ingests claims records from upstream payer systems, normalizes them into the canonical claims schema, and publishes them to downstream reporting and analytics consumers. It serves the analytics platform team by providing a single consistent claims feed so downstream consumers never have to implement payer-specific parsing rules.
 
 {Replace with your project's mission.}
 
@@ -34,21 +34,21 @@ If a section is empty, fill it in or remove it. Do not leave placeholders in the
 
 ### In Scope
 
-*The kinds of work that belong in this repo. Be specific — "data normalization for claims" is more useful than "claims-related work."*
+*The specific classes of work that belong in this repository. Be concrete — "claims data normalization and schema validation" is actionable; "claims work" is too vague.*
 
 - 
 - 
 
 ### Out of Scope
 
-*Work that looks related but does not belong here. List the adjacent project that should own it instead, when known.*
+*Work that appears adjacent but belongs elsewhere. Name the neighboring repository or team that owns it whenever known.*
 
-- {Topic} — owned by {project / team}, not us.
+- {Topic} — owned by {project / team}, not this repository.
 - 
 
 ### Adjacent Projects
 
-*Neighboring projects whose intent overlaps. Helps contributors and the maintainer agent redirect work that has been filed in the wrong place.*
+*Neighboring repositories whose domain boundaries touch this one. Helps contributors and `cadence-maintainer` route misfiled proposals to the right home.*
 
 | Project | Repo | Relationship |
 |---|---|---|
@@ -58,54 +58,54 @@ If a section is empty, fill it in or remove it. Do not leave placeholders in the
 
 ## 3. Non-Goals **(Required)**
 
-*Explicit things this project will not do, each with a reason. The maintainer agent uses this list to reject scope-creep MRs by citation. A non-goal is not "we have not done this yet" — it is "we have decided not to do this." If a non-goal becomes a goal, that is an amendment (Section 10).*
+*Capabilities this project has explicitly decided NOT to build, each paired with its rationale. The `cadence-maintainer` agent cites this table when rejecting scope-creep MRs. A non-goal is not "work we haven't scheduled yet" — it is "work we have deliberately ruled out." Turning a non-goal into an active goal requires a formal charter amendment (Section 10).*
 
 | Non-Goal | Reason |
 |---|---|
 | | |
 
-> **Example.** *We do not transform claims data for clinical use cases.* Reason: clinical context requires PHI handling guarantees that exceed this project's compliance scope; clinical transformations are owned by the patient-data domain.
+> **Example.** *We do not transform claims records for clinical care workflows.* Reason: clinical workflows carry PHI compliance obligations outside this service's regulatory boundary; clinical data transformations belong to the patient-data domain.
 
 ---
 
 ## 4. Quality Stance **(Required)**
 
-*What this project optimizes for, ranked. When two qualities conflict, the higher-ranked one wins by default. The maintainer agent uses this ranking to evaluate architectural choices.*
+*The engineering qualities this project optimizes for, in strict priority order. Whenever two qualities pull in opposite directions, the higher-ranked quality prevails by default. `cadence-maintainer` uses this ranking to judge architectural trade-offs.*
 
 ### Ranked Priorities
 
-1. {e.g., Auditability — every state change must be traceable}
-2. {e.g., Simplicity — fewer moving parts beats more elegant abstractions}
-3. {e.g., Throughput — sustained load matters more than peak latency}
+1. {e.g., Data & Audit Fidelity — every state mutation must be traceable}
+2. {e.g., Structural Simplicity — fewer moving parts beat clever abstractions}
+3. {e.g., Sustained Throughput — predictable batch throughput matters more than single-request peak latency}
 4. ...
 
 ### Tradeoffs Accepted
 
-*Specific tradeoffs the project has chosen. Naming them prevents repeated debate.*
+*Explicit costs the project willingly accepts to honor its priority ranking. Recording them here prevents re-litigating settled debates during review.*
 
-- {e.g., We accept higher write latency in exchange for synchronous audit log persistence.}
+- {e.g., We accept higher write latency in exchange for synchronous transactional audit log persistence.}
 - 
 
 ---
 
 ## 5. Public Surfaces **(Required if the project exposes any external surfaces)**
 
-*What this project exposes to other systems. Cross-references the surface registry at `docs/policies/surface-registry.md` if one exists -- and, if this repo adopted CLAIRE at or after v4.0.0, the core-owned `docs/policies/claire-surfaces.md` alongside it, which holds the framework's own surfaces and is not yours to edit. The maintainer agent uses this section to scope backwards-compatibility analysis.*
+*Contracts this repository exposes to external callers or downstream systems. Cross-references the adopter-owned surface registry at `docs/policies/surface-registry.md` -- and, for repositories adopting CADENCE at or after v4.0.0, the core-owned `docs/policies/cadence-surfaces.md` alongside it, which tracks framework-owned surfaces and is maintained by `/cadence-upgrade`. `cadence-maintainer` uses this section to scope surface-compatibility checks.*
 
 | Surface | Type | Stability | Consumers |
 |---|---|---|---|
 | | API / event / schema / CLI / library | experimental / stable / deprecated | |
 
-If this project exposes no public surfaces (purely internal), state that explicitly: *"No public surfaces. All consumption is internal to this team."*
+When a repository exposes zero external surfaces (purely internal), state that explicitly: *"No public surfaces. All consumption is internal to the owning team."*
 
 ---
 
 ## 6. Architecture Invariants **(Recommended)**
 
-*Structural decisions that are not up for debate without amending intent. The maintainer agent treats violations of these invariants as blocking issues. Keep this list short — five to ten items. If you have more than that, you may be conflating invariants with conventions.*
+*Foundational structural rules that cannot be violated without formally amending this charter. `cadence-maintainer` treats any violation of these invariants as a `[BLOCKING]` defect. Keep this list concise — five to ten crisp rules. A longer list usually mixes true invariants with stylistic conventions.*
 
-- {e.g., All writes go through the audit pipeline. No direct-to-storage writes.}
-- {e.g., No synchronous calls between bounded contexts; cross-context communication is event-driven.}
+- {e.g., Every state mutation passes through the transactional audit pipeline; direct-to-storage writes are forbidden.}
+- {e.g., Bounded contexts never invoke each other synchronously; all cross-context coordination is event-driven.}
 - 
 
 ---
@@ -114,20 +114,20 @@ If this project exposes no public surfaces (purely internal), state that explici
 
 ### Owning Team
 
-*The team responsible for this project. Link to the team page or directory entry; do not list individual names here — they rot.*
+*The team accountable for this repository. Link to a team directory or roster page rather than hardcoding individual names that quickly go stale.*
 
 - Team: 
 - Roster: {link}
 
 ### Maintainers
 
-*Current maintainers. Link to a dynamic source (group membership, CODEOWNERS, etc.) rather than hardcoding names.*
+*Active maintainers authorized to approve Gate 3 reviews. Link to a dynamic source of truth (`CODEOWNERS`, group handle, etc.) rather than static names.*
 
 - {link}
 
 ### Major Consumers
 
-*Other teams or systems that depend on this project. Helps the maintainer agent judge the blast radius of breaking changes.*
+*Downstream teams or services that depend on this repository. Helps `cadence-maintainer` assess the blast radius of contract changes.*
 
 - 
 
@@ -139,20 +139,20 @@ If this project exposes no public surfaces (purely internal), state that explici
 
 > {One of: "Yes, all kinds." | "Yes, for the following kinds: …" | "Limited — see below." | "Not currently — file an intent issue to discuss."}
 
-This setting determines how the maintainer agent treats MRs from outside the owning team. Setting it to "Not currently" is a valid choice — it tells external contributors to start with conversation, not code. Reopening contributions later is an edit, not an amendment.
+This declaration governs how `cadence-maintainer` evaluates MRs from external contributors. Selecting "Not currently" is completely valid — it directs external contributors to start a discussion before writing code. Broadening contribution posture later is a normal edit; narrowing it requires an amendment.
 
 ### Prerequisites
 
-- All work begins with an intent issue. No exceptions, including for the owning team.
-- {Project-specific prerequisites, if any.}
+- Every change begins with a triaged ticket (`specs/{id}/`). No exceptions, including for the owning team.
+- {Project-specific prerequisites, including the sanctioned test runner command.}
 
 ### Where to ask questions
 
-- {Slack channel, Teams channel, mailing list — must be monitored by at least one maintainer during business hours}
+- {Slack channel, Teams channel, or mailing list — monitored by at least one maintainer during business hours}
 
 ### Review SLAs
 
-The defaults below come from `docs/guides/contributor_experience_guide.md`. Override them here based on your maintainers' actual capacity. Honest SLAs build trust; aspirational SLAs erode it.
+The default targets below come from `docs/guides/contributor_experience_guide.md`. Adjust them to match your maintainers' real review bandwidth. Realistic SLAs build contributor trust; aspirational SLAs that are routinely missed erode it.
 
 | Track | First response | Actionable feedback | Target merge (if approved) |
 |---|---|---|---|
@@ -173,25 +173,25 @@ The defaults below come from `docs/guides/contributor_experience_guide.md`. Over
 
 ### Reference
 
-See `docs/guides/contributor_experience_guide.md` for the full contributor workflow, intent issue template, and review etiquette.
+See `docs/guides/contributor_experience_guide.md` for the complete contributor workflow, intent issue template, and review etiquette.
 
 ---
 
 ## 9. Decision Philosophy **(Recommended)**
 
-*Big "why we built it this way" statements and approaches that have already been considered and rejected. Helps contributors avoid relitigating settled decisions. For specific decisions, link to the decision log rather than restating them here.*
+*High-level architectural principles and previously rejected approaches. Recording these prevents contributors and agents from re-proposing designs that were already ruled out. Link to specific ADRs or `decisions.md` logs for detailed history.*
 
 ### Settled
 
-- {e.g., We chose Postgres over a document store. Reason: claims data is highly relational; the join cost in a document store outweighs the schema flexibility.}
+- {e.g., We use PostgreSQL rather than a document store. Reason: claims records are highly relational, and cross-entity join integrity outweighs schema-less flexibility.}
 - 
 
 ### Considered and rejected
 
-- {e.g., A unified ingest pipeline for both claims and clinical data. Rejected because the compliance scopes diverge.}
+- {e.g., A single shared ingestion pipeline for both claims and clinical feeds. Rejected because their regulatory and audit boundaries diverge.}
 - 
 
-See `specs/*/decisions.md` for individual decision rationale.
+See `specs/*/decisions.md` and `archive/*/decisions.md` for per-ticket decision rationale.
 
 ---
 
@@ -199,32 +199,32 @@ See `specs/*/decisions.md` for individual decision rationale.
 
 ### What requires an amendment
 
-A change to this document is an amendment if it modifies any of:
+Modifying any of the following sections constitutes a formal charter amendment:
 
 - Mission
 - Scope (in or out)
 - Non-Goals
-- Quality Stance ranking
+- Quality Stance priority ranking
 - Architecture Invariants
-- Contribution Posture, when narrowing it (broadening it is an edit, not an amendment)
+- Contribution Posture, when narrowing access (broadening access is a standard edit, not an amendment)
 
-Other edits — clarifying wording, fixing links, expanding examples, adjusting SLAs to match capacity — can be made by any maintainer at any time without amendment.
+Routine maintenance edits — clarifying wording, updating links, adding examples, or calibrating review SLAs to match team capacity — may be made by any maintainer without a formal amendment.
 
 ### How to amend
 
-1. File an intent issue tagged `intent-amendment` describing the proposed change and its rationale.
-2. Open an MR that updates this document and references the intent issue.
-3. The MR follows the Standard track (or higher tier) regardless of size: changes to project intent are never lightweight.
-4. Approval requires the maintainer's sign-off, recorded in the project's decision log.
+1. File a ticket tagged `intent-amendment` stating the proposed charter change and its business or architectural rationale.
+2. Open an MR updating `PROJECT_INTENT.md` and referencing the ticket.
+3. The MR follows the Standard track (Medium or High tier) regardless of line count: changes to `PROJECT_INTENT.md` are never Trivial or Low tier.
+4. Ratification requires maintainer sign-off recorded in the ticket's `decisions.md`.
 
 ### Review cadence
 
-This document is reviewed by the owning team at least once every {6 / 12} months, or whenever any of the following triggers fire:
+The owning team reviews `PROJECT_INTENT.md` at least once every {6 / 12} months, or immediately whenever any of the following triggers occur:
 
-- A major external dependency or consumer changes.
-- The team faces sustained pressure to take on out-of-scope work.
-- A significant non-goal is being challenged.
-- The team's capacity or composition changes materially.
+- A major upstream dependency or downstream consumer changes.
+- The team experiences recurring pressure to accept out-of-scope requests.
+- A listed non-goal is actively challenged by stakeholders.
+- The owning team's capacity or charter changes significantly.
 
 ---
 

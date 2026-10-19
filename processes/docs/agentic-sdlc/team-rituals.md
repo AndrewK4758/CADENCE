@@ -1,22 +1,22 @@
 # Team Rituals for the Agentic SDLC
 
-Traditional agile ceremonies assume humans do the implementation work and need coordination to deliver incrementally. In the agentic SDLC, AI agents handle triage, specification, implementation, and archival. The bottleneck shifts from "how do we coordinate coding work?" to "how do we move work through human gates efficiently?"
+Traditional agile ceremonies assume human engineers write every line of code by hand and need daily synchronization to coordinate incremental implementation. In the CADENCE agentic SDLC, AI agents execute triage, exploration, specification, TDD implementation, and archival. The team's constraint shifts from *"how do we coordinate manual coding?"* to *"how do we move high-leverage decisions cleanly through human gates?"*
 
-This guide redefines team rituals for that reality.
+This guide defines the team rituals built for that operating model.
 
 ---
 
 ## The Bottleneck Shift
 
-In a traditional sprint, the scarce resource is developer time. Rituals exist to allocate that time wisely (planning), surface blockers quickly (standup), and improve the allocation over time (retro).
+In a conventional sprint, developer coding bandwidth is the scarce resource. Ceremonies exist to allocate coding hours (sprint planning), surface implementation blockers (daily standup), and refine estimation accuracy (sprint retro).
 
-In the agentic model, the scarce resources are:
+In the CADENCE model, the scarce resources are:
 
-- **Human judgment** — spec approval, code review, maintainer acceptance, deployment validation
-- **Shared context** — understanding what changed across projects and why
-- **System quality** — ensuring agents improve rather than drift
+- **Human judgment** — Gate 1 Spec Review, Gate 2 Code Review, Gate 3 Maintainer Acceptance, and Gate 4 Deploy Validation
+- **Shared architectural context** — keeping every engineer's mental model synchronized as changes land rapidly across bounded contexts
+- **System & agent calibration** — ensuring agents, prompts, and engineering pillars sharpen rather than drift over time
 
-Rituals should serve these three needs. Everything else is ceremony without purpose.
+Every team ritual must serve one of these three needs; anything else is legacy ceremony.
 
 ---
 
@@ -28,70 +28,68 @@ Rituals should serve these three needs. Everything else is ceremony without purp
 |---|---|
 | **Replaces** | Sprint planning, sprint kickoff |
 | **Cadence** | Weekly (30 min) |
-| **Attendees** | Product stewards, domain architects, contributors |
-| **Output** | Ordered intake list for the week; individual gate commitments |
+| **Attendees** | Product stewards, domain architects, maintainers, contributors |
+| **Output** | Ranked weekly intake queue; explicit human gate ownership commitments |
 
-Each person declares what enters the pipeline ("approve specs X and Y for implementation") and what they will unblock ("review MRs A and B"). This is the intake valve — without it, AI agents generate unbounded work that overwhelms reviewers.
+Each participant commits to what enters the specification pipeline (*"run `/cadence-spec` and clear Gate 1 for tickets X and Y"*) and which in-flight reviews they will clear (*"complete Gate 2 / Gate 3 review on MRs A and B"*). This ritual acts as the intake governor — without it, agents can generate specs and MRs far faster than humans can thoughtfully review them.
 
-The meeting answers two questions:
-1. What is worth specifying next? (Prioritization)
-2. Who commits to clearing which gates this week? (Capacity)
+The session answers two questions:
+1. Which problems merit specification next? (Intake prioritization)
+2. Who is accountable for clearing which human gates this week? (Review capacity)
 
-No implementation backlog is discussed. The triage agent and spec agent produce work; humans decide what proceeds.
+Implementation task breakdowns are never discussed here; `cadence-triage-agent` and `cadence-spec-author` prepare the artifacts, and humans govern what advances.
 
 ### Gate Review
 
 | | |
 |---|---|
 | **Replaces** | Daily standup |
-| **Cadence** | Async-first; optional 15 min sync 2-3x/week |
-| **Attendees** | Anyone with pending gate responsibilities |
-| **Output** | Unblocked work items |
+| **Cadence** | Async-first; optional 15 min live sync 2–3x/week |
+| **Attendees** | Engineers and maintainers holding pending gate reviews |
+| **Output** | Unblocked gates and cleared review bottlenecks |
 
-Each person posts async: "What is waiting for my judgment?" A brief sync exists only to resolve cross-project dependencies or escalate items that have aged past the SLA.
+Participants post asynchronously: *"What tickets or MRs are waiting on my gate judgment today?"* A brief live sync convenes only to resolve cross-repository contention or escalate items approaching their SLA ceiling.
 
-The repository already tracks state via `metadata.yaml` timestamps. A dashboard showing "specs awaiting review > 48h" or "MRs awaiting maintainer acceptance > 72h" replaces verbal status updates.
+Because `metadata.yaml` records every lifecycle transition timestamp, an automated query showing *"specs awaiting Gate 1 > 48h"* and *"MRs awaiting Gate 2/3 > 72h"* replaces verbal status reporting.
 
 Rules:
-- No "what did you do yesterday?" — the commit log answers that
-- No implementation status — agents handle that
-- Only discuss items blocked on human decisions
+- Never ask *"what did you code yesterday?"* — git history and `stage_effort` logs already record that
+- Never discuss in-progress agent TDD loops — `cadence-implementer` handles execution
+- Focus strictly on items blocked on a human gate decision
 
 ### Spec Critique
 
 | | |
 |---|---|
-| **Replaces** | Backlog refinement, story decomposition |
-| **Cadence** | On-demand (triggered when M or L spec is ready for review) |
-| **Attendees** | 2-3 people with relevant domain knowledge |
-| **Output** | Feedback incorporated before formal Gate 3 approval |
+| **Replaces** | Backlog refinement, story-splitting workshops |
+| **Cadence** | On-demand (triggered when an M, L, or XL specification enters Gate 1 review) |
+| **Attendees** | 2–3 engineers/architects with deep domain context |
+| **Output** | Architectural feedback folded into `spec.md` prior to formal Gate 1 sign-off |
 
-The spec agent produces the draft. For complex work (M/L complexity), convene a brief critique before formal approval:
+When `cadence-explorer` and `cadence-spec-author` finish drafting a Medium or High tier specification (`scope: M | L | XL`), convene a focused 20-minute critique before recording formal Gate 1 approval:
 
-- Did the agent miss a failure mode?
-- Is the Zachman grounding correct for this domain?
-- Does the SCOUT decomposition cover the real edge cases?
-- Are the compatibility implications fully assessed?
+- Did the explorer's option set in `design-options.md` miss a viable architectural alternative or an unstated failure mode?
+- Is the Contextual Grounding Matrix (6W×4L) accurate for this bounded context?
+- Does the CHORD decomposition (Conditions, Handling, Outcomes, Rules, Deltas) capture the real domain invariants and observability seams?
+- Are surface compatibility and migration impacts completely accounted for?
 
-This keeps Gate 3 approval fast because objections surface informally before the formal gate.
+Catching structural misunderstandings here keeps formal Gate 1 sign-off fast and rigorous.
 
 ### Merge Showcase
 
 | | |
 |---|---|
 | **Replaces** | Sprint demo, sprint review |
-| **Cadence** | Weekly or biweekly (20-30 min) |
-| **Attendees** | All contributors across projects |
-| **Output** | Shared context; known downstream impacts to watch |
+| **Cadence** | Weekly or biweekly (20–30 min) |
+| **Attendees** | All contributors across neighboring repositories |
+| **Output** | Shared mental models; visibility into cross-context impacts |
 
-The archivist updates the CHANGELOG and syncs downstream systems automatically. But the "why" and "so what" still need a human voice.
+While `cadence-archivist` automatically updates `CHANGELOG.md` and projects status to external trackers, keeping human mental models aligned requires human narrative.
 
-For each notable merge since last showcase:
-- What problem did it solve?
-- What surprised us during review?
-- What downstream impact should others watch for?
-
-This builds shared context across projects without requiring everyone to review every MR.
+For each notable ticket merged since the prior showcase, the reviewer or author briefly covers:
+- What domain problem did this solve?
+- Which design option won in `design-options.md`, and what trade-off surprised us during review?
+- What downstream behavioral or surface changes should neighboring teams watch for?
 
 ### Process Retro
 
@@ -99,97 +97,96 @@ This builds shared context across projects without requiring everyone to review 
 |---|---|
 | **Replaces** | Sprint retrospective |
 | **Cadence** | Biweekly (45 min) |
-| **Attendees** | All team members + AI workflow steward |
-| **Output** | System tuning PRs; one human process improvement max |
+| **Attendees** | Engineering team + AI Workflow Steward |
+| **Output** | Governance/prompt tuning MRs; at most one human process adjustment |
 
-The retro shifts from "how did the team perform?" to "how is the system performing?"
+The retrospective shifts focus from *"how did individual developers perform?"* to *"how well is our CADENCE system performing?"*
 
-Questions to drive discussion:
-- Where are specs getting stuck at gates?
-- Are agent outputs requiring excessive rework at review?
-- Are we approving specs that turn out underspecified at implementation?
-- Are we rejecting work that should have been caught earlier in the pipeline?
+Core diagnostic questions:
+- At which human gate are tickets aging the longest?
+- Are `cadence-implementer` MRs requiring multiple rework cycles at Gate 2?
+- Are we approving specifications at Gate 1 that turn out to have incomplete CHORD decompositions during TDD?
+- Are scope or charter mismatches making it all the way to Gate 3 instead of being caught at triage or Gate 1?
 
-Review the decision logs (`decisions.md`) from recent work — were the tradeoffs right in hindsight?
+Inspect `decisions.md` and `Gate 1 Design Exploration outcome` logs across recently archived tickets (`archive/*/`) to evaluate whether our trade-offs held up.
 
-The output is not action items for people. It is tuning the system: adjusting agent prompts, updating CLAUDE.md guidance, refining quality facets, changing gate criteria, or updating this rituals guide. Limit to one human behavior change per retro — system changes scale better.
+The primary output of Process Retro is **system tuning**: refining role definitions under `artifacts/roles/`, updating `AGENTS.md` directives, tightening Engineering Pillar measures in `CADENCE_ORG.md`, or adjusting gate checklists. Cap human-behavior action items at one per retro — encoding improvements into the framework scales permanently.
 
 ### Cross-Project Surface Check
 
 | | |
 |---|---|
-| **Replaces** | Dependency sync, cross-team coordination meetings |
-| **Cadence** | Weekly (async-first; sync only on contention) |
-| **Attendees** | Anyone modifying or consuming shared surfaces |
-| **Output** | Early conflict detection; updated surface registry entries |
+| **Replaces** | Cross-team dependency syncs, change-advisory board meetings |
+| **Cadence** | Weekly (async-first; live sync only when contention arises) |
+| **Attendees** | Anyone introducing, modifying, or consuming registered public surfaces |
+| **Output** | Early contract-conflict detection; current `surface-registry.md` entries |
 
-Inner-source means multiple contributors touch shared surfaces. A weekly async post:
-- "I am about to change X in the surface registry"
-- "My spec proposes a new public contract"
-- "I plan to deprecate Y — consumers should be aware"
+In an inner-source or multi-service environment, contributors post a brief weekly async notice whenever their active specifications touch `docs/policies/surface-registry.md`:
+- *"Ticket X proposes an additive change to surface Y"*
+- *"Ticket Z introduces a new stable event schema in context W"*
+- *"We plan to deprecate endpoint V with a 2-cycle sunset window"*
 
-Anyone with a consuming service replies with concerns. Escalate to sync only if there is contention. The surface registry and deprecation policy are the governing artifacts — this ritual ensures people read them before they conflict.
+Consuming teams reply asynchronously if the proposal affects their service, escalating to a live conversation only when a contract conflict surfaces.
 
 ### Agent Calibration
 
 | | |
 |---|---|
-| **Replaces** | Nothing (new ritual unique to this model) |
+| **Replaces** | Nothing (purpose-built for the agentic SDLC) |
 | **Cadence** | Monthly (60 min) |
-| **Attendees** | AI workflow steward, maintainers, domain architects |
-| **Output** | PRs to agent configuration and quality thresholds |
+| **Attendees** | AI Workflow Steward, maintainers, domain architects |
+| **Output** | MRs tuning agent role prompts, local offload thresholds, and pillar rules |
 
-Review agent performance holistically. Pull metrics:
-- Spec rejection rate at Gate 3
-- Code review rework frequency (how often MRs need revision after agent implementation)
-- Implementer test failure patterns
-- Gate throughput trends
+Review aggregate CADENCE telemetry across the trailing month:
+- Gate 1 override rate (`accepted with amendment` + `overridden to a different option` in `decisions.md`)
+- Gate 1 ruling labels (`diverged`, `examined`, `accepted-as-presented`)
+- Gate 2 rework frequency and recurring `[BLOCKING]` finding classes
+- `production-insights.md` and `intent-insights.md` trend lines
+- Gate throughput and cycle-time bands (`estimated_effort` vs accumulated `actual_effort`)
 
-Are agents improving or drifting? Update agent instructions, quality thresholds, facet weights, or CLAUDE.md guidance. This is the AI Workflow Steward's primary ceremony.
+Use these findings to sharpen `artifacts/roles/`, `CADENCE_ORG.md` pillar measures, `AGENTS.md` rules, and local coprocessor pre-review checks.
 
 ### Incident Review
 
 | | |
 |---|---|
-| **Replaces** | Nothing (existing practice, adapted) |
-| **Cadence** | Per incident |
-| **Attendees** | Responders, maintainers, affected stakeholders |
-| **Output** | Blameless postmortem; systemic fixes |
+| **Replaces** | Traditional postmortem (extended for CHORD & agentic guardrails) |
+| **Cadence** | Per production incident |
+| **Attendees** | Incident responders, maintainers, domain owners |
+| **Output** | Blameless postmortem; `production-insights.md` (`PROD-NNN`) entry; systemic guardrail fix |
 
-Standard blameless postmortem practices apply unchanged. The one addition: if the root cause traces to an agent-authored migration, implementation, or spec gap, add a systemic fix — update the agent's guardrails so the class of error cannot recur. Feed systemic fixes into the next Agent Calibration session.
+Standard blameless postmortem practices apply, augmented by two CADENCE feedback steps:
+1. Record a `PROD-NNN` entry in `docs/agentic-sdlc/production-insights.md` classifying the defect (`LOGIC_FAULT`, `DELTA_AUDIT_GAP`, `DRIFT_SIGNAL`, or `BOUNDARY_FAULT`) and mapping it to the CHORD dimension where the gap escaped (`Conditions`, `Handling`, `Outcomes`, `Rules`, or `Deltas`).
+2. Whenever the defect escaped a specification, migration, or TDD guardrail, encode a systemic prevention rule into the relevant agent role or policy so the entire class of failure is caught mechanically on future tickets.
 
 ---
 
 ## Rituals to Drop
 
-| Traditional Ritual | Why It No Longer Serves |
+| Legacy Ceremony | Why It Is Retired in CADENCE |
 |---|---|
-| Daily standup | Gate Review (async) provides the same unblocking function without synchronous overhead across unrelated projects |
-| Sprint commitment / velocity tracking | Meaningless when AI implementation time is near-zero; measure gate throughput instead |
-| Story point estimation | Replace with spec complexity sizing (S/M/L) and historical actuals; see Metrics below |
-| Recurring backlog refinement | Triage agent + Prioritization Commit covers intake; Spec Critique handles complex decomposition |
-| Sprint kickoff ceremony | Prioritization Commit subsumes this with less overhead |
+| Daily standup | Async Gate Review surfaces blocked human gates directly from `metadata.yaml` without interrupting deep work |
+| Sprint velocity / story-point burndown | When agent TDD execution takes minutes rather than days, coding velocity is noise; gate throughput and cycle time are the real signals |
+| Planning poker / story-point voting | Replaced by deterministic `scope`-bucket sizing (`S`/`M`/`L`/`XL`) mapped to the canonical Estimation Scale below |
+| Recurring backlog grooming | `/cadence-triage` + weekly Prioritization Commit handle intake; on-demand Spec Critique handles complex M/L/XL designs |
+| Sprint kickoff meetings | Subsumed into the 30-minute weekly Prioritization Commit |
 
 ---
 
 ## Metrics That Replace Rituals
 
-Traditional agile uses velocity and burndown to answer "are we on track?" In the agentic model, these metrics answer the equivalent questions:
+Instead of story-point velocity and burndown charts, CADENCE tracks six operational flow and quality metrics derived directly from repository artifacts:
 
-| Metric | What It Answers | Source |
+| Metric | Question It Answers | Authoritative Source |
 |---|---|---|
-| Gate throughput | How fast is work moving through human gates? | `metadata.yaml` timestamps (created → spec_approved → merged) |
-| Gate aging | What is stuck? | Time since last state transition, alerting at 48h (spec review) and 72h (code review) |
-| Spec rejection rate | Are we specifying well? | Gate 3 rejections / total specs submitted |
-| Rework rate | Are agent implementations meeting quality bar? | MRs requiring revision after initial review |
-| Spec complexity distribution | What is the review burden? | S/M/L sizing assigned at triage |
-| End-to-end cycle time | How long from problem to production? | `metadata.yaml`: `created_at` → `merged_at` |
+| Gate throughput | How rapidly are proposals clearing human gates? | `metadata.yaml` timestamps (`created` → `spec-approved` → `merged`) |
+| Gate aging | Which tickets or MRs are stalled waiting on human judgment? | Elapsed time since last `status` transition (alerting at `>48h` for Gate 1 and `>72h` for Gate 2/3) |
+| Gate 1 override & rejection rate | Are explorer options and specifications hitting the mark? | Gate 1 outcomes and rejections recorded in `decisions.md` |
+| Gate 2 rework rate | Are agent implementations meeting the quality bar on the first pass? | Fraction of MRs requiring post-review fix commits during `/cadence-review` |
+| Scope complexity distribution | What is the incoming review load across the team? | `scope` (`S`/`M`/`L`/`XL`) and `tier` distribution across active `metadata.yaml` files |
+| End-to-end cycle time | How long does it take to go from problem statement to merged solution? | `metadata.yaml`: `created` → `merged` |
 
-**Estimation replacement.** Size specs by complexity (the `scope` field in `metadata.yaml`) and let the
-gate-to-gate cycle-time bands below drive the `estimated_effort` value. These are **wall-clock cycle
-times** (problem → merged, dominated by human gate reviews since AI implementation time is near-zero), **not
-human coding effort** — do not estimate from line/file counts. Track historical actuals and tighten the
-bands over time; no planning poker.
+**Deterministic estimation.** Size tickets by specification complexity (the `scope` field in `metadata.yaml`) and derive `estimated_effort` directly from the prescriptive table below. The cycle-time band measures **end-to-end wall-clock elapsed time** (problem → merged, dominated by human gate turnaround since agent implementation is fast), **never manual coding hours** — never estimate from line counts or file counts.
 
 ### Estimation Scale (prescriptive — agents record the right-hand value)
 
@@ -200,29 +197,11 @@ bands over time; no planning poker.
 | **L** | multi-file or cross-cutting within one subsystem | 2 days | `8h` |
 | **XL** | large blast radius or multi-subsystem | 1 week | `2d` |
 
-- The **M → `4h`** cell is the documented anchor ("an M spec takes ~4 hours end-to-end including reviews");
-  the **S / L / XL** representatives extend it on the same gate-to-gate basis, and **XL** is a deliberate
-  addition to the original S/M/L scale (the `scope` field carries S/M/L/XL, so the scale now covers all
-  four).
-- **The band and the representative value measure different things**, which is why they are not numerically
-  equal. The *band* is wall-clock cycle time (problem → merged, dominated by waiting on human gates); the
-  *representative value* is the working time to record. The scale holds them in a consistent ratio of
-  roughly **4 recorded hours per elapsed day** — S (½ day → `2h`), M (1 day → `4h`), L (2 days → `8h`),
-  XL (1 week → `2d`). Read a row across, not down.
-- **Record the band's representative value** (right-hand column) unless a spec has a specific reason to sit
-  elsewhere in its band — note any such in-band deviation in `decisions.md`. The value is a human-readable
-  duration; a range projects its **upper bound** to the bound tracker's estimate field (for the Jira-Server
-  binding, per `jira-write-issue.sh`'s Original/Remaining Estimate co-send, contracted in the
-  `/claire-sync-jira` skill's `jira-server-scripts.md` sidecar).
-- **Epic / rollup parents** (a ticket decomposed into a child track) are **not** sized by their own `scope`
-  bucket. Estimate them as the **critical path** of the child track — the serialized sum along the longest
-  dependency chain, taking the longest of any parallel siblings.
-- **`actual_effort`** is **accumulated per stage**, never estimated and never computed post-merge from git
-  history: each of the six workflow stages appends its agent-observed working time (multiplied by a
-  per-stage review multiplier to cover operator review at the stage's start and end, then rounded **up** to
-  the next 15-minute increment — unless the computed time is exactly zero, which records `0m`) to a
-  `stage_effort` log and to the running `actual_effort` total. See
-  `CLAIRE_ORG.md` "Actual Effort Accumulation".
+- The **M → `4h`** row is the canonical anchor ("an M specification takes ~4 hours of active effort across authoring and gate reviews"); the **S / L / XL** rows scale proportionally across all four legal `scope` values (`S`, `M`, `L`, `XL`).
+- **The cycle-time band and the recorded `estimated_effort` measure two distinct quantities**, which is why their numbers differ: the *band* reflects elapsed wall-clock calendar time (including queue time waiting on human gates), whereas the *representative value* records active working + review effort at a uniform ratio of roughly **4 recorded hours per elapsed day** — S (`1/2 day` → `2h`), M (`1 day` → `4h`), L (`2 days` → `8h`), XL (`1 week` → `2d`). Always read each row horizontally.
+- **Agents record the representative value in the right-hand column** (`cadence-triage-agent` sets the initial value; `cadence-spec-author` refines it if the full specification changes the scope), documenting any in-band deviation in `decisions.md`. When projected to an external tracker (such as Jira Server via `/cadence-sync-jira`), any range projects its **upper bound** to the tracker's Original/Remaining Estimate fields.
+- **Epic / decomposition parents** (`type: epic` tickets with a `decomposed_into:` child track) are **never** sized from a single `scope` bucket; their `estimated_effort` is computed as the **critical path** across the child track (the sum along the longest serialized dependency chain, taking the maximum across parallel siblings).
+- **`actual_effort` is accumulated per workflow stage**, never estimated up front and never derived post-merge from git commit timestamps: as each of the six workflow stages (`triage`, `spec`, `implementation`, `code-review`, `maintainer`, `archive`) completes, it appends its observed working time (multiplied by the per-stage review multiplier and rounded **up** to the next 15-minute increment — or `0m` when the product is zero) to `stage_effort` and updates the running `actual_effort` sum. See `CADENCE_ORG.md` § "Actual Effort Accumulation".
 
 ---
 
@@ -230,23 +209,23 @@ bands over time; no planning poker.
 
 | Ritual | Frequency | Duration | Format | Key Output |
 |---|---|---|---|---|
-| Prioritization Commit | Weekly | 30 min | Sync | Ordered intake list; gate commitments |
-| Gate Review | Continuous | Async (15 min sync optional) | Async-first | Unblocked items |
-| Spec Critique | On-demand | 20-30 min | Sync | Pre-approval feedback |
-| Merge Showcase | Weekly/biweekly | 20-30 min | Sync | Shared context |
-| Process Retro | Biweekly | 45 min | Sync | System tuning PRs |
-| Cross-Project Surface Check | Weekly | Async (sync on contention) | Async-first | Conflict prevention |
-| Agent Calibration | Monthly | 60 min | Sync | Agent config PRs |
-| Incident Review | Per incident | As needed | Sync | Postmortem + systemic fix |
+| Prioritization Commit | Weekly | 30 min | Sync | Ranked intake list; human gate commitments |
+| Gate Review | Continuous | Async (15 min sync optional) | Async-first | Unblocked human gates |
+| Spec Critique | On-demand | 20–30 min | Sync | Pre-Gate-1 architectural feedback on M/L/XL specs |
+| Merge Showcase | Weekly/biweekly | 20–30 min | Sync | Shared system mental model |
+| Process Retro | Biweekly | 45 min | Sync | Agent/pillar/governance tuning MRs |
+| Cross-Project Surface Check | Weekly | Async (sync on contention) | Async-first | Early surface-contract conflict detection |
+| Agent Calibration | Monthly | 60 min | Sync | Role prompt, pillar, and offload calibration MRs |
+| Incident Review | Per incident | As needed | Sync | Blameless postmortem + `PROD-NNN` insight + systemic guardrail |
 
 ---
 
 ## Getting Started
 
-Teams adopting these rituals should:
+Teams transitioning to CADENCE rituals should roll them out in five steps:
 
-1. Start with Prioritization Commit and Gate Review — these replace the highest-frequency traditional ceremonies
-2. Set up gate aging alerts (48h spec review, 72h code review) before dropping standup
-3. Run one Process Retro to calibrate — the first retro often reveals that gate SLAs need adjustment
-4. Add Merge Showcase once multiple projects are shipping through the pipeline
-5. Schedule Agent Calibration after the first month of operation, once enough data exists to evaluate trends
+1. Launch **Prioritization Commit** and async **Gate Review** first — they immediately replace sprint planning and daily standups
+2. Enable **gate-aging visibility** (`>48h` for Gate 1 Spec Review, `>72h` for Gate 2/3 MR Review) before retiring daily standups
+3. Hold your first **Process Retro** after two weeks to calibrate gate SLAs and review bandwidth
+4. Introduce **Merge Showcase** once multiple bounded contexts or repositories are shipping through CADENCE
+5. Run your first **Agent Calibration** session after one month of production operation, using accumulated `decisions.md`, `stage_effort`, and `production-insights.md` data

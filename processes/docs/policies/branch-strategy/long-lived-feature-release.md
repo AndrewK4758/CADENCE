@@ -1,35 +1,18 @@
 # Branch Strategy: Long-Lived Feature / Integration / Release
 
-> **Branch-name-agnostic by binding (BTG-047).** This is the reworded successor to the repo's
-> original single `branch-strategy.md`: every concrete branch name has been removed from the prose
-> and parameterized as a role resolved through the
-> [Branch Strategy Binding](../../agentic-sdlc/CLAIRE_ORG.md#branch-strategy-binding). A repo
-> selects this strategy by setting the binding's `bound-strategy: long-lived-feature-release`.
+> **Branch-name-agnostic by binding (BTG-047).** This document succeeds the repository's original single `branch-strategy.md`: all concrete branch names have been abstracted from the narrative and parameterized as roles resolved through the [Branch Strategy Binding](../../agentic-sdlc/CADENCE_ORG.md#branch-strategy-binding). An adopting repository selects this strategy by declaring `bound-strategy: long-lived-feature-release` in the binding.
 
-This document models a **long-lived feature/integration/release** branch strategy: a persistent
-integration branch alongside a persistent production-mirror branch, with stabilization (release) branches
-cut between them. It is one of the two portable strategy documents CLAIRE ships; a repo selects it via
-the binding (`bound-strategy: long-lived-feature-release`).
+This policy defines a **long-lived feature/integration/release** branching topology: a persistent integration branch paired with a persistent production-mirror branch, separated by stabilization (release) branches cut between them. It is one of two portable branching strategy specifications shipped with CADENCE; a repository activates it via the binding (`bound-strategy: long-lived-feature-release`).
 
-**Name-agnostic by construction.** This document never names a concrete branch. The concrete integration
-branch name, its protection status, and the branch-naming convention are **resolved from the binding**
-(`CLAIRE_ORG.md#branch-strategy-binding`), never hardcoded here. Wherever this document says
-"the integration branch" or "the production-mirror branch", read "the branch named by the binding" — the
-binding's `integration-branch` field for the former, and the strategy's designated production-mirror role
-for the latter.
+**Name-agnostic by construction.** No concrete branch identifier appears in this document. The actual integration branch name, its branch-protection posture, and the naming grammar are **resolved dynamically from the binding** (`CADENCE_ORG.md#branch-strategy-binding`) rather than hardcoded here. Whenever this specification refers to "the integration branch" or "the production-mirror branch", it denotes the branch bound to that role — the binding's `integration-branch` setting for the former, and the strategy's designated production-mirror role for the latter.
 
-This strategy exists for repos that keep a separate production-mirror branch alongside the integration
-branch, so the default tooling assumption that the production-mirror branch is the merge target does **not**
-match the project's reality.
+This topology serves repositories that maintain a dedicated production-mirror branch alongside their primary integration branch, where the common default assumption that the production-mirror branch is the day-to-day merge target does **not** hold.
 
 ## The Integration Branch vs. the Production-Mirror Branch
 
-**The integration branch is where feature work merges.** It is the branch that represents the current
-accepted state of the project, and the base against which "is this merged?" is evaluated. Its concrete name
-is declared in the binding's `integration-branch` field.
+**The integration branch is where feature work merges.** It represents the current accepted state of the codebase and serves as the baseline against which "is this change merged?" is evaluated. Its concrete identifier is declared in the binding's `integration-branch` field.
 
-**The production-mirror branch tracks what is deployed to production.** It is **not** the merge target for
-day-to-day feature work, and a change being absent from it does **not** mean it is unmerged.
+**The production-mirror branch tracks what is deployed to production.** It is **not** the merge target for routine feature delivery, and the absence of a commit from the production-mirror branch does **not** imply the change is unmerged.
 
 | Branch role | Lifetime | Merge target for features? |
 |---|---|---|
@@ -38,40 +21,28 @@ day-to-day feature work, and a change being absent from it does **not** mean it 
 | Production-mirror branch — what is deployed | Long-lived | No |
 | Feature / per-change branch — merges into the integration branch via PR | Short-lived; deleted on merge | n/a |
 
-The promotion path is: **integration branch → stabilization/release branch → production-mirror branch.**
-Feature work always targets the integration branch; stabilization branches are cut for release
-stabilization, not day-to-day merges. A version-derivation tool may label prereleases by branch role (e.g.
-the integration branch → a prerelease suffix, while release and production-mirror branches are unlabeled);
-the version number itself is derived from git state by the `/claire-release` skill.
+The promotion flow is: **integration branch → stabilization/release branch → production-mirror branch.**
+Feature delivery always targets the integration branch; stabilization branches are cut specifically for release hardening rather than ongoing feature merges. Version-derivation tooling may attach prerelease suffixes according to branch role (for example, marking the integration branch with a prerelease label while leaving release and production-mirror branches unlabeled); the version number itself is derived from git history by the `/cadence-release` skill.
 
 ## The Integration Branch Is Protected — No Direct Changes
 
-Whether the integration branch is protected is declared by the binding's `integration-branch-protected`
-field. **When protection is declared, nothing commits to the integration branch directly.** Every change
-reaches it only by merging a branch through an MR that targets it. This applies to **all** artifact changes
-the SDLC produces, not just source code:
+Whether the integration branch enforces branch protection is declared via the binding's `integration-branch-protected` field. **When protection is declared, no commits are pushed directly to the integration branch.** Every modification reaches the integration branch exclusively by merging a short-lived branch through an MR/PR targeting it. This rule governs **all** artifacts produced across the SDLC, not only application source code:
 
-- **Spec creation** (`problem.md`, `spec.md`, `test-plan.md`, stubs) — authored on a branch, merged via MR.
-- **Spec approvals** and any `status` transition in `metadata.yaml` — committed on a branch, merged via MR.
-- **Implementation** (Source/ and Tests/ changes) — on a branch, merged via MR.
-- **Archive** (moving artifacts to `archive/`, CHANGELOG updates, ADR/intent promotion) — on a branch, merged via MR.
-- **Documentation, policy, and config changes** — likewise on a branch, merged via MR.
+- **Spec creation** (`problem.md`, `spec.md`, `test-plan.md`, stubs) — authored on a dedicated branch and merged via MR.
+- **Spec approvals** and any `status` transition in `metadata.yaml` — committed on a branch and merged via MR.
+- **Implementation** (`Source/` and `Tests/` changes) — developed on a branch and merged via MR.
+- **Archive** (relocating artifacts to `archive/`, updating `CHANGELOG.md`, promoting ADRs and intent insights) — committed on a branch and merged via MR.
+- **Documentation, policy, and configuration updates** — likewise authored on a branch and merged via MR.
 
-There is no "small enough to commit straight to the integration branch" exception. Even a single-file edit
-follows branch → MR → merge. Right-sizing (see `change-tiers.md`) may compress *which review steps run*,
-but it never permits a direct commit to a protected integration branch.
+There is no "small enough to commit directly to the integration branch" carve-out. Even a single-file adjustment follows the `branch → MR → merge` path. Process right-sizing (see `change-tiers.md`) may streamline *which review gates execute*, but it never authorizes a direct push to a protected integration branch.
 
-Branch-per-change keeps every transition reviewable and revertable as a unit, and keeps the integration
-branch always reflecting a state that passed through an MR gate.
+Enforcing branch-per-change ensures every state transition remains reviewable and revertable as an atomic unit, guaranteeing the integration branch always reflects work that cleared an explicit MR gate.
 
 ## Branch Naming
 
-The branch-naming convention is declared by the binding's `branch-naming-convention` field. The default
-convention CLAIRE ships is **`{phase}/{type}/{id}`** — three `/`-delimited segments derived entirely from
-the ticket's `metadata.yaml`. The name is a projection of the ticket's state, not free text.
+The branch-naming grammar is declared by the binding's `branch-naming-convention` field. The default convention shipped by CADENCE is **`{phase}/{type}/{id}`** — three `/`-separated segments projected deterministically from the ticket's `metadata.yaml`. The branch name is a structured projection of ticket state rather than free-form text.
 
-- **`{phase}`** — the lifecycle phase, selected from the ticket's current `status` at the moment the branch
-  is created:
+- **`{phase}`** — the lifecycle stage, determined from the ticket's current `status` at the moment the branch is created:
 
   | `metadata.yaml` `status` | `{phase}` |
   |---|---|
@@ -79,79 +50,47 @@ the ticket's `metadata.yaml`. The name is a projection of the ticket's state, no
   | `spec-approved`, `in-progress`, `in-review` | `impl` |
   | `merged`, `archived`, `cancelled` | `archive` |
 
-- **`{type}`** — the ticket's `type` field verbatim: `feature` \| `bug` \| `tech-debt` \| `security` \|
-  `documentation` \| `epic`.
-- **`{id}`** — the ticket id verbatim (e.g. `ORD-40`). It is always the **last** segment, so a branch always
-  resolves back to its ticket by taking the final `/`-delimited component — which stays unambiguous even
-  though `{type}` may itself contain a hyphen (`tech-debt`).
+- **`{type}`** — the ticket's `type` field verbatim: `feature` \| `bug` \| `tech-debt` \| `security` \| `documentation` \| `epic`.
+- **`{id}`** — the ticket identifier verbatim (e.g., `ORD-40`). Because it always occupies the **final** segment, any branch name resolves back to its ticket simply by extracting the last `/`-delimited token — remaining unambiguous even when `{type}` contains a hyphen (`tech-debt`).
 
 Examples: `spec/feature/ORD-40` · `impl/bug/ORD-41` · `archive/tech-debt/ORD-25`.
 
 Rules:
 
-- **Casing.** Lowercase the `{phase}` and `{type}` segments; keep `{id}` in its canonical tracker casing.
-- **The phase is fixed at branch-creation time** from the then-current `status`; branches are **not**
-  renamed as the ticket advances. Because the workflow cuts a new branch per artifact transition — spec
-  authoring, implementation, and archival are separate MRs — a ticket normally has a distinct branch for
-  each phase it passes through, each carrying that phase's prefix. An `epic` ships no implementation, so it
-  never produces an `impl/` branch.
-- **This convention supersedes** any older `{type}/{sprint.team}/{ticket-description}` form: the sprint/team
-  token and the free-text description are dropped in favour of the status-driven phase prefix and the
-  machine-extractable ticket id. Anything creating or parsing a branch name (the `claire-implementer` agent's
-  branch-creation step; the `/claire-review` and `/claire-maintain` branch→ticket resolution) follows this section.
+- **Casing.** Format the `{phase}` and `{type}` segments in lowercase; preserve `{id}` in its canonical tracker casing.
+- **The phase prefix is locked at branch creation** based on the ticket's `status` at that point; branches are **never** renamed as the ticket progresses. Because the workflow opens a distinct branch for each artifact transition — specification authoring, implementation, and archival are separate MRs — a ticket naturally uses a dedicated branch per phase, each bearing its corresponding prefix. An `epic` delivers no direct implementation and therefore never generates an `impl/` branch.
+- **This grammar supersedes** legacy `{type}/{sprint.team}/{ticket-description}` patterns: sprint/team tokens and free-text slugs are replaced by the status-driven phase prefix and machine-parseable ticket ID. All tooling and roles that construct or parse branch names (such as the `cadence-implementer` agent's branch creation step and the `/cadence-review` and `/cadence-maintain` branch-to-ticket resolution logic) adhere to this specification.
 
 ## Implications for the SDLC Workflow
 
-Any workflow step that asks "has this change been merged?" resolves against **the integration branch named
-by the binding**, not against the production-mirror branch:
+Every workflow gate or skill that evaluates "has this change been merged?" checks **the integration branch named by the binding**, never the production-mirror branch:
 
-- **PRs** open against the integration branch.
-- **`/claire-maintain`** computes the review diff against the integration branch (not against the production
-  mirror).
-- **`/claire-archive`** treats a change as merged when its commit is reachable on the integration branch (or
-  `metadata.yaml` shows `status: merged`). A commit that is on the integration branch but not yet on the
-  production-mirror branch **counts as merged** for archival purposes.
-- **`metadata.yaml`** `status: merged` / `merged_at` are set once the feature PR merges into the
-  integration branch.
-- **Branch → ticket resolution** (`/claire-review`, `/claire-maintain`) recovers the ticket id as the **final**
-  `/`-delimited segment of the branch name, per the *Branch Naming* convention above.
+- **PRs / MRs** target the integration branch.
+- **`/cadence-maintain`** calculates the review diff against the integration branch (not the production mirror).
+- **`/cadence-archive`** considers a change merged once its commit is reachable on the integration branch (or when `metadata.yaml` records `status: merged`). A commit reachable on the integration branch that has not yet been promoted to the production-mirror branch **counts as merged** for archival.
+- **`metadata.yaml`** fields `status: merged` and `merged_at` are recorded as soon as the feature PR merges into the integration branch.
+- **Branch → ticket resolution** (`/cadence-review`, `/cadence-maintain`) extracts the ticket ID from the **final** `/`-delimited segment of the branch name, following the *Branch Naming* rules above.
 
 ## Post-Merge Branch Lifecycle
 
-**Feature branches are deleted once their MR merges — history is not kept on the branch.** The forge is
-configured to auto-delete a head branch on merge, and merges are **squash** merges, so the branch's
-per-cycle commit history does **not** become part of the integration branch's ancestry. This is deliberate:
-the granular red-green-per-cycle commits are working history, not the record.
+**Feature branches are deleted automatically upon MR merge — historical record does not live on the feature branch.** The repository forge is configured to auto-delete head branches on merge, and merges use **squash** commits, meaning the branch's granular per-cycle TDD commits do **not** persist in the integration branch's commit graph. This is intentional: red-green-refactor cycle commits serve as working scaffolding during development and review, not the permanent archive.
 
-The **lifecycle record is preserved elsewhere, by design**, so deleting the branch loses nothing that
-matters:
+The **authoritative lifecycle record is preserved in dedicated repository artifacts**, so deleting the feature branch discards no governance context:
 
-- the **squash commit on the integration branch** (the merged change as one reviewable/revertable unit,
-  referencing its PR);
-- the ticket's **`archive/{id}/` artifacts** — `decisions.md`, `submission.md`, `summary.md`, and the
-  spec/test-plan;
-- the **`CHANGELOG.md`** entry.
+- the **squash commit on the integration branch** (capturing the merged change as a single reviewable and revertable unit linked to its PR);
+- the ticket's **`archive/{id}/` directory** — containing `decisions.md`, `submission.md`, `summary.md`, `spec.md`, and `test-plan.md`;
+- the **`CHANGELOG.md`** release entry.
 
 Consequences for tooling and agents:
 
-- Do **not** rely on a post-merge feature branch existing (locally or on the remote). "Is this merged?"
-  resolves against the integration branch, never against the presence of the branch.
-- `/claire-archive`'s "clean up the feature branch" step is satisfied automatically by the forge's auto-delete;
-  a **missing** post-merge branch is the expected state, not drift.
-- Pruning local branches after merge is routine cleanup, not a policy violation.
+- Never depend on a feature branch remaining present (locally or on the remote) after merge. "Is this merged?" is always answered by querying the integration branch, never by checking whether the feature branch still exists.
+- `/cadence-archive`'s branch-cleanup step is satisfied automatically when the forge auto-deletes the branch; an **absent** post-merge feature branch is the expected state, not configuration drift.
+- Pruning merged local branches is standard workspace hygiene, not a policy violation.
 
 ## Promotion to Production
 
-Promotion of accepted work from the integration branch through a stabilization/release branch to the
-production-mirror branch is a separate release activity, not part of the per-ticket merge or archive
-lifecycle. Archiving a ticket does not require the change to be present on a release or production-mirror
-branch.
+Promoting accepted changes from the integration branch through a stabilization/release branch to the production-mirror branch is a separate release-engineering activity outside the per-ticket merge and archive lifecycle. Archiving a completed ticket does not wait for the change to reach a release or production-mirror branch.
 
 ## Rationale
 
-Tooling and onboarding defaults frequently treat the production-mirror branch as the integration branch.
-Encoding the real convention here — the integration branch integrates, the production-mirror branch mirrors
-production — prevents two recurring failure modes: (1) blocking an archive or acceptance because a change
-"isn't on the production mirror" when it is in fact merged to the integration branch, and (2) computing
-review diffs against the wrong base and surfacing unrelated production-vs-integration drift as if it were
-part of the change under review.
+Standard forge defaults and onboarding templates frequently conflate the production-mirror branch with the integration branch. Explicitly codifying their distinct roles here — the integration branch integrates ongoing work while the production-mirror branch reflects deployed production — eliminates two common failure modes: (1) stalling ticket archival or maintainer acceptance because a merged change is not yet on the production mirror, and (2) diffing reviews against the wrong base branch, which pollutes the review with unrelated integration-versus-production delta.

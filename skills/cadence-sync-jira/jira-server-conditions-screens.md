@@ -1,0 +1,42 @@
+# `/cadence-sync-jira` — reported conditions: screen availability
+
+Bounded context: Tracker projection / Jira Server-DC adapter (BTG-075, BTG-168).
+External invariant relied upon: identical to `.agents/skills/cadence-sync-jira/jira-server-conditions.md` — every script emits machine-readable results on **stdout** as `key=value` lines and audit conditions on **stderr** as `syncjs.<family>.<condition>` lines. Every condition documented below is emitted directly by `jira-screen-lib.sh`.
+
+**This file is the fifth modular segment of the single condition catalog, split rather than truncated.** BTG-168 factored out the screen-availability conditions so `jira-server-conditions.md` stays beneath the `<400`-line Developer Experience ceiling (preserving 100% of Operability content per C-3, matching BTG-102, BTG-105, and BTG-173).
+
+---
+
+## The doctrine: project a field only when the target screen carries it
+
+**Live-observed against reference Jira Server/DC** (during BTG-150's `CADENCE_ORG.md` §16 verification against Jira Server, recorded as **PROD_CADENCE-024**): in Jira Server/DC, a project's **create** screen and **edit** screen are configured independently per issue type, and sending any `fields` key that is absent from the target screen causes `POST /rest/api/2/issue` or `PUT /rest/api/2/issue/{key}` to fail with **HTTP 400**, aborting the entire issue write. On the reference instance, the `Bug` create screen omits Time Tracking (`timetracking`), which previously caused every `type: bug` ticket with an `estimated_effort` to fail creation at Step 4.
+
+The architectural remedy is **detect-then-send** (DEC-001), never send-then-retry-on-400 (since an HTTP 400 is ambiguous and can equally indicate a missing required field, an invalid priority name, or a malformed duration). Instead, `jira-screen-lib.sh` queries Jira's screen metadata once per write and inspects the returned field map before constructing the payload.
+
+Three core invariants govern all conditions in this family:
+
+- **Three-valued availability predicate** (`available`, `affirmatively absent`, or `unknown`) where **only an affirmative absence suppresses a field**. Treating an unreachable or empty metadata response (`unknown`) as "field absent" would fail closed in the wrong direction (DEC-007), silently dropping four fields across all tickets whenever a metadata endpoint hiccups. Instead, following `jira-ac-lib.sh`'s precedent, a field is suppressed only when the screen metadata request succeeded with **2xx** and returned a non-empty, non-truncated field map in which that field key is **absent**.
+- **Instance-driven, parameterized detection.** Zero issue-type names or field names are hardcoded into control-flow branches: `jira-screen-lib.sh` checks any guarded field ID against the live screen metadata map so an adopter whose `Bug` create screen *does* include `timetracking` has the estimate written on create without configuration changes.
+- **Silent on the `available` branch.** When a field is present on the screen, zero screen-availability lines are emitted so normal transcripts stay clean.
+
+**Four fields are guarded by this probe** — `timetracking`, `priority`, `labels`, and `description` — because all four are optional screen fields sent by `jira-write-issue.sh` (DEC-014). (`summary` and `project` are mandatory structural fields; `issuetype` is governed by BTG-102's re-type guard; and `Epic Name` is required on Epic create screens per BTG-040.)
+
+---
+
+## The four per-field suppression conditions
+
+- **`syncjs.estimate.field_unsupported_type`** (Warning) — the screen metadata affirmatively shows that `timetracking` is **absent from the target screen** for this issue type, so `originalEstimate` is **omitted** from the request body while all other supported fields are written (PROD_CADENCE-024). On the **update** path, the issue's live Original and Remaining Estimates remain **untouched**, and the pre-write Remaining Estimate read is skipped entirely. Emits `estimate_result=field-unsupported` on stdout (never `none`, which is reserved for tickets without an estimate, PROD_CADENCE-023 / DEC-008). **Operator remediation:** add Time Tracking to that issue type's create/edit screen in Jira if estimates should project, or leave as-is if the omission is intentional.
+- **`syncjs.priority.field_unsupported_type`** (Warning) — `priority` is affirmatively absent from the target screen and omitted from the request payload (note that an unmapped `priority:` value in `metadata.yaml` still halts with exit `4` before reaching screen checks).
+- **`syncjs.labels.field_unsupported_type`** (Warning) — `labels` is affirmatively absent from the target screen and the `labels` key is **omitted entirely** from the JSON object (never sent as `{"labels": []}`, which would instruct Jira to wipe existing labels on the issue, DEC-017).
+- **`syncjs.description.field_unsupported_type`** (Warning) — `description` is affirmatively absent from the target screen and omitted. Evaluated **strictly after** BTG-062's missing/empty `--description-file` guard so an upstream rendering failure still halts loud rather than being masked by screen suppression. On the update path, the live description in Jira is left untouched.
+
+---
+
+## Shared and create-completion follow-up conditions
+
+- **`syncjs.screen.availability_unknown`** (Warning) — screen field availability could **not be determined** because the metadata request was unreachable, returned non-2xx, lacked a recognizable field map, returned an **empty** zero-key field map (BTG-184 AC-1), or — on the **create** path — returned a pagination envelope indicating the field page was **truncated** (BTG-184 AC-2: `isLast: false`, or numeric `total > values.length`; an absent pagination envelope is not treated as truncated per DEC-003). When `availability_unknown` fires, **all four fields are sent normally**, preserving pre-BTG-168 behavior. Emitted **at most once per write pass** (never repeated per field). Note that Jira 9+ removed the legacy single-call `createmeta?projectKeys=…&expand=projects.issuetypes.fields` endpoint (which returns HTTP 404 there), so this adapter uses the two-step `createmeta/{project}/issuetypes[/{issueTypeId}]` endpoints introduced in Jira 8.4 (DEC-026). When `availability_unknown` fires during the post-create edit-screen follow-up probe, no follow-up `PUT` is sent and the create-time omissions stand.
+- **`syncjs.screen.followup_written`** (Info) — **create-completion follow-up write succeeded.** When one or more of the four guarded fields were suppressed on the **create** screen, `jira-write-issue.sh` immediately probes the newly created issue's **edit** screen (`GET /rest/api/2/issue/{key}/editmeta`); if the edit screen carries any of the suppressed fields, a **single follow-up `PUT`** writes all newly available fields at once and logs their names here. When `timetracking` is among the recovered fields, `estimate_result` updates to **`followup-written`**, and sending `originalEstimate` alone on that immediate post-create `PUT` is safe (and enforced by `sync-jira-server-screen-availability-gate.sh`, DEC-013) because the brand-new issue has zero logged work and no prior Remaining Estimate to preserve (PROD_CADENCE-006).
+- **`syncjs.screen.followup_rejected`** (Warning) — the post-create follow-up `PUT` was attempted but rejected by Jira (or its payload could not be staged). **Non-blocking (exits `0`)**: the issue itself was already created and recorded, and `estimate_result` remains `field-unsupported`. **Operator remediation:** re-run `/cadence-sync-jira` (which will run the `update` path against the edit screen) or set the field in Jira.
+- **`syncjs.screen.followup_unavailable`** (Warning) — one or more fields were suppressed on the create screen, the newly created issue's **edit** screen **was successfully read** (state `ok`), and the edit screen **also omits those fields**, so **no follow-up `PUT` was sent** and the create-time omissions stand. Emitted **only when the edit screen was positively read** (BTG-184 AC-3 / DEC-025; if the edit-screen read itself failed, `availability_unknown` fires instead). **Operator remediation:** add the omitted fields to that issue type's screens in Jira if desired, or accept the omission.
+
+**Every condition in this file is non-fatal.** All screen probes and post-create follow-ups exit `0` unless an unrelated blocking failure occurs.

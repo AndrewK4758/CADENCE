@@ -7,8 +7,8 @@
 # Bounded context: Build tooling / compile-gate flow. Invariants relied on from
 # outside this boundary: `artifacts/footprint.generated` is the source of record
 # for which paths ship to an adopter; `artifacts/mcp/mcp.manifest` is the source
-# of record for which MCP server rows exist AND states the `claire-` ownership
-# sentinel its keys must carry; `docs/agentic-sdlc/CLAIRE_ORG.md` section 16's
+# of record for which MCP server rows exist AND states the `cadence-` ownership
+# sentinel its keys must carry; `docs/agentic-sdlc/CADENCE_ORG.md` section 16's
 # target clauses are the source of record for the org-token set.
 #
 # Usage:
@@ -27,9 +27,9 @@
 # though -- see insight-register-disposition.txt for the ruling that split them.
 #
 # ONE CLASSIFIER, N CALLERS, NEVER A SECOND IMPLEMENTATION -- the architecture
-# `artifacts/commands/claire-archive.md` already describes in those words for
-# dead-citation-gate.sh. Callers: /claire-release step 4b, the triage-agent's
-# PROD-entry append, /claire-archive step 2d, the `authored-doc` run-gates.sh row, and
+# `artifacts/commands/cadence-archive.md` already describes in those words for
+# dead-citation-gate.sh. Callers: /cadence-release step 4b, the triage-agent's
+# PROD-entry append, /cadence-archive step 2d, the `authored-doc` run-gates.sh row, and
 # the harnesses that SOURCE this file. Sourcing a shared library is not a harness
 # invoking a harness, so the BTG-135 invariant is untouched and no exemption is
 # requested.
@@ -40,7 +40,7 @@
 # PORTABILITY: bash + grep/awk/sed/sort/cut only; busybox find is not GNU find.
 # BTG-200 AC-4: MEASURED on `alpine/latest` + bash diffutils gawk grep sed coreutils,
 # a deleted manifest's list. That measurement stands; the present-tense claim about
-# what CI *is* is withdrawn -- see `CLAIRE_ORG.md` section 1's CI/CD row.
+# what CI *is* is withdrawn -- see `CADENCE_ORG.md` section 1's CI/CD row.
 #
 # References: archive/BTG-191/{problem,spec,test-plan,decisions}.md ;
 #             ci-templates/scripts/dead-citation-gate.sh (the shape copied).
@@ -77,7 +77,7 @@ adg_require() {
   for f in "$@"; do
     if [ ! -s "$ADG_SELF_DIR/$f" ]; then
       echo "authored-doc: FATAL -- dependency absent or EMPTY: $ADG_SELF_DIR/$f (a zero-byte file sources cleanly and would silently remove the rule it carries)" >&2
-      echo "seam_type=IMPOSSIBLE_STATE event_name=authoreddoc.gate.absent_or_empty subject=$f" >&2
+      echo "seam_type=UNSOUND_CONDITION event_name=authoreddoc.gate.absent_or_empty subject=$f" >&2
       return 2
     fi
   done
@@ -109,13 +109,13 @@ adg_require authored-doc-ledgers.sh || { return 2 2>/dev/null || exit 2; }
 #       against the tree rather than against the row's shape, because only the
 #       tree can answer it.
 #
-# This is PROD_CLAIRE-020's recorded shape -- "a blanket exemption blinds the sweep to
+# This is PROD_CADENCE-020's recorded shape -- "a blanket exemption blinds the sweep to
 # what the archival's own promotion sub-step writes into the exempted file" --
 # and it is why BTG176_MCP_KEY_LEDGER carries THREE rows for one release note.
 # EVERY PATH-ANCHORED LEDGER THE GATE CONSULTS, not only the one this rule was
 # first written for. A rule that governs one of two ledgers leaves the other able
 # to take a blanket row unchallenged, and nothing would say so -- the shape
-# PROD_CLAIRE-020 records. Caught by SEAM-5, which derives the governed set from this
+# PROD_CADENCE-020 records. Caught by SEAM-5, which derives the governed set from this
 # very loop and compares it against the ledgers the gate actually reads.
 adg_ledger_hygiene() {
   local root="$1" ledger row path anchor total matched
@@ -311,7 +311,7 @@ for adg_fn in predicate_mcp_key predicate_dx_measure predicate_org_token \
               adg_emit_seam adg_report_violation adg_setup_failure adg_uncovered_documents adg_report_uncovered; do
   declare -F "$adg_fn" >/dev/null 2>&1 && continue
   echo "authored-doc: FATAL -- $adg_fn is undefined after loading; the rule it carries would silently report nothing" >&2
-  echo "seam_type=IMPOSSIBLE_STATE event_name=authoreddoc.gate.absent_or_empty subject=$adg_fn" >&2
+  echo "seam_type=UNSOUND_CONDITION event_name=authoreddoc.gate.absent_or_empty subject=$adg_fn" >&2
   return 2 2>/dev/null || exit 2
 done
 unset adg_fn

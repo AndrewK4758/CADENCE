@@ -1,8 +1,8 @@
 # Decision Log: {TICKET-ID} -- {Title}
 
-This file records design decisions made during the lifecycle of this spec. Each entry is immutable once recorded -- if a decision is reversed, add a new entry that references and supersedes the original. Once a ticket is **archived**, its decision entries are never rewritten: a later superseding ticket records its decision in **its own** log and may add an **additive annotation** here pointing forward, but the original entry's text is never altered, reworded, or deleted.
+This log captures architectural and design decisions made across the lifecycle of this specification. Every entry is immutable once committed -- if a later finding reverses an earlier choice, append a new entry that cites and supersedes the prior one. Once a ticket is **archived**, its decision entries are permanently frozen: a subsequent superseding ticket records the new decision in **its own** `decisions.md` and may append an **additive forward-pointer annotation** here, but the original entry's prose is never edited, rephrased, or removed.
 
-For decisions with project-wide or architectural significance, also create a formal ADR in your project's ADR directory.
+For decisions carrying repository-wide or cross-context architectural impact, promote the decision to a formal ADR in the project's `docs/ADR/` directory during `/cadence-archive`.
 
 ---
 
@@ -10,34 +10,34 @@ For decisions with project-wide or architectural significance, also create a for
 
 - **Date:** {YYYY-MM-DD}
 - **Status:** Accepted | Superseded by DEC-{N}
-- **Decider:** {Person or role who made the call}
+- **Decider:** {Person or agent role making the call}
 - **Phase:** Triage | Spec Authoring | Spec Review | Implementation | Code Review
 
 ### Context
 
-{What question or trade-off prompted this decision? What constraints were in play?}
+{What design question, ambiguity, or engineering trade-off prompted this decision? Which constraints or invariants were in play?}
 
 ### Decision
 
-{What was decided. Be specific and unambiguous.}
+{State the chosen approach clearly and unambiguously.}
 
 ### Rationale
 
-{Why this option was chosen over alternatives. Reference the Zachman grid cells this decision affects.}
+{Explain why this option won over the alternatives. Cite the Contextual Grounding Matrix (6W×4L) cells and CADENCE Engineering Pillars affected by this choice.}
 
 ### Alternatives Considered
 
-1. **{Alternative A}:** {Brief description and why it was rejected}
-2. **{Alternative B}:** {Brief description and why it was rejected}
+1. **{Alternative A}:** {Concise summary and the specific reason it was rejected}
+2. **{Alternative B}:** {Concise summary and the specific reason it was rejected}
 
 ### Consequences
 
-- **Positive:** {Benefits of this decision}
-- **Negative:** {Trade-offs or risks accepted}
-- **Follow-up:** {Any actions needed as a result -- e.g., "revisit after runtime migration completes"}
+- **Positive:** {Direct benefits and guarantees gained from this decision}
+- **Negative:** {Accepted costs, complexity, or operational trade-offs}
+- **Follow-up:** {Required downstream actions -- e.g., "re-evaluate after runtime adapter migration completes"}
 
 ---
 
 ## DEC-002: {Next Decision}
 
-{Same structure as above. Append new decisions chronologically.}
+{Follow the same structure above. Append subsequent decisions in chronological order.}

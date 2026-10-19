@@ -1,6 +1,0 @@
-PRISM (Preconditions, Rules, Inputs, Side-effects, Mutations) decomposes each acceptance criterion into behavioral primitives. The spec-author fills this table; the test-plan.md scenarios are derived from it.
-SCOUT (State, Constraints, Outputs, Updates, Triggers) decomposes each acceptance criterion into behavioral primitives. The spec-author fills this table; the test-plan.md scenarios are derived from it.
-Invariants that must hold under all chaos profiles. These are derived from PRISM Rules and Mutations — they are the business truths that no infrastructure failure is allowed to violate.
-Invariants that must hold under all chaos profiles. These are derived from SCOUT Constraints and Updates — they are the business truths that no infrastructure failure is allowed to violate.
-| Multi-table write sequencing | Step order, failure handling, and cache invalidation documented | {See Proposed Design and PRISM Side-effects/Mutations} | {Pass/Flag} |
-| Multi-table write sequencing | Step order, failure handling, and cache invalidation documented | {See Proposed Design and SCOUT Outputs/Updates} | {Pass/Flag} |

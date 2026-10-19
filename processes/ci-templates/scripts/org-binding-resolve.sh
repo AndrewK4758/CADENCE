@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# org-binding-resolve.sh -- the SINGLE reader of `CLAIRE_ORG.md`'s per-prefix
+# org-binding-resolve.sh -- the SINGLE reader of `CADENCE_ORG.md`'s per-prefix
 # binding grammar (BTG-179).
 #
 # Bounded context: Governance config / per-repo binding resolution.
 # Invariants relied on from outside this boundary:
-#   - `CLAIRE_ORG.md` is the single per-repo binding mechanism (ADR_CLAIRE-0010 cl.2).
+#   - `CADENCE_ORG.md` is the single per-repo binding mechanism (ADR_CADENCE-0010 cl.2).
 #     This script changes the KEY of the selection (a ticket-id prefix), never
 #     the number of mechanisms.
 #   - §9 / §10 / §13 are registered Stable Configuration Contracts. Their
@@ -23,12 +23,12 @@
 # Usage:
 #   org-binding-resolve.sh --tracker <PREFIX> [--org <file>]
 #
-# Default --org: docs/agentic-sdlc/CLAIRE_ORG.md under $PWD -- the mint-id.sh
+# Default --org: docs/agentic-sdlc/CADENCE_ORG.md under $PWD -- the mint-id.sh
 # `--binding` convention, so it works pre-adopt and outside a git tree.
 
 set -u
 
-ORG_DEFAULT="docs/agentic-sdlc/CLAIRE_ORG.md"
+ORG_DEFAULT="docs/agentic-sdlc/CADENCE_ORG.md"
 
 usage() {
   echo "Usage: $0 --tracker   <PREFIX> [--org <file>]" >&2
@@ -49,7 +49,7 @@ usage() {
 # from Facet 3's 400-line ceiling, DEC-027 took it, DEC-030 made it three-way,
 # BTG-247 DEC-012 (OQ-B) made it four; ALL FOUR modules carry the same three
 # distribution rows -- the COPY_PATHS entry, the RECONCILE row and the
-# `claire-surfaces.md` mention.
+# `cadence-surfaces.md` mention.
 #
 # Located beside this script via `$0` rather than `${BASH_SOURCE[0]}`: the two
 # `tms-*` backstop hooks invoke this file with `sh`, where BASH_SOURCE does not
@@ -223,13 +223,13 @@ resolve_allocator() {
   # reservation. This is checked before the table is read at all, because the
   # rule is about the PREFIX, not about what the table happens to say.
   #
-  # BTG-197: the same rule, for the same reason, for CLAIRE core's own record
+  # BTG-197: the same rule, for the same reason, for CADENCE core's own record
   # prefixes. ADDITIVE -- the bare three keep behaving exactly as they did, which
   # is the whole point of the ticket. EXACT LITERALS, never `ADR*`: a loose
   # pattern here would silently exempt an adopter's own ADRIAN prefix from a §10
   # binding it is genuinely subject to.
   case "$PREFIX" in
-    ADR|II|PROD|ADR_CLAIRE|II_CLAIRE|PROD_CLAIRE)
+    ADR|II|PROD|ADR_CADENCE|II_CADENCE|PROD_CADENCE)
       printf 'allocator=unbound\n'
       printf 'id_scheme=n/a\n'
       printf 'source=convention-id\n'

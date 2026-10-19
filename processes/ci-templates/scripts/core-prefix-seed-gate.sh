@@ -3,8 +3,8 @@
 # core-prefix-seed-gate.sh -- BTG-197 structural gate (AC-3b, DEC-018).
 #
 # Bounded context: Build tooling / compile-gate flow, and the id-allocation
-# surface (`/claire-mint` + the `ticket-index.tsv` reserve ledger, both registered in
-# docs/policies/claire-surfaces.md).
+# surface (`/cadence-mint` + the `ticket-index.tsv` reserve ledger, both registered in
+# docs/policies/cadence-surfaces.md).
 #
 # Invariant relied on from outside this boundary: the reserve ledger is
 # PER-CLONE and UNCOMMITTED -- it lives under `git rev-parse --git-common-dir`,
@@ -13,7 +13,7 @@
 # per-clone operator step. That is the gap this gate closes.
 #
 # WHAT IT CATCHES. A clone whose ledger carries no high-water row for one of
-# CLAIRE core's own record prefixes will answer the next `--peek` with
+# CADENCE core's own record prefixes will answer the next `--peek` with
 # `<PREFIX>-0001` and mint straight onto an existing record. Nothing downstream
 # can detect that: the row it would have to check against is precisely the one
 # that is missing. So the seed value has to come from somewhere trustworthy, and
@@ -21,14 +21,14 @@
 #
 # THE COMPARAND IS THE COMMITTED MANIFEST, NOT THIS CLONE'S LEDGER (DEC-049,
 # resolving the DEC-038 halt). This gate used to compare the tree against the
-# per-clone `claire-mint` reserve ledger. That ledger lives under
+# per-clone `cadence-mint` reserve ledger. That ledger lives under
 # `git rev-parse --git-common-dir`, is uncommitted and is never shipped -- so a
 # fresh clone has none, and the CI manifest of the day CLONED FRESH ON EVERY PUSH.
 # BTG-200 AC-4: past tense, because that manifest has been deleted; the DEC-049
 # history and its conclusion (the comparand is the committed manifest) are
 # untouched, and stand for any substrate. This sentence is maintained IDENTICALLY
 # in `core-prefix-seed-manifest.txt`'s header -- one fact in two representations,
-# ADR_CLAIRE-0094's subject -- and the two are corrected together or not at all.
+# ADR_CADENCE-0094's subject -- and the two are corrected together or not at all.
 # Once Phase 2 gave the core prefixes real records, the row therefore failed
 # EVERY CI RUN, permanently, with no operator able to remediate: there is no
 # operator, and the next build starts from a fresh clone again. Measured both
@@ -42,11 +42,11 @@
 # that step is given is right. That is what restores full R-5 coverage rather
 # than trading it away, which is why the alternative on the menu -- narrowing the
 # gate to clones that already have a ledger -- was rejected: a fresh clone about
-# to `--reserve ADR_CLAIRE` IS risk R-5.
+# to `--reserve ADR_CADENCE` IS risk R-5.
 #
 # It still never scans the tree to INVENT a high-water and carry on -- that would
-# contradict the `/claire-mint` contract's own never-scan-fall-back clause
-# (CLAIRE_DIRECTIVES.md Behavior 5 -- the framework-owned sidecar, not
+# contradict the `/cadence-mint` contract's own never-scan-fall-back clause
+# (CADENCE_DIRECTIVES.md Behavior 5 -- the framework-owned sidecar, not
 # CLAUDE.md, since BTG-198), which is why DEC-018 rejected exactly that as its
 # option (c). It reads the tree only to CHECK a committed declaration against it,
 # and it refuses rather than substituting when the two disagree.
@@ -57,26 +57,26 @@
 # vacuity this gate already suffered once, from the day it shipped until Phase 2
 # gave the prefixes records.
 #
-# SCOPE: CLAIRE CORE TREES ONLY -- and this is ENFORCED, not assumed.
+# SCOPE: CADENCE CORE TREES ONLY -- and this is ENFORCED, not assumed.
 #
 # An earlier revision of this gate claimed it was "permanently silent on an
 # adopter's tree by construction", reasoning that an adopting repository has no
-# CLAIRE-development records so every prefix would measure a tree high-water
+# CADENCE-development records so every prefix would measure a tree high-water
 # of zero. THAT CLAIM WAS FALSE, and code review cycle 1 disproved it by running
 # the shipped gate against a real adopted tree. The measurement:
 #
 #   - docs/agentic-sdlc/production-insights.md is a plain COPY_PATHS entry in
-#     adopt-claire.sh and is copied VERBATIM -- unlike intent-insights.md,
+#     adopt-cadence.sh and is copied VERBATIM -- unlike intent-insights.md,
 #     which is entry-stripped, and authored-doc-exemptions.txt, which is
 #     row-stripped. A freshly adopted tree therefore carries all 21 of core's
-#     `### PROD-` entries, high-water PROD_CLAIRE-027.
-#   - So once Phase 2 renames those records into the PROD_CLAIRE namespace, an
-#     adopter's tree carries PROD_CLAIRE-027, their per-clone ledger has no
-#     PROD_CLAIRE row and never will, and their FIRST run-gates.sh failed this
+#     `### PROD-` entries, high-water PROD_CADENCE-027.
+#   - So once Phase 2 renames those records into the PROD_CADENCE namespace, an
+#     adopter's tree carries PROD_CADENCE-027, their per-clone ledger has no
+#     PROD_CADENCE row and never will, and their FIRST run-gates.sh failed this
 #     row -- instructing them to `--seed` a namespace they do not own.
-#   - II_CLAIRE and ADR_CLAIRE were measured too and are NOT affected: the
+#   - II_CADENCE and ADR_CADENCE were measured too and are NOT affected: the
 #     intent-insights strip leaves zero residual citations, and only
-#     docs/ADR/TEMPLATE.md is copied, which cites no ADR. PROD_CLAIRE alone
+#     docs/ADR/TEMPLATE.md is copied, which cites no ADR. PROD_CADENCE alone
 #     carried the hazard -- which is precisely why a by-construction argument
 #     over all three prefixes was the wrong shape of reasoning.
 #
@@ -85,13 +85,13 @@
 # never mint core prefixes, so scoping loses no protection that was ever real.
 #
 # The core marker is `kind=framework_dev` in artifacts/footprint.generated. It
-# is not a marker invented here: it is the SAME predicate claire-eject.sh and
+# is not a marker invented here: it is the SAME predicate cadence-eject.sh and
 # eject-footprint.sh already use to tell a framework-dev tree from an adopter
-# one. An adopting repo cannot satisfy it by accident -- adopt-claire.sh
+# one. An adopting repo cannot satisfy it by accident -- adopt-cadence.sh
 # explicitly does NOT copy core's descriptor and instead GENERATES an adopter
 # descriptor, whose emitter produces only kind=installed / kind=seed /
 # kind=tree_root rows; the framework_dev emitter is reachable only in a tree
-# that carries artifacts/commands/claire-adopt/adopt-claire.sh, the neutral
+# that carries artifacts/commands/cadence-adopt/adopt-cadence.sh, the neutral
 # compiler source that adoption never ships.
 #
 # On core's own tree the gate is still quiet throughout Phase 1, which renames
@@ -154,22 +154,22 @@ if [[ ! -f "$FOOTPRINT" ]] || ! grep -qE '^kind=framework_dev ' "$FOOTPRINT"; th
   # presence means "this is a core tree" -- read from a file whose absence in an
   # adopter tree is structural rather than incidental, which is what leaves the
   # pre-PI-021 adopter case untouched.
-  CORE_MARKER="$ROOT/artifacts/commands/claire-adopt/adopt-claire.sh"
+  CORE_MARKER="$ROOT/artifacts/commands/cadence-adopt/adopt-cadence.sh"
   if [[ -f "$CORE_MARKER" ]]; then
     emit_seam() { echo "seam_type=$1 event_name=$2 subject=${3:-}" >&2; }
-    emit_seam IMPOSSIBLE_STATE idalloc.seed.core_scope_undeterminable "$ROOT"
-    echo "core-prefix-seed-gate: FATAL -- this IS a CLAIRE core tree, but its footprint" >&2
+    emit_seam UNSOUND_CONDITION idalloc.seed.core_scope_undeterminable "$ROOT"
+    echo "core-prefix-seed-gate: FATAL -- this IS a CADENCE core tree, but its footprint" >&2
     echo "       descriptor does not say so, so the gate cannot scope itself." >&2
-    echo "       Core marker present: artifacts/commands/claire-adopt/adopt-claire.sh" >&2
+    echo "       Core marker present: artifacts/commands/cadence-adopt/adopt-cadence.sh" >&2
     echo "       Descriptor:          artifacts/footprint.generated ($([[ -f "$FOOTPRINT" ]] && echo "no kind=framework_dev row" || echo "absent"))" >&2
     echo "" >&2
     echo "       Refusing to report OK. Concluding 'not core' here would silently disable the" >&2
     echo "       unseeded-prefix check on the one kind of tree it exists for. Regenerate the" >&2
-    echo "       descriptor:  bash ci-templates/scripts/claire-eject.sh --derive-footprint" >&2
+    echo "       descriptor:  bash ci-templates/scripts/cadence-eject.sh --derive-footprint" >&2
     exit 2
   fi
-  echo "OK: not a CLAIRE core tree (artifacts/footprint.generated carries no kind=framework_dev row,"
-  echo "    and this tree carries no CLAIRE core marker); core record prefixes are minted only in"
+  echo "OK: not a CADENCE core tree (artifacts/footprint.generated carries no kind=framework_dev row,"
+  echo "    and this tree carries no CADENCE core marker); core record prefixes are minted only in"
   echo "    core, so this clone has nothing to seed."
   exit 0
 fi
@@ -178,18 +178,18 @@ fi
 # and a failure to locate it is a LOUD SETUP FAILURE, never a silent pass: a gate
 # that cannot read the ledger has not checked anything, and reporting that as
 # clean is the blind spot this whole family of gates exists to remove.
-MINT="${CLAIRE_MINT_ID:-}"
+MINT="${CADENCE_MINT_ID:-}"
 if [[ -z "$MINT" ]]; then
   for candidate in \
-    "$ROOT/.claude/skills/claire-mint/mint-id.sh" \
-    "$ROOT/.opencode/commands/claire-mint/mint-id.sh" \
-    "$SELF_DIR/../../.claude/skills/claire-mint/mint-id.sh"
+    "$ROOT/.agents/skills/cadence-mint/mint-id.sh" \
+    "$ROOT/.opencode/commands/cadence-mint/mint-id.sh" \
+    "$SELF_DIR/../../.agents/skills/cadence-mint/mint-id.sh"
   do
     if [[ -f "$candidate" ]]; then MINT="$candidate"; break; fi
   done
 fi
 if [[ -z "$MINT" || ! -f "$MINT" ]]; then
-  echo "core-prefix-seed-gate: FATAL -- cannot locate mint-id.sh (set CLAIRE_MINT_ID)." >&2
+  echo "core-prefix-seed-gate: FATAL -- cannot locate mint-id.sh (set CADENCE_MINT_ID)." >&2
   echo "core-prefix-seed-gate: refusing to report a verdict without reading the ledger." >&2
   exit 2
 fi
@@ -235,10 +235,10 @@ tree_high_water() {
 # a blind spot this very gate occupied from the day it shipped until Phase 2 gave
 # the core prefixes records.
 if [[ ! -f "$SEED_MANIFEST" ]]; then
-  emit_seam IMPOSSIBLE_STATE idalloc.seed.manifest_absent "$SEED_MANIFEST"
+  emit_seam UNSOUND_CONDITION idalloc.seed.manifest_absent "$SEED_MANIFEST"
   echo "core-prefix-seed-gate: FATAL -- the core-prefix seed manifest is absent:" >&2
   echo "       ${SEED_MANIFEST#$ROOT/}" >&2
-  echo "       This is a CLAIRE core tree, so it must declare its record high-water marks." >&2
+  echo "       This is a CADENCE core tree, so it must declare its record high-water marks." >&2
   echo "       Refusing to report a verdict with nothing to compare against." >&2
   exit 2
 fi
@@ -286,7 +286,7 @@ while IFS= read -r line; do
   #     warning it would be the stale-comparand vacuity this ruling exists to
   #     remove, and it also hides a deleted or unmerged record.
   if [[ "$manifest_hw" -ne "$tree_hw" ]]; then
-    emit_seam LINEAGE_GAP idalloc.seed.manifest_stale "$prefix"
+    emit_seam DELTA_AUDIT_GAP idalloc.seed.manifest_stale "$prefix"
     echo "core-prefix-seed-gate: ERROR -- the seed manifest disagrees with the tree for $prefix." >&2
     echo "       Manifest declares: $manifest_hw" >&2
     echo "       Tree actually has: $tree_hw   (measured under $path)" >&2
@@ -312,12 +312,12 @@ done < "$SEED_MANIFEST"
 # would otherwise be checked by nothing at all -- the manifest would be silently
 # partial, which is the same shape of gap as a stale one. The prefix set is read
 # from the manifest, so this is the one check that cannot be.
-for probe in ADR_CLAIRE PROD_CLAIRE II_CLAIRE; do
+for probe in ADR_CADENCE PROD_CADENCE II_CADENCE; do
   case " $declared " in *" $probe "*) continue ;; esac
   for loc in docs/ADR docs/agentic-sdlc/production-insights.md docs/agentic-sdlc/intent-insights.md; do
     hw="$(tree_high_water "$probe" "$loc")"
     if [[ "$hw" -gt 0 ]]; then
-      emit_seam LINEAGE_GAP idalloc.seed.manifest_incomplete "$probe"
+      emit_seam DELTA_AUDIT_GAP idalloc.seed.manifest_incomplete "$probe"
       echo "core-prefix-seed-gate: ERROR -- $probe carries records but the manifest declares no row." >&2
       echo "       Highest found: $probe-$hw, under $loc" >&2
       echo "       Add:  $probe|$hw|$loc" >&2

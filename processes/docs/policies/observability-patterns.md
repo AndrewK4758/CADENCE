@@ -1,10 +1,10 @@
 # Observability Pattern Catalog
 
-Standard structured log event patterns for SCOUT observability seams. All patterns emit structured JSON to stdout (Loki ingestion) and include mandatory correlation fields.
+Standardized structured log and metric patterns for **CHORD** (**C**onditions, **H**andling/Triggers, **O**utcomes, **R**ules, **D**eltas) observability seams under CADENCE. Every seam emits structured JSON to `stdout` (for Loki ingestion) paired with Mimir counters and mandatory distributed-tracing correlation fields.
 
 ## Standard Fields (all patterns)
 
-Every seam event includes these fields alongside pattern-specific data:
+Every CHORD seam event includes these baseline correlation fields alongside its pattern-specific payload:
 
 ```json
 {
@@ -15,25 +15,25 @@ Every seam event includes these fields alongside pattern-specific data:
   "request_id": "correlation ID",
   "service": "service-name",
   "component": "module.class",
-  "seam_type": "IMPOSSIBLE_STATE|LINEAGE_GAP|DECISION_DRIFT|SEAM_VIOLATION",
+  "seam_type": "UNSOUND_CONDITION|DELTA_AUDIT_GAP|RULE_DIVERGENCE|BOUNDARY_FAULT",
   "event_name": "domain.operation.seam_name",
-  "scout_ac": "AC-N from spec"
+  "chord_ac": "AC-N from spec"
 }
 ```
 
 ---
 
-## Pattern 1: IMPOSSIBLE_STATE
+## Pattern 1: UNSOUND_CONDITION
 
-**Purpose:** Detects when a precondition that should be guaranteed by the system is violated at runtime. Indicates a code path that bypassed validation, a race condition, or a logic error in AI-generated code.
+**Purpose:** Detects at runtime when a state precondition that should already be guaranteed by upstream validation or domain invariants is violated. Signals a code path that bypassed validation, a concurrency race condition, or a logic defect in generated code.
 
-**When to emit:** A function or handler observes system state that contradicts its documented preconditions (from SCOUT State dimension).
+**When to emit:** A domain method or handler observes system state that contradicts its documented **CHORD Conditions** (`Given` state preconditions).
 
 **Structured format:**
 
 ```json
 {
-  "seam_type": "IMPOSSIBLE_STATE",
+  "seam_type": "UNSOUND_CONDITION",
   "event_name": "{domain}.{operation}.precondition_violated",
   "precondition": "Human-readable precondition that was expected to hold",
   "actual_state": "What was actually observed",
@@ -45,16 +45,16 @@ Every seam event includes these fields alongside pattern-specific data:
 **Loki query:**
 
 ```logql
-{service="X"} | json | seam_type="IMPOSSIBLE_STATE"
+{service="X"} | json | seam_type="UNSOUND_CONDITION"
 ```
 
 **Mimir metric:**
 
 ```
-seam_impossible_state_total{service, component, event_name}
+seam_unsound_condition_total{service, component, event_name}
 ```
 
-**Alert rule:** Every IMPOSSIBLE_STATE event generates a **Critical** alert. Zero tolerance — this indicates a logic error.
+**Alert rule:** Every `UNSOUND_CONDITION` event fires a **Critical** alert. Zero tolerance — this indicates an invariant breach or logic fault.
 
 **Implementation pattern:**
 
@@ -62,7 +62,7 @@ seam_impossible_state_total{service, component, event_name}
 if (order.Status != OrderStatus.Draft)
 {
     logger.LogError(new {
-        seam_type = "IMPOSSIBLE_STATE",
+        seam_type = "UNSOUND_CONDITION",
         event_name = "order.submit.precondition_violated",
         precondition = "Order must be in Draft state",
         expected_state = "Draft",
@@ -75,17 +75,17 @@ if (order.Status != OrderStatus.Draft)
 
 ---
 
-## Pattern 2: LINEAGE_GAP
+## Pattern 2: DELTA_AUDIT_GAP
 
-**Purpose:** Detects when an expected checkpoint in a trace or audit trail is missing. Indicates a side-effect or mutation that was specified but did not execute.
+**Purpose:** Detects when an expected checkpoint in a distributed trace or mutation audit trail is absent. Indicates that an outbound side-effect or internal state mutation required by the specification failed to execute or record.
 
-**When to emit:** A trace or transaction completes without an expected span/checkpoint that the SCOUT Outputs or Updates dimension specifies must exist.
+**When to emit:** A trace or transaction finishes without an expected child span or audit record specified by the **CHORD Outcomes** or **CHORD Deltas** dimensions.
 
 **Structured format:**
 
 ```json
 {
-  "seam_type": "LINEAGE_GAP",
+  "seam_type": "DELTA_AUDIT_GAP",
   "event_name": "{domain}.{operation}.{checkpoint_name}_missing",
   "expected_checkpoint": "Name of the span/event that should have appeared",
   "trace_context": "Parent span that should contain the checkpoint",
@@ -96,17 +96,17 @@ if (order.Status != OrderStatus.Draft)
 **Loki query:**
 
 ```logql
-{service="X"} | json | seam_type="LINEAGE_GAP" | gap_type="mutation_audit_missing"
+{service="X"} | json | seam_type="DELTA_AUDIT_GAP" | gap_type="mutation_audit_missing"
 ```
 
 **Mimir metric:**
 
 ```
-seam_lineage_gap_total{service, component, gap_type, event_name}
+seam_delta_audit_gap_total{service, component, gap_type, event_name}
 ```
 
 **Alert rules:**
-- `gap_type=mutation_audit_missing` → **Critical** (SOC 2 compliance)
+- `gap_type=mutation_audit_missing` → **Critical** (Data Integrity / SOC 2 audit compliance)
 - `gap_type=side_effect_missing` → **High**
 - `gap_type=checkpoint_skipped` → **High**
 
@@ -126,7 +126,7 @@ var publishSpan = Activity.Current?.GetChildSpan("order.submitted.publish");
 if (publishSpan == null)
 {
     logger.LogError(new {
-        seam_type = "LINEAGE_GAP",
+        seam_type = "DELTA_AUDIT_GAP",
         event_name = "order.submit.publish_missing",
         expected_checkpoint = "order.submitted.publish",
         trace_context = Activity.Current?.Id,
@@ -137,28 +137,28 @@ if (publishSpan == null)
 
 ---
 
-## Pattern 3: DECISION_DRIFT
+## Pattern 3: RULE_DIVERGENCE
 
-**Purpose:** Detects when a branch decision in business logic is taken at a rate outside its expected baseline distribution. Indicates changed data patterns, feature flag misconfiguration, or logic error in AI-generated branching code.
+**Purpose:** Detects when a business-rule branch decision deviates significantly from its established historical baseline distribution. Signals shifted upstream traffic patterns, misconfigured feature flags, or subtle branching defects in generated code.
 
-**When to emit:** A windowed counter of branch decisions deviates from the established baseline by more than the configured threshold. The application emits a metric on every decision; drift detection happens in Mimir, not in application code.
+**When to emit:** A windowed counter of **CHORD Rules** branch outcomes diverges from its committed baseline ratio beyond the configured threshold. Application code increments a lightweight counter on each decision; divergence calculation runs in Mimir recording/alerting rules rather than inside the request path.
 
 **Structured format (metric emission on every decision):**
 
 ```json
 {
-  "seam_type": "DECISION_DRIFT",
+  "seam_type": "RULE_DIVERGENCE",
   "event_name": "{domain}.{operation}.branch_distribution",
   "branch_name": "Name of the decision point",
   "branch_taken": "which_branch"
 }
 ```
 
-**Structured format (alert payload when drift detected):**
+**Structured format (alert payload when divergence detected):**
 
 ```json
 {
-  "seam_type": "DECISION_DRIFT",
+  "seam_type": "RULE_DIVERGENCE",
   "event_name": "{domain}.{operation}.branch_distribution",
   "branch_name": "Name of the decision point",
   "branch_taken": "which_branch",
@@ -173,30 +173,30 @@ if (publishSpan == null)
 **Mimir metric (emitted on every branch decision):**
 
 ```
-seam_decision_branch_total{service, component, event_name, branch_taken}
+seam_rule_branch_total{service, component, event_name, branch_taken}
 ```
 
 **Mimir recording rule (computes ratio over window):**
 
 ```
-seam_decision_branch_ratio = rate(seam_decision_branch_total{branch_taken="X"}[1h])
-                           / rate(seam_decision_branch_total[1h])
+seam_rule_branch_ratio = rate(seam_rule_branch_total{branch_taken="X"}[1h])
+                       / rate(seam_rule_branch_total[1h])
 ```
 
-**Alert rule:** **Warning** severity — requires human investigation, not necessarily a bug.
+**Alert rule:** **Warning** severity — prompts human investigation into whether traffic shifted or a rule regressed.
 
 **Baseline management:**
-- Initial baseline: first 7 days of production traffic after feature ships
-- Baseline refresh: rolling 30-day average, updated weekly
-- Storage: `docs/baselines/{service}/{event_name}.yaml` (committed to repo)
-- Threshold default: deviation > 0.15 (15 percentage points)
+- Initial baseline: captured across the first 7 days of production traffic after a feature ships
+- Baseline refresh: rolling 30-day average updated weekly
+- Storage: `docs/baselines/{service}/{event_name}.yaml` (versioned in the repository)
+- Threshold default: absolute ratio deviation > 0.15 (15 percentage points)
 
 **Implementation pattern:**
 
 ```csharp
-// Emit on every decision — drift detection is in Mimir, not here
+// Emit on every decision — divergence detection runs in Mimir, not in-process
 var branch = order.Total < 100m ? "auto_approve" : "manual_review";
-metrics.IncrementCounter("seam_decision_branch_total", new {
+metrics.IncrementCounter("seam_rule_branch_total", new {
     service = "order-service",
     component = "OrderApproval",
     event_name = "order.approval.branch_distribution",
@@ -206,19 +206,19 @@ metrics.IncrementCounter("seam_decision_branch_total", new {
 
 ---
 
-## Pattern 4: SEAM_VIOLATION
+## Pattern 4: BOUNDARY_FAULT
 
-**Purpose:** Detects when an observability seam contract itself is broken — the seam should have fired but did not, or fired with invalid data.
+**Purpose:** Detects when a cross-boundary contract or an observability seam contract itself is violated — either an external boundary returned an uncontracted payload/fault or a registered seam failed to emit valid telemetry.
 
-**When to emit:** A health check or reconciliation process discovers that seams are not functioning as specified.
+**When to emit:** A boundary adapter, health check, or telemetry reconciliation job detects that a cross-boundary or seam contract specified by **CHORD Handling/Outcomes** is broken.
 
 **Structured format:**
 
 ```json
 {
-  "seam_type": "SEAM_VIOLATION",
+  "seam_type": "BOUNDARY_FAULT",
   "event_name": "{domain}.{operation}.seam_contract_broken",
-  "violated_seam": "Name of the seam that failed to fire or fired incorrectly",
+  "violated_seam": "Name of the seam or boundary contract that failed",
   "violation_type": "missing_emission|invalid_payload|stale_baseline",
   "detection_method": "health_check|reconciliation|manual"
 }
@@ -227,16 +227,16 @@ metrics.IncrementCounter("seam_decision_branch_total", new {
 **Loki query:**
 
 ```logql
-{service="X"} | json | seam_type="SEAM_VIOLATION"
+{service="X"} | json | seam_type="BOUNDARY_FAULT"
 ```
 
 **Mimir metric:**
 
 ```
-seam_violation_total{service, component, violated_seam, violation_type}
+seam_boundary_fault_total{service, component, violated_seam, violation_type}
 ```
 
-**Alert rule:** **High** severity — seam infrastructure is degraded, reducing production visibility.
+**Alert rule:** **High** severity — indicates boundary or telemetry degradation that blinds production observability.
 
 **Detection mechanisms:**
 
@@ -248,24 +248,34 @@ seam_violation_total{service, component, violated_seam, violation_type}
 
 ---
 
+## Automatic Local Offload Verification across Workflow Stages
+
+CADENCE weaves read-only local model offloading (`local-offload` MCP server and `repo-scout` / `log-triage` subagents) directly into the lifecycle of CHORD observability seams so that seam discovery, TDD verification, and pre-review auditing happen automatically at near-zero latency:
+
+1. **Triage & Spec Discovery (`01-triage`, `02-spec`):** `cadence-triage-agent` and `cadence-spec-author` invoke `repo-scout` and `local_semantic_embed` (`local-embed-cpu` on Ryzen 9 9955HX3D at 0 MB VRAM) to semantically search `docs/agentic-sdlc/production-insights.md`, `docs/baselines/`, and existing `UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, and `BOUNDARY_FAULT` emitters across the codebase before drafting `OS-{N}` seam specifications.
+2. **Implementation TDD Verification (`04-implementation`):** When `cadence-implementer` runs the red-green-accumulate test loop for `OS-{N}` seam scenarios, it delegates test runner log capture to `log-triage` / `offload_log_triage` (`local-fast-cpu`). The local coprocessor extracts verbatim assertion failures, structured JSON log emissions, and `file:line` coordinates while writing the complete raw output to `/tmp/agy-last-triage.log`.
+3. **Pre-Review Mechanical Seam Audit (`05-code-review`, `06-maintainer-acceptance`):** Before `cadence-reviewer` and `cadence-maintainer` issue gate assessments, `offload_deep_review` (`local-moe-hybrid` / `local-12b-gpu`) performs an advisory mechanical scan of the diff against `spec.md` to confirm every declared CHORD seam (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`) is wired with all required correlation fields and paired with positive and negative test scenarios.
+
+---
+
 ## Implementation Checklist
 
-When implementing any seam:
+When implementing any CHORD observability seam:
 
-- [ ] Structured JSON event emitted to stdout (Loki picks up)
-- [ ] Event includes all standard fields (trace_id, span_id, request_id, service, component)
-- [ ] Mimir metric emitted (counter for the seam type)
-- [ ] Alert rule defined in Mimir (based on severity from spec)
-- [ ] Test scenario verifies the seam fires under trigger condition
-- [ ] Test scenario verifies the seam does NOT fire under normal operation (no false positives)
-- [ ] Dashboard panel in Grafana for the seam metric
-- [ ] Seam registered in service health check (for SEAM_VIOLATION detection)
+- [ ] Structured JSON event emitted to `stdout` (for Loki ingestion)
+- [ ] Event includes all mandatory correlation fields (`trace_id`, `span_id`, `request_id`, `service`, `component`, `seam_type`, `event_name`, `chord_ac`)
+- [ ] Mimir counter emitted for the seam type (`seam_unsound_condition_total`, `seam_delta_audit_gap_total`, `seam_rule_branch_total`, or `seam_boundary_fault_total`)
+- [ ] Alert rule configured in Mimir matching the severity declared in `spec.md`
+- [ ] Positive test scenario verifies the seam fires when the violation condition is triggered (verified via `offload_log_triage`)
+- [ ] Negative test scenario verifies the seam does NOT fire during normal happy-path execution (zero false positives)
+- [ ] Grafana dashboard panel provisioned for the seam metric
+- [ ] Seam registered in service health/reconciliation check (for `BOUNDARY_FAULT` detection)
 
 ## Naming Conventions
 
 | Element | Pattern | Example |
 |---|---|---|
 | Event name | `{domain}.{operation}.{seam_descriptor}` | `order.submit.precondition_violated` |
-| Metric name | `seam_{type}_total` | `seam_impossible_state_total` |
-| Alert name | `{Service}{SeamType}{Domain}` | `OrderServiceImpossibleStateSubmit` |
+| Metric name | `seam_{type}_total` | `seam_unsound_condition_total` |
+| Alert name | `{Service}{SeamType}{Domain}` | `OrderServiceUnsoundConditionSubmit` |
 | Baseline file | `docs/baselines/{service}/{event_name}.yaml` | `docs/baselines/order-service/order.approval.branch_distribution.yaml` |

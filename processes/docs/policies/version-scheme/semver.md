@@ -1,21 +1,10 @@
 # Version Scheme: Semantic Versioning (semver)
 
-> **Scheme-name-agnostic binding, scheme-specific narrative.** This document names the bump
-> vocabulary and the next-version rule for the `semver` scheme. It declares no value the
-> [Version-Scheme Binding](../../agentic-sdlc/CLAIRE_ORG.md#version-scheme-binding) does not also
-> carry (`version-pattern`, `cycle-qualifying-cut`); this document is not a second source for
-> those fields.
+> **Scheme-name-agnostic binding, scheme-specific narrative.** This policy specifies the bump classification rules and next-version arithmetic for the `semver` scheme. It declares no configuration value that is not already carried by the [Version-Scheme Binding](../../agentic-sdlc/CADENCE_ORG.md#version-scheme-binding) (`version-pattern`, `cycle-qualifying-cut`); this document provides the scheme narrative rather than a competing source for those fields.
 
-This document models **Semantic Versioning** (`MAJOR.MINOR.PATCH`): a three-field dotted version
-where a change's classification determines which field increments. It is one of the two scheme
-documents CLAIRE ships; a repo selects it via the
-[Version-Scheme Binding](../../agentic-sdlc/CLAIRE_ORG.md#version-scheme-binding)
-(`bound-version-scheme: semver`).
+This specification models **Semantic Versioning** (`MAJOR.MINOR.PATCH`): a three-component dotted version number in which the compatibility classification of the changeset determines which numeric field increments. It is one of the two portable versioning schemes shipped with CADENCE; a repository selects it through the [Version-Scheme Binding](../../agentic-sdlc/CADENCE_ORG.md#version-scheme-binding) (`bound-version-scheme: semver`).
 
-**Relocated verbatim.** The classification rules, the arithmetic, and the three worked examples
-below were relocated character-for-character from `artifacts/commands/claire-release.md` (its
-prior step 2 and Worked Example section) when the version-scheme binding was introduced
-(BTG-303). Nothing here was rewritten in the move.
+**Relocated from the release skill.** The bump classification criteria, version arithmetic, and three worked examples below were extracted from `artifacts/commands/cadence-release.md` (its former inline step 2 and Worked Example section) when the declarative version-scheme binding was introduced (BTG-303), keeping the release skill scheme-neutral.
 
 ## Legal spelling
 
@@ -26,34 +15,34 @@ prior step 2 and Worked Example section) when the version-scheme binding was int
 
 ## Classify the bump
 
-Classify the `[Unreleased]` content against these rules, in precedence order (first match wins):
+Evaluate the entries under `[Unreleased]` in `CHANGELOG.md` against these rules in strict precedence order (the first matching level governs):
 
-- **MAJOR** — any **breaking** change. Signals: a `### Removed` or `### Deprecated`-then-enacted group; an entry describing a **removed or renamed** registered/public surface, a broken output/command/spec/wire contract, a changed default that alters existing behavior, or an enacted deprecation/sunset; prose containing "breaking", "no longer", "removed", "renamed", "incompatible", "must migrate"; a **non-additive** change to a surface registered Stable in `PROJECT_INTENT.md` §5 (e.g. an agent/skill instruction reorganized or deleted, not merely appended).
-- **MINOR** — **additive capability**, no breakage. Signals: a `### Added` group; a new agent / skill / probe / facet / template / policy; a `### Changed` group that only *adds* behavior or text while preserving every existing contract and name.
-- **PATCH** — **fixes and housekeeping only**. Signals: only `### Fixed`, documentation corrections, internal refactors, dependency bumps — with **no new or changed public surface**.
+- **MAJOR** — any **breaking** change. Triggers include: a `### Removed` section or an enacted `### Deprecated` sunset; an entry documenting a **removed or renamed** registered/public surface, an incompatible output/CLI/spec/wire contract change, a modified default that alters existing runtime behavior, or a completed deprecation removal; changelog prose containing markers such as "breaking", "no longer", "removed", "renamed", "incompatible", or "must migrate"; or a **non-additive** modification to a surface listed as Stable in `PROJECT_INTENT.md` §5 (such as reorganizing or deleting steps in a stable agent or skill definition rather than appending).
+- **MINOR** — **additive capability** with zero breaking changes. Triggers include: a `### Added` section; a net-new agent, skill, elicitation probe, Engineering Pillar, template, or policy; or a `### Changed` entry that strictly *expands* capability or documentation while keeping every existing contract and identifier intact.
+- **PATCH** — **bug fixes and internal housekeeping only**. Triggers include: exclusively `### Fixed` entries, documentation clarifications, internal single-context refactors, or dependency updates — with **no new or altered public surface**.
 
-State the classification with the specific entries that drove it. If `$bump_override` was supplied and **disagrees** with the computed bump, show both and flag the disagreement prominently (especially a forced *down*grade past a breaking change — that is the dangerous case).
+Report the derived bump level alongside the specific changelog entries that triggered it. Whenever an explicit `$bump_override` argument is passed and **disagrees** with the derived classification, display both side-by-side and highlight the mismatch prominently (especially when an override forces a *downgrade* below a detected breaking change, which risks shipping an unannounced breaking release).
 
 ## Compute the next version
 
-Compute the next version from the current version + bump: MAJOR → `(X+1).0.0`, MINOR → `X.(Y+1).0`, PATCH → `X.Y.(Z+1)`.
+Calculate the target version from the current version and the selected bump level: MAJOR → `(X+1).0.0`, MINOR → `X.(Y+1).0`, PATCH → `X.Y.(Z+1)`.
 
 ## Worked Examples
 
 ```
-/claire-release
+/cadence-release
 ```
 
-Reads `[Unreleased]`, finds it is all additive `### Added` / `### Changed` entries (no removals, no renamed surfaces), proposes **vX.(Y+1).0** as a **minor** release with the entries that drove the call, and asks for confirmation. On `yes`, it finalizes the changelog, bumps the README, drafts the release notes, shows the diff, commits `RELEASE-X.(Y+1).0` on confirmation, annotates the tag, and — after a final confirmation — pushes the branch and tag.
+Inspects `[Unreleased]`, observes only additive `### Added` and `### Changed` entries (zero removals, zero renamed surfaces), proposes **vX.(Y+1).0** as a **minor** release citing the triggering changelog entries, and prompts for operator confirmation. Upon `yes`, it updates `CHANGELOG.md`, bumps the version badge in `README.md`, drafts the release notes and `specs/RELEASE-X.(Y+1).0/submission.md`, displays the diff, commits `RELEASE-X.(Y+1).0` on confirmation, creates the annotated Git tag, and — following a final confirmation — pushes the release branch and tag.
 
 ```
-/claire-release major
+/cadence-release major
 ```
 
-Same, but forces a **major** bump. The skill still prints its own analysis; if the entries look purely additive it warns "override forces MAJOR over a minor-looking changelog — confirm this is intentional" before proceeding.
+Follows the same sequence while forcing a **major** bump (`v(X+1).0.0`). The skill still executes its own changelog classification first; if the `[Unreleased]` entries appear purely additive, it emits a prominent warning ("override forces MAJOR over a minor-looking changelog — confirm this is intentional") before proceeding.
 
 ```
-/claire-release patch
+/cadence-release patch
 ```
 
-Forces a **patch** bump. If the changelog contains a `### Added` or a breaking entry, the skill flags the disagreement loudly (a forced downgrade can mislabel a feature or a breaking change as a fix) and waits for explicit confirmation.
+Forces a **patch** bump (`vX.Y.(Z+1)`). If `[Unreleased]` contains any `### Added` or breaking-change signals, the skill flags the discrepancy loudly (since a forced downgrade can disguise a new feature or breaking change as a routine patch) and halts for explicit human confirmation.

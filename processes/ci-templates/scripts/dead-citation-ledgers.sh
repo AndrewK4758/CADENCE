@@ -58,13 +58,13 @@ parse_exemption() {
 require_ledger() {
   local path="$1" what="$2"
   if [[ ! -f "$path" ]]; then
-    emit_seam IMPOSSIBLE_STATE citation.ledger.unreadable "$path"
+    emit_seam UNSOUND_CONDITION citation.ledger.unreadable "$path"
     echo "dead-citation-gate: FATAL -- the $what ledger is missing: $path" >&2
     echo "dead-citation-gate: refusing to report a verdict computed without it." >&2
     exit 2
   fi
   if [[ ! -r "$path" ]]; then
-    emit_seam IMPOSSIBLE_STATE citation.ledger.unreadable "$path"
+    emit_seam UNSOUND_CONDITION citation.ledger.unreadable "$path"
     echo "dead-citation-gate: FATAL -- the $what ledger is unreadable: $path" >&2
     exit 2
   fi
@@ -296,7 +296,7 @@ check_baseline_ratchet() {
   # hardcoded -- a hardcoded branch name is the same defect class as a hardcoded
   # ticket id, which is what this whole gate exists to catch.
   resolve_integration_branch() {
-    local org="$ROOT/docs/agentic-sdlc/CLAIRE_ORG.md" line
+    local org="$ROOT/docs/agentic-sdlc/CADENCE_ORG.md" line
     [[ -f "$org" ]] || return 1
     line="$(grep -m1 -oE '<!--[[:space:]]*integration-branch:[[:space:]]*[A-Za-z0-9._/-]+[[:space:]]*-->' "$org" 2>/dev/null)" || return 1
     [[ -n "$line" ]] || return 1
@@ -309,7 +309,7 @@ check_baseline_ratchet() {
   if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     axis_unavailable "the root is not a git work tree"
   elif ! integration="$(resolve_integration_branch)"; then
-    axis_unavailable "no integration-branch marker in docs/agentic-sdlc/CLAIRE_ORG.md (CLAIRE_ORG.md#branch-strategy-binding)"
+    axis_unavailable "no integration-branch marker in docs/agentic-sdlc/CADENCE_ORG.md (CADENCE_ORG.md#branch-strategy-binding)"
   else
     # Prefer the remote-tracking ref: a local branch can be stale, and a verdict
     # computed against a stale base is a false verdict.
@@ -338,7 +338,7 @@ check_baseline_ratchet() {
       # KNOWN RESIDUAL, stated rather than implied: growth COMMITTED DIRECTLY to
       # the integration branch is caught by neither, because once it is in, HEAD
       # and the merge base are the same commit. That path is out of the threat
-      # model by configuration, not by luck -- CLAIRE_ORG.md #branch-strategy-binding
+      # model by configuration, not by luck -- CADENCE_ORG.md #branch-strategy-binding
       # declares `integration-branch-protected: yes`, so every change reaches the
       # integration branch through a branch, where the merge-base comparison fires
       # (proven by scenario S-4.2b). An adopter who sets that marker to `no` loses
@@ -354,7 +354,7 @@ check_baseline_ratchet() {
       # practice this axis fires via the OPT-IN pre-commit hook or a manual
       # `run-gates.sh` on a branch, neither of which is guaranteed, and there is
       # no backstop behind them. Whether any CI substrate runs is
-      # `docs/agentic-sdlc/CLAIRE_ORG.md` section 1 Where (Network)'s CI/CD row.
+      # `docs/agentic-sdlc/CADENCE_ORG.md` section 1 Where (Network)'s CI/CD row.
       # The declared-count axis is unconditional and is what holds when nobody
       # runs this one.
       if [[ "$merge_base" == "$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)" ]]; then

@@ -4,9 +4,10 @@
 
 Draft | In Review | Approved | Superseded
 
-> **The review state of this document**, not the ticket's lifecycle state. `metadata.yaml`'s
-> `status:` field is authoritative for the ticket; this line tracks how far *this document* has got.
-> They are different vocabularies by design, and neither is a copy of the other.
+> **Document review status**, distinct from the ticket's overall lifecycle state. The `status:`
+> field in `metadata.yaml` is the single source of truth for the ticket's workflow stage; this line
+> records the review progression of *this document*. The two vocabularies are intentionally separate,
+> and neither mirrors the other.
 
 ## Requestor
 
@@ -16,36 +17,36 @@ Draft | In Review | Approved | Superseded
 
 ## Business Context
 
-{Why does this problem matter to the business? What user pain, revenue impact, compliance requirement, or operational inefficiency drives this request? Be specific -- "users are confused" is insufficient; "43% of support tickets in Q1 were about X" is actionable.}
+{Why does this problem matter to the organization? What user friction, revenue exposure, compliance mandate, or operational bottleneck motivates this request? Be concrete -- "users find the screen confusing" is not actionable; "43% of Q1 support escalations stemmed from X" gives clear grounding.}
 
 ## Problem Description
 
 > **Probe:** How would you know this shipped wrong? What is the observable failure mode — in logs, in user behaviour, in a dashboard, in a follow-up support ticket?
 > _Answer:_ _(not yet answered)_
 
-{What is happening today that should not be, or what is not happening today that should be? Describe the current state and the gap. Include observable symptoms, not assumed root causes.}
+{What is occurring today that should not happen, or what capability is missing that must exist? Contrast the current behavior with the required state. Focus on observable symptoms rather than unverified root-cause assumptions.}
 
 ## Affected Users and Systems
 
-- **End users:** {Who experiences the problem? Customers, internal staff, administrators, API consumers?}
-- **Systems:** {Which systems or services are involved?}
-- **Scale:** {How many users/records/transactions are affected? How often does it occur?}
+- **End users:** {Who directly encounters the issue? External customers, internal operators, administrators, or API integrators?}
+- **Systems:** {Which bounded contexts, services, or components are involved?}
+- **Scale:** {How many users, records, or requests are impacted, and at what frequency?}
 
 ## Desired Outcome
 
 > **Probe:** What assumptions does this make about adjacent systems, teams, or contexts? Anything you are quietly counting on being true?
 > _Answer:_ _(not yet answered)_
 
-{What does success look like from the business perspective? Not "build feature X" but "users can Y without Z." Focus on the outcome, not the solution.}
+{What does success look like from a domain and user perspective? Frame this as "actors can achieve Y without encountering Z" rather than "build component X." Describe the target outcome, not a pre-selected implementation.}
 
 ## Acceptance Criteria
 
 > **Probe:** What non-functional needs (latency, durability, observability, audit, accessibility) does this implicitly assume? Name the ones you would notice if they were violated.
 > _Answer:_ _(not yet answered)_
 
-- [ ] {Observable, testable criterion -- e.g., "Given a user with an active subscription, when they view their dashboard, then only current-period data is displayed"}
-- [ ] {Each criterion should be independently verifiable}
-- [ ] {Include both functional and non-functional requirements}
+- [ ] {Observable, verifiable criterion -- e.g., "Given an account with an active subscription, when the user opens the billing dashboard, then only current-period charges are rendered"}
+- [ ] {Each criterion must be independently testable and decomposed via CHORD in spec.md}
+- [ ] {Include both functional behaviors and required non-functional guarantees}
 
 ## Functional Validation
 
@@ -65,25 +66,25 @@ Draft | In Review | Approved | Superseded
 > **Probe:** What edge cases have you already considered and rejected, and why? Capture the rejections so the spec author does not re-litigate them.
 > _Answer:_ _(not yet answered)_
 
-- **Timeline:** {Hard deadlines -- e.g., "must ship before Q3 release cut"}
-- **Regulatory:** {Any compliance or legal requirements -- HIPAA, SOC 2, GDPR, PCI-DSS}
-- **Dependencies:** {External teams, services, or decisions that block or constrain this work}
-- **Budget:** {If applicable -- infrastructure cost limits, licensing constraints}
+- **Timeline:** {Hard delivery dates -- e.g., "must ship prior to Q3 release cut"}
+- **Regulatory:** {Applicable compliance or legal mandates -- HIPAA, SOC 2, GDPR, PCI-DSS}
+- **Dependencies:** {Upstream teams, external APIs, or architectural rulings that bound or block this work}
+- **Budget:** {If applicable -- cloud spend ceilings, third-party licensing limits}
 
 ## Out of Scope
 
 > **Probe:** What is deliberately out of scope today, and what would change your mind? Name the trigger that would move an item from 'no' to 'yes'.
 > _Answer:_ _(not yet answered)_
 
-{Explicitly list what this problem statement does NOT cover. Prevents scope creep during spec authoring.}
+{Explicitly enumerate adjacent work that this problem statement does NOT address. Clear non-goals prevent scope drift during `/cadence-spec`.}
 
 - {Item 1}
 - {Item 2}
 
 ## Supporting Evidence
 
-- {Link to support tickets, dashboards, user research, or prior incidents}
-- {Screenshots, error logs, or data exports if applicable}
+- {Links to issue tracker tickets, telemetry dashboards, user research notes, or incident postmortems}
+- {Screenshots, structured error logs, or query exports where applicable}
 
 <!-- Imported tracker attachments (BTG-043): when problem.md is seeded from a tracker-first Import, each
      attachment on the source issue is recorded here as ONE bullet — a stored file is referenced by its
@@ -95,6 +96,6 @@ Draft | In Review | Approved | Superseded
 
 ## Notes
 
-{Any additional context that does not fit the sections above.}
+{Any supplementary context that does not belong in the sections above.}
 
-When a ticket is decomposed (via `/claire-elicit`), record lineage in `metadata.yaml`: each child gets `decomposed_from:` and the parent gets `decomposed_into:`. See `archive/PI-008-FB/` for the canonical example.
+When a ticket is decomposed into a child track (via `/cadence-elicit`), record the parent/child lineage in `metadata.yaml`: each child ticket sets `decomposed_from:` and the parent ticket sets `decomposed_into:`. See `archive/PI-008-FB/` for the canonical example.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # OpenCode adapter (PI-024) -- the sibling of claude-code.sh and the ONLY place
-# OpenCode-concrete runtime primitives are introduced (ADR_CLAIRE-0008 R7 / DEC-003).
+# OpenCode-concrete runtime primitives are introduced (ADR_CADENCE-0008 R7 / DEC-003).
 # Compiles the parsed neutral-source model into the OpenCode native layout:
 #
 #   role    -> .opencode/agents/<name>.md     (PLURAL dir; DEC-009)
@@ -42,12 +42,12 @@
 # {{settings_file}} -- and, from BTG-198, the context-include placeholder (RC-7),
 # for which this repository has no evidence of an OpenCode primitive and refuses
 # to invent one -- therefore resolve to the ONLY value that exists -- the Claude
-# concrete path (.claude/claire-hooks / .claude/settings.json), NOT a
+# concrete path (.claude/cadence-hooks / .claude/settings.json), NOT a
 # speculative .opencode/... value (OQ-2 rejected that). This is compile-time
 # path-token resolution to keep shared sidecar text gate-clean; it asserts NO
 # hooks capability -- emit_hooks skips for OpenCode (compile-hooks.sh capability
-# guard) and no .opencode/claire-hooks tree is emitted. Coherent with the
-# fenced literal .claude/claire-hooks/ at upgrade-repair.sh:153 that already
+# guard) and no .opencode/cadence-hooks tree is emitted. Coherent with the
+# fenced literal .claude/cadence-hooks/ at upgrade-repair.sh:153 that already
 # ships verbatim to .opencode/ output.
 #
 # MCP -- unlike HOOKS, OpenCode genuinely HAS an MCP capability (opencode.json's
@@ -57,7 +57,7 @@
 # -- review N1 / DEC-007a). Consumers source that file directly; this compile
 # adapter does not.
 #
-# Sourced by claire-compile.sh; relies on the parse helpers (load_fm,
+# Sourced by cadence-compile.sh; relies on the parse helpers (load_fm,
 # body_block) and emit_seam already in scope. It defines:
 #   oc_adapter_emit_role    <src-file> <out-root>
 #   oc_adapter_emit_command <src-file> <out-root> <src-root>
@@ -102,7 +102,7 @@ oc_tool_id_inline() {
 # --- Capability tier -> concrete model map (RC-1) --------------------------
 # OpenCode model strings are <provider>/<model-id> (DEC-009). A tier absent here
 # is a hard failure (never emit an empty model:). Concrete ids are the
-# illustrative reference instance (CLAIRE_ORG.md#runtime-binding); the golden
+# illustrative reference instance (CADENCE_ORG.md#runtime-binding); the golden
 # gate pins them.
 oc_tier_model() {
   case "$1" in
@@ -182,7 +182,7 @@ oc_expand_body() {
     -e 's#\{\{runtime_root\}\}#.opencode#g' \
     -e 's#\{\{artifact_root:roles\}\}#.opencode/agents#g' \
     -e 's#\{\{artifact_root:commands\}\}#.opencode/commands#g' \
-    -e 's#\{\{artifact_root:hooks\}\}#.claude/claire-hooks#g' \
+    -e 's#\{\{artifact_root:hooks\}\}#.claude/cadence-hooks#g' \
     -e 's#\{\{settings_file\}\}#.claude/settings.json#g' \
     -e 's#\{\{context_import:([^}]+)\}\}#@\1#g'
 }
@@ -201,7 +201,7 @@ oc_expand_sidecar() {
     -e 's#\{\{runtime_root\}\}#.opencode#g' \
     -e 's#\{\{artifact_root:roles\}\}#.opencode/agents#g' \
     -e 's#\{\{artifact_root:commands\}\}#.opencode/commands#g' \
-    -e 's#\{\{artifact_root:hooks\}\}#.claude/claire-hooks#g' \
+    -e 's#\{\{artifact_root:hooks\}\}#.claude/cadence-hooks#g' \
     -e 's#\{\{settings_file\}\}#.claude/settings.json#g' \
     -e 's#\{\{context_import:([^}]+)\}\}#@\1#g'
 }
@@ -282,7 +282,7 @@ oc_assert_capability() {
   for cap in $v; do
     oc_tool_id_inline "$cap"; id="$__OC_TOOL_ID"
     if [[ -z "$id" ]]; then
-      emit_seam SEAM_VIOLATION compile.capability.unsupported "$f RC-1 $cap"
+      emit_seam BOUNDARY_FAULT compile.capability.unsupported "$f RC-1 $cap"
       echo "FAIL: $f requires capability '$cap' which OpenCode cannot express (RC-1)" >&2
       return 1
     fi
@@ -293,7 +293,7 @@ oc_assert_capability() {
 # Optional neutral-source tail scan (AC-4 / OQ-3): flag a literal AGENT.md /
 # SKILL.md filename tail in a NORMATIVE body position (outside a labelled region)
 # -- a recommended backstop that the .md tail ban does not regress. NOT wired as
-# a live gate (claire-review.md intentionally keeps "AGENT.md §10" per DEC-017);
+# a live gate (cadence-review.md intentionally keeps "AGENT.md §10" per DEC-017);
 # exercised by OS-4.1. <1> = body file. Emits a seam per hit; returns 1 if any.
 oc_scan_unneutralized_tail() {
   local f="$1" hit=0 lineno=0 drop=0 line
@@ -305,7 +305,7 @@ oc_scan_unneutralized_tail() {
     esac
     [[ $drop -eq 1 ]] && continue
     if printf '%s' "$line" | grep -qE '(AGENT|SKILL)\.md'; then
-      emit_seam SEAM_VIOLATION compile.body.unneutralized_tail "$f:$lineno"
+      emit_seam BOUNDARY_FAULT compile.body.unneutralized_tail "$f:$lineno"
       hit=$((hit + 1))
     fi
   done < "$f"
@@ -351,14 +351,14 @@ oc_adapter_emit_role() {
 
   model="$(oc_tier_model "$tier")"
   if [[ -z "$model" ]]; then
-    emit_seam IMPOSSIBLE_STATE compile.output.missing_artifact "$f tier '$tier' has no model mapping"
+    emit_seam UNSOUND_CONDITION compile.output.missing_artifact "$f tier '$tier' has no model mapping"
     echo "FAIL: role $name tier '$tier' has no concrete-model mapping in the adapter" >&2
     return 1
   fi
 
   local unknown_roles
   if unknown_roles="$(oc_validate_role_refs "$f")"; then :; else
-    emit_seam SEAM_VIOLATION compile.body.unknown_role_ref "$f"
+    emit_seam BOUNDARY_FAULT compile.body.unknown_role_ref "$f"
     echo "FAIL: role $f references unknown role(s):$unknown_roles -- no roles/<name>.md source artifact" >&2
     return 1
   fi
@@ -368,7 +368,7 @@ oc_adapter_emit_role() {
     echo "FAIL: role $name has an unknown tool capability" >&2; return 1; }
   expanded="$(body_block "$f" | oc_expand_body)"
   if residual="$(printf '%s\n' "$expanded" | oc_residual_placeholders)"; then :; else
-    emit_seam SEAM_VIOLATION compile.body.residual_placeholder "$f"
+    emit_seam BOUNDARY_FAULT compile.body.residual_placeholder "$f"
     echo "FAIL: role $f has an unresolved placeholder in a normative body position:" >&2
     echo "$residual" | sed 's/^/  /' >&2
     return 1
@@ -407,7 +407,7 @@ oc_adapter_emit_command() {
   if [[ -n "${FM[capability_tier]+x}" ]]; then
     model="$(oc_tier_model "${FM[capability_tier]}")"
     if [[ -z "$model" ]]; then
-      emit_seam IMPOSSIBLE_STATE compile.output.missing_artifact "$f tier '${FM[capability_tier]}' has no model mapping"
+      emit_seam UNSOUND_CONDITION compile.output.missing_artifact "$f tier '${FM[capability_tier]}' has no model mapping"
       echo "FAIL: command $name tier '${FM[capability_tier]}' has no concrete-model mapping in the adapter" >&2
       return 1
     fi
@@ -415,7 +415,7 @@ oc_adapter_emit_command() {
 
   local unknown_roles
   if unknown_roles="$(oc_validate_role_refs "$f")"; then :; else
-    emit_seam SEAM_VIOLATION compile.body.unknown_role_ref "$f"
+    emit_seam BOUNDARY_FAULT compile.body.unknown_role_ref "$f"
     echo "FAIL: command $f references unknown role(s):$unknown_roles -- no roles/<name>.md source artifact" >&2
     return 1
   fi
@@ -425,7 +425,7 @@ oc_adapter_emit_command() {
     echo "FAIL: command $name has an unknown tool capability" >&2; return 1; }
   expanded="$(body_block "$f" | oc_expand_body)"
   if residual="$(printf '%s\n' "$expanded" | oc_residual_placeholders)"; then :; else
-    emit_seam SEAM_VIOLATION compile.body.residual_placeholder "$f"
+    emit_seam BOUNDARY_FAULT compile.body.residual_placeholder "$f"
     echo "FAIL: command $f has an unresolved placeholder in a normative body position:" >&2
     echo "$residual" | sed 's/^/  /' >&2
     return 1
@@ -448,7 +448,7 @@ oc_adapter_emit_command() {
     local sc_dir="$src_root/commands/$name"
     local sc_src="$sc_dir/$sidecar"
     if [[ ! -f "$sc_src" ]]; then
-      emit_seam LINEAGE_GAP compile.output.missing_artifact "command $name sidecar entry-point not found: $sc_src"
+      emit_seam DELTA_AUDIT_GAP compile.output.missing_artifact "command $name sidecar entry-point not found: $sc_src"
       echo "FAIL: command $name sidecar entry-point not found at $sc_src" >&2
       return 1
     fi
@@ -464,7 +464,7 @@ oc_adapter_emit_command() {
       if LC_ALL=C grep -Iq '' "$file"; then   # text file -> expand once
         oc_expand_sidecar < "$file" > "$dest/$rel"
         if res="$(oc_residual_sidecar < "$dest/$rel")"; then :; else
-          emit_seam SEAM_VIOLATION compile.body.residual_placeholder "$sc_dir/$rel"
+          emit_seam BOUNDARY_FAULT compile.body.residual_placeholder "$sc_dir/$rel"
           echo "FAIL: sidecar $sc_dir/$rel has an unresolved placeholder after expansion:" >&2
           echo "$res" >&2
           return 1

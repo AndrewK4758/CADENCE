@@ -6,17 +6,17 @@ Proposed | Accepted | Deprecated | Superseded by [ADR-{NNNN}]({NNNN}-slug.md)
 
 ## Context
 
-{What is the issue that we're seeing that motivates this decision or change? Describe the forces at play -- technical, business, organizational, regulatory. Include relevant constraints and dependencies.
+{What architectural force, operational problem, or governance gap motivates this decision? Describe the technical, domain, organizational, and compliance constraints at play, along with any upstream or downstream dependencies.
 
 Consider:
-- Impact on architectural layer boundaries
-- Integration implications (external service clients, shared contracts)
-- Migration path from legacy systems
-- Effect on planned runtime or platform transitions}
+- Impact on bounded-context and architectural layer boundaries
+- Integration contracts (external service clients, shared schemas, event payloads)
+- Migration and compatibility path from existing components
+- Implications for runtime bindings or platform transitions}
 
 ## Decision
 
-{What is the change that we're proposing and/or doing? State the decision clearly and unambiguously. Use active voice: "We will..." not "It was decided that..."}
+{State the architectural decision clearly and decisively in active voice: "We will..." rather than "It was decided that..."}
 
 ## Consequences
 
@@ -27,29 +27,29 @@ Consider:
 
 ### Negative
 
-- {Trade-off 1}
-- {Trade-off 2}
+- {Trade-off or accepted cost 1}
+- {Trade-off or accepted cost 2}
 
 ### Future Impact
 
-{What doors does this open or close? What becomes easier or harder as a result of this decision?}
+{What future architectural paths does this enable or foreclose? What becomes simpler or more constrained as a consequence of this ruling?}
 
 ## References
 
-- {Link to spec, MR, Jira ticket, or external documentation}
-- {Link to related ADRs}
+- {Link to originating specification (`specs/{id}/` or `archive/{id}/`), MR/PR, tracker issue, or external standard}
+- {Links to related or superseded ADRs}
 
 ## Feedback
 
-{Optional. Include this section while the ADR is `Proposed` and being shared for stakeholder comment before ratification -- most valuable for charter-level ADRs that amend `PROJECT_INTENT.md`, where adopter and maintainer input is wanted *before* acceptance. Omit it for ADRs that do not need an open comment period. When you include it, add a one-line pointer from the Status section, e.g. "Open for stakeholder comment before ratification -- append to [§ Feedback](#feedback)." On ratification, fold resolved feedback into Decision/Consequences and either remove this section or leave the resolved thread as a record; unresolved concerns become Open Questions.}
+{Optional. Include this section while the ADR is in `Proposed` status and circulating for stakeholder review prior to ratification -- especially recommended for charter-level ADRs that amend `PROJECT_INTENT.md`, where adopter and maintainer input is needed *before* acceptance. Omit this section for ADRs that do not require an open comment window. When included, add a one-line pointer under `## Status`, e.g. "Open for stakeholder comment prior to ratification -- append under [§ Feedback](#feedback)." Upon ratification, fold resolved points into `## Decision` and `## Consequences` and either remove this section or retain the resolved thread as historical context; unresolved objections become Open Questions.}
 
-**This ADR is `Proposed` and shared for stakeholder feedback before ratification.** Add a comment by appending a new block under **Comments** below; do not edit or delete anyone else's entry. The maintainer folds resolved feedback into the Decision and Consequences on ratification; concerns left open become Open Questions in the ratified record.
+**This ADR is `Proposed` and open for stakeholder feedback prior to ratification.** Contribute feedback by appending a new block under **Comments** below; never edit or remove another reviewer's entry. The maintainer folds resolved feedback into the Decision and Consequences sections upon ratification; open items carry forward as Open Questions in the ratified ADR.
 
-**Where input is most useful:** {List 3-5 focused questions -- the open design choices, the riskiest assumptions, the parts most likely to affect adopters. Point reviewers at specific clauses rather than soliciting unbounded comment.}
+**Where input is most valuable:** {List 3-5 targeted questions highlighting the key design trade-offs, highest-risk assumptions, or clauses most likely to impact adopters. Direct reviewers to specific sections rather than asking for open-ended commentary.}
 
 ### Comments
 
-Append one block per comment, newest at the bottom. Keep the format so the thread stays grep-able:
+Append one block per comment, newest at the bottom. Preserve the exact structure below so the thread remains machine-grep-able:
 
 ```
 **<name / handle>** — <YYYY-MM-DD> — <role; adopter repo, if any>

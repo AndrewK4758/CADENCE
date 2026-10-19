@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
-# org-binding-crossref.sh -- the CROSS-SECTION concern of `CLAIRE_ORG.md`'s
+# org-binding-crossref.sh -- the CROSS-SECTION concern of `CADENCE_ORG.md`'s
 # per-prefix binding reader (BTG-179; fourth module authorized BTG-247 OQ-B,
-# 2026-09-16, overturning `claire-surfaces.md`'s earlier "three modules is
+# 2026-09-16, overturning `cadence-surfaces.md`'s earlier "three modules is
 # TERMINAL" ruling). SOURCED by `org-binding-resolve.sh`; never executed.
 #
 # Bounded context: Governance config / per-repo binding resolution -- the same
 # as `org-binding-parse.sh`, `org-binding-resolve.sh` and `org-binding-modes.sh`.
 # Invariants relied on from outside this boundary:
-#   - `CLAIRE_ORG.md` is the single per-repo binding mechanism (ADR_CLAIRE-0010 cl.2).
+#   - `CADENCE_ORG.md` is the single per-repo binding mechanism (ADR_CADENCE-0010 cl.2).
 #   - §9 / §10 / §13 are registered Configuration Contracts whose absent-value
 #     polarities DIFFER and are never unified: §9 fail-loud, §10
 #     mint-by-convention, §13 disabled.
@@ -47,7 +47,7 @@
 
 # tracker_skill <tracker-cell> -- the vendor token and its TS-1 skill, as
 # "<tracker>|<skill>". The map is §9's curated reference-adapter table
-# (ADR_CLAIRE-0023); a tracker outside it is never guessed at and never falls back to
+# (ADR_CADENCE-0023); a tracker outside it is never guessed at and never falls back to
 # jira. A bare `jira` is unmapped -- BTG-299 removed the Cloud adapter, so this is
 # no longer because the token is AMBIGUOUS between two shipped Jira adapters
 # (there is only one, Server/DC); the RULE is unchanged even though its reason
@@ -60,11 +60,11 @@ tracker_skill() {
     # An inner-source row binds no tracker at all. It is §9's DECLARED opt-out
     # in per-prefix form -- a deliberate SKIP, never the missing-binding state.
     *inner-source*|none)     echo "inner-source|n/a" ;;
-    *jira*server*|*jira*dc*) echo "jira|/claire-sync-jira" ;;
+    *jira*server*|*jira*dc*) echo "jira|/cadence-sync-jira" ;;
     # `*jira*cloud*)  echo "jira|/sync-jira" ;;` REMOVED (BTG-299). The Cloud
     # adapter no longer ships; a row binding it now falls through to the `*)`
     # arm below and halts `tracker.binding.tracker_unmapped`, never silently.
-    *youtrack*)               echo "youtrack|/claire-sync-youtrack" ;;
+    *youtrack*)               echo "youtrack|/cadence-sync-youtrack" ;;
     *) return 1 ;;
   esac
 }
@@ -252,7 +252,7 @@ EOF
   # NOT A MANDATORY WILDCARD ROW. That alternative was explicitly rejected: it
   # would make an unmatched prefix in a §13 with no `*` row FAIL LOUD, which is
   # §9's polarity imported into §13 and unifies two of the three -- forbidden by
-  # ADR_CLAIRE-0071 clause 3, which this change reaffirms rather than amends.
+  # ADR_CADENCE-0071 clause 3, which this change reaffirms rather than amends.
   #
   # `fallback` is reported even when DISABLED because disabled is not the absence
   # of a verdict: the guard still runs and still takes the Confirm path. Leaving

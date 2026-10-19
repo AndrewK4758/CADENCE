@@ -5,8 +5,8 @@
 #                      of one projected `stage_effort` entry between the
 #                      operator and the configured agent-time user.
 #
-# Bounded context: CLAIRE framework governance / tracker-projection worklog
-# posting. Invariant relied on from outside this boundary: `CLAIRE_ORG.md`
+# Bounded context: CADENCE framework governance / tracker-projection worklog
+# posting. Invariant relied on from outside this boundary: `CADENCE_ORG.md`
 # section 19 (Worklog Attribution Split) is the SINGLE source of the per-stage
 # operator-share factor table; this script READS that table live (section-
 # scoped on its own heading, never a file-wide grep -- BTG-315 R-6) and embeds
@@ -14,8 +14,8 @@
 # UNAFFECTED by this script (BTG-315 AC-6): it computes a tracker-projection
 # split only, never a ledger mutation.
 #
-# Upstream: the two tracker adapters' worklog steps (`/claire-sync-jira`,
-# `/claire-sync-youtrack`), invoked once per selected ledger entry when a
+# Upstream: the two tracker adapters' worklog steps (`/cadence-sync-jira`,
+# `/cadence-sync-youtrack`), invoked once per selected ledger entry when a
 # non-empty agent-time user is configured on the ticket's §9 row (unconfigured
 # adopters never invoke this script at all -- AC-4).
 # Downstream: the two returned minute counts are handed, unmodified, to each
@@ -39,7 +39,7 @@
 #   §19 table is read from exactly that file, mirroring
 #   org-binding-resolve.sh's own --org. --root is ignored when --org is
 #   given. Without --org, --root behaves exactly as before (AC-4): the org
-#   file is <root>/docs/agentic-sdlc/CLAIRE_ORG.md.
+#   file is <root>/docs/agentic-sdlc/CADENCE_ORG.md.
 #   stdout: exactly two lines on success -- "operator_minutes=<n>" then
 #           "agent_minutes=<n>", non-negative integers summing to --minutes.
 #   stderr: NOTHING on the success path when no diagnostic applies. The single
@@ -50,7 +50,7 @@
 #           file's LOCATION alone never triggers this diagnostic (AC-3) --
 #           only that file's own §19 content can.
 #   exit 0: success (the diagnostic above may still have fired)
-#   exit 1: IMPOSSIBLE_STATE worklogsplit.compute.out_of_domain -- a computed
+#   exit 1: UNSOUND_CONDITION worklogsplit.compute.out_of_domain -- a computed
 #           leg fell outside 0..--minutes; refuses to print an answer
 #   exit 2: usage error -- missing --stage, non-integer --minutes, an
 #           unknown argument, or (AC-5) --org GIVEN naming a value that is
@@ -64,17 +64,17 @@
 #           own last-argument guard does. --stage, --minutes and --root keep
 #           their pre-existing trailing-flag behavior (out of scope).
 #
-# THE ACCEPT GRAMMAR (AC-1 R5 / OQ-8; PROD_CLAIRE-042's overflow closed): whole
+# THE ACCEPT GRAMMAR (AC-1 R5 / OQ-8; PROD_CADENCE-042's overflow closed): whole
 # numbers, decimals, and the leading-dot form (`.5`), value in the closed
 # interval 0..1, at most 9 significant fractional digits once trailing zeros
 # are stripped. A trailing dot (`1.`), a sign, a suffix or padding whitespace
 # never match. This pattern is registered verbatim in
-# docs/policies/claire-surfaces.md's `CLAIRE_WORKLOG_FACTOR_<STAGE>` rows;
+# docs/policies/cadence-surfaces.md's `CADENCE_WORKLOG_FACTOR_<STAGE>` rows;
 # WLS_ACCEPT_PATTERN below is the one definition both read (S-1.10 diffs them).
 #
 # THE TWO POLARITIES, deliberately different (mirroring stage-effort.sh
 # DEC-003, extended by BTG-315 OQ-7):
-#   * A PER-OPERATOR OVERRIDE (`CLAIRE_WORKLOG_FACTOR_<STAGE>`) that fails the
+#   * A PER-OPERATOR OVERRIDE (`CADENCE_WORKLOG_FACTOR_<STAGE>`) that fails the
 #     accept grammar is QUIETLY IGNORED in favour of the §19 value -- no halt,
 #     no warning (BTG-112 DEC-003 parity).
 #   * A §19 value that is MISSING (no section, no row for the stage, or an
@@ -100,7 +100,7 @@ WLS_ACCEPT_PATTERN='^([0-9]+(\.[0-9]+)?|\.[0-9]+)$'
 # stage-effort.sh:99, restated once here rather than shared, since the two
 # scripts serve different ledgers and this is a one-line rule).
 wls_var_name() {
-  printf 'CLAIRE_WORKLOG_FACTOR_%s' "$(printf '%s' "$1" | tr '[:lower:]-' '[:upper:]_')"
+  printf 'CADENCE_WORKLOG_FACTOR_%s' "$(printf '%s' "$1" | tr '[:lower:]-' '[:upper:]_')"
 }
 
 # wls_factor_parse <raw> -- the accept grammar (OQ-8) plus normalization. On
@@ -151,7 +151,7 @@ wls_factor_parse() {
 # and vice versa). Returns 1 -- "missing" -- when the org file, the section,
 # or the stage's row is absent. The caller (wls_resolve_factor) is the one
 # that decides WHICH file this is -- an explicit --org file (BTG-317 AC-1)
-# or <root>/docs/agentic-sdlc/CLAIRE_ORG.md (AC-4) -- this function only
+# or <root>/docs/agentic-sdlc/CADENCE_ORG.md (AC-4) -- this function only
 # ever reads the file it is given.
 wls_org_value() {
   local stage="$1" org="$2" region row val
@@ -171,7 +171,7 @@ wls_org_value() {
 
 # wls_resolve_factor <stage> <root> [org] -- the full resolution chain (AC-1
 # R2-R4). <org>, when non-empty, names the org file DIRECTLY (BTG-317 AC-1)
-# and <root> is ignored; when empty, <root>/docs/agentic-sdlc/CLAIRE_ORG.md
+# and <root> is ignored; when empty, <root>/docs/agentic-sdlc/CADENCE_ORG.md
 # is used exactly as before this ticket (AC-4 backward compatibility).
 # Always sets WLS_MANTISSA / WLS_SCALE. Sets WLS_WARN_CAUSE to "missing" or
 # "invalid" when the §19 value had to be defaulted; leaves it empty
@@ -188,7 +188,7 @@ wls_resolve_factor() {
   if [[ -n "$org_override" ]]; then
     orgfile="$org_override"
   else
-    orgfile="$root/docs/agentic-sdlc/CLAIRE_ORG.md"
+    orgfile="$root/docs/agentic-sdlc/CADENCE_ORG.md"
   fi
   orgval="$(wls_org_value "$stage" "$orgfile")"; rc=$?
   if [[ "$rc" -eq 0 ]] && wls_factor_parse "$orgval"; then
@@ -205,7 +205,7 @@ wls_resolve_factor() {
 }
 
 # wls_split <minutes> <mantissa> <scale> -- DEC-003's formula, fixed-point
-# integer arithmetic only (PROD_CLAIRE-042): the agent leg is the entry times
+# integer arithmetic only (PROD_CADENCE-042): the agent leg is the entry times
 # (1 - factor), floored to the next-lower 15-minute increment; the operator
 # leg takes the remainder, so the two always sum to <minutes> and any
 # off-boundary remainder lands on the operator (OQ-9). A defensive
@@ -218,7 +218,7 @@ wls_split() {
   agent=$(( (minutes * diff) / (15 * scale) * 15 ))
   operator=$(( minutes - agent ))
   if (( agent < 0 || agent > minutes || operator < 0 )); then
-    echo "worklogsplit: seam_type=IMPOSSIBLE_STATE event_name=worklogsplit.compute.out_of_domain minutes=$minutes computed_agent=$agent" >&2
+    echo "worklogsplit: seam_type=UNSOUND_CONDITION event_name=worklogsplit.compute.out_of_domain minutes=$minutes computed_agent=$agent" >&2
     return 1
   fi
   WLS_OPERATOR="$operator"
@@ -275,7 +275,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   WLS_SCALE=1
   wls_resolve_factor "$STAGE" "$ROOT" "$ORG_ARG"
   if [[ -n "$WLS_WARN_CAUSE" ]]; then
-    echo "worklogsplit: seam_type=SEAM_VIOLATION event_name=worklogsplit.factor.org_value_unusable stage=$STAGE cause=$WLS_WARN_CAUSE" >&2
+    echo "worklogsplit: seam_type=BOUNDARY_FAULT event_name=worklogsplit.factor.org_value_unusable stage=$STAGE cause=$WLS_WARN_CAUSE" >&2
   fi
 
   if ! wls_split "$MINUTES" "$WLS_MANTISSA" "$WLS_SCALE"; then

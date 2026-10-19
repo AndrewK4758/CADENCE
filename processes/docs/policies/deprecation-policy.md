@@ -1,10 +1,10 @@
 # Deprecation Policy
 
-This document defines how public surfaces are deprecated, communicated to consumers, and eventually removed. All deprecations must follow this policy. The lifecycle of each deprecation is tracked by **the registry that owns the surface**: [`docs/policies/claire-surfaces.md`](claire-surfaces.md)'s *Deprecated / relocated surfaces* table for a **core-owned** surface, [`docs/policies/surface-registry.md`](surface-registry.md)'s Deprecation Log for an **adopter-owned** one. Routing a core-owned deprecation to the adopter-owned table announces it where no consumer of that surface reads (BTG-200; this sentence corrected by BTG-275).
+This policy governs how public surfaces are deprecated, signaled to downstream consumers, and ultimately removed. Every surface deprecation must adhere to this lifecycle. Each deprecation is tracked in **the registry that owns the surface**: [`docs/policies/cadence-surfaces.md`](cadence-surfaces.md)'s *Deprecated / relocated surfaces* table for a **core-owned** framework surface, and [`docs/policies/surface-registry.md`](surface-registry.md)'s Deprecation Log for an **adopter-owned** project surface. Recording a core-owned deprecation inside the adopter-owned registry would announce it where no consumer of that framework surface looks (BTG-200; clarified by BTG-275).
 
 ## Deprecation Periods
 
-Minimum time between deprecation announcement and surface removal, by surface type:
+Minimum guaranteed window between a deprecation announcement and surface removal, categorized by surface type:
 
 | Surface Type | Minimum Deprecation Period | Rationale |
 |---|---|---|
@@ -13,51 +13,17 @@ Minimum time between deprecation announcement and surface removal, by surface ty
 | Configuration keys (env vars, feature flags) | 1 release cycle | Deployment infrastructure changes require pipeline updates |
 | Database contracts (shared tables/views) | 2 release cycles | Schema migrations require coordinated deployment across services |
 | CLI arguments / SDK methods | 2 release cycles | Downstream tooling and scripts need migration time |
-| Agent / skill definition (an agent definition, or a slash command and its co-located sidecars) | 2 release cycles | Every adopting repo consumes these by copy and customizes them in place, so a rename or a removed step breaks their fork exactly as a renamed CLI argument breaks a script. Added by **BTG-275** (AC-4). The period is **derived, not chosen**: every per-agent and per-skill row in `claire-surfaces.md` already asserts *2 release cycles*, and before this row that promise was undetermined by the policy meant to define it. `archive/BTG-194/spec.md` reached the same finding and left it to a follow-on. The **TYPE row governs** a deprecation's window, not the host surface's own stability — see the `/claire-triage --file-only` inline-form entry in `claire-surfaces.md`'s *Deprecated / relocated surfaces* table, which takes its 2-cycle window from the *CLI arguments / SDK methods* row above rather than from `/claire-triage`'s Stable registration |
+| Agent / skill definition (an agent definition, or a slash command and its co-located sidecars) | 2 release cycles | Every adopting repo consumes these by copy and customizes them in place, so a rename or a removed step breaks their fork exactly as a renamed CLI argument breaks a script. Added by **BTG-275** (AC-4). The period is **derived, not chosen**: every per-agent and per-skill row in `cadence-surfaces.md` already asserts *2 release cycles*, and before this row that promise was undetermined by the policy meant to define it. `archive/BTG-194/spec.md` reached the same finding and left it to a follow-on. The **TYPE row governs** a deprecation's window, not the host surface's own stability — see the `/cadence-triage --file-only` inline-form entry in `cadence-surfaces.md`'s *Deprecated / relocated surfaces* table, which takes its 2-cycle window from the *CLI arguments / SDK methods* row above rather than from `/cadence-triage`'s Stable registration |
 
-A "release cycle" is one **qualifying** release cut under the repository's bound version
-scheme (`CLAIRE_ORG.md#version-scheme-binding`, §18): a cut qualifies when it advances any
-component other than the trailing patch field (the binding's `cycle-qualifying-cut` field).
-A patch-only cut does not count. This is scheme-derived but not a calendar length: under a
-scheme that permits at most one qualifying cut per calendar interval and some intervals with
-none (e.g. `calver-yyyy-ww`, at most one non-patch cut per ISO week), no fixed calendar
-figure can stand in for an actual count without silently mis-measuring a quiet stretch. A
-window's length ("N release cycles") is therefore always counted in actual qualifying cuts,
-never computed as a fixed end date from a calendar length.
+A "release cycle" equals one **qualifying** release cut under the repository's bound version scheme (`CADENCE_ORG.md#version-scheme-binding`, §18): a release cut qualifies when it increments any version component other than the trailing patch number (the binding's `cycle-qualifying-cut` field). A patch-only release never counts toward a deprecation window. While derived from the version scheme, this is a cut count rather than a fixed calendar duration: under schemes that allow at most one qualifying cut per calendar unit and zero cuts during quiet weeks (such as `calver-yyyy-ww`, which permits at most one non-patch cut per ISO week), no fixed calendar duration can substitute for an actual qualifying-cut count without mismeasuring quiet intervals. Consequently, a deprecation window of "N release cycles" is always measured in actual qualifying cuts, never projected as a fixed calendar date from a nominal cycle length.
 
-**Tightening under `semver`, and a withdrawal for continuous deployment -- both stated rather
-than left implicit.** Before this scheme-derived definition, a "release cycle" was informally
-"one merge-to-main deployment," which a patch-only release also satisfied, with a second limb
-for continuous deployment: "treat 2 calendar weeks as 1 release cycle." Counting only
-qualifying (non-patch) cuts is strictly **more generous to consumers against the first limb**: a
-window measured against merge-to-main deployments can only take as long or longer to close,
-never shorter. Against the second limb the direction reverses, and this is a real change, not a
-no-op: a continuous-deployment adopter cutting a qualifying (non-patch) release several times a
-week previously had a guaranteed floor of 2 calendar weeks per cycle, and under qualifying-cut
-counting a window now closes in however long it actually takes that adopter to cut N qualifying
-releases, which can be far shorter than 2 calendar weeks per cycle. **The continuous-deployment
-calendar-weeks equivalence is withdrawn by this change, deliberately** (requester ruling,
-2026-09-21; retaining it as a floor -- closing on the later of N qualifying cuts or N x 2
-calendar weeks -- was offered and declined, as was keeping it only for windows announced from
-here forward). It is not replaced by anything for newly announced windows; it survives only as
-the historical referent the Grandfather clause below points a pre-existing window back to.
+**Tightening under `semver`, and a withdrawal for continuous deployment -- both stated rather than left implicit.** Prior to this scheme-derived rule, a "release cycle" was defined informally as "one merge-to-main deployment" (which a patch release also satisfied), paired with a continuous-deployment clause: "treat 2 calendar weeks as 1 release cycle." Counting strictly qualifying (non-patch) cuts is **more protective of consumers than the first clause**: a window measured in non-patch cuts takes at least as long to elapse as one counting every merge-to-main deployment, and never closes earlier. Against the second clause the effect reverses, representing a deliberate policy change rather than a no-op: a continuous-deployment adopter cutting multiple qualifying releases per week previously owed a 2-calendar-week floor per cycle, whereas under qualifying-cut counting the window closes as soon as N qualifying releases are cut — which may take less than two calendar weeks per cycle. **The continuous-deployment calendar-weeks equivalence is deliberately withdrawn by this policy** (requester ruling, 2026-09-21; keeping it as a minimum floor — closing on the later of N qualifying cuts or N × 2 calendar weeks — was evaluated and declined, as was retaining it prospectively). No calendar-duration floor replaces it for newly announced windows; the old rule survives solely as the historical referent referenced by the Grandfather clause below for pre-existing windows.
 
-**Grandfather clause.** A deprecation or sunset window is measured under the
-`cycle-qualifying-cut` rule **in force when it was announced**, for the whole life of that
-window: it closes on the Nth qualifying cut counted from announcement, however long that
-takes. **For a window announced before this scheme-derived definition took effect, the rule in
-force at announcement is the superseded one stated above: a "release cycle" was one
-merge-to-main deployment, and for continuous deployment, treat 2 calendar weeks as 1 release
-cycle.** That is the guarantee those windows were actually promised, and it is preserved here as
-their referent even though the continuous-deployment equivalence is withdrawn (above) for
-windows announced from this change forward -- the withdrawal is prospective only and never
-reaches a window already running. Rebinding the version scheme after a window is announced never
-re-dates it; a later rebind changes only how *future* announcements are counted, never a window
-already running.
+**Grandfather clause.** Every deprecation or sunset window is governed for its entire lifespan by the `cycle-qualifying-cut` rule **in force on the date it was announced**: it closes upon the Nth qualifying cut counted from announcement, regardless of calendar duration. **For any window announced before this scheme-derived definition took effect, the rule in force at announcement remains the prior definition: one "release cycle" equals one merge-to-main deployment, or 2 calendar weeks under continuous deployment.** That was the commitment made to consumers when those windows opened, and it is honored in full because the withdrawal of the continuous-deployment equivalence above is strictly prospective. Rebinding a repository's version scheme after a deprecation window has been announced never alters the closing condition of a window already in flight; a rebind governs only future announcements.
 
 ## Signaling Requirements
 
-Every deprecated surface must signal its status to consumers through multiple channels:
+Every deprecated surface must communicate its deprecation status to consumers across both runtime and documentation channels:
 
 ### Runtime Signals
 
@@ -73,48 +39,48 @@ Every deprecated surface must signal its status to consumers through multiple ch
 
 | Signal | Where | When |
 |---|---|---|
-| Surface Registry entry | The Deprecation Log **of the registry that owns the surface**: `docs/policies/claire-surfaces.md`'s *Deprecated / relocated surfaces* table for a **core-owned** surface, `docs/policies/surface-registry.md`'s Deprecation Log for an **adopter-owned** one. Routing a core-owned removal to the adopter-owned table announces it where no consumer of that surface reads (BTG-200). | At deprecation announcement |
+| Surface Registry entry | The Deprecation Log **of the registry that owns the surface**: `docs/policies/cadence-surfaces.md`'s *Deprecated / relocated surfaces* table for a **core-owned** surface, `docs/policies/surface-registry.md`'s Deprecation Log for an **adopter-owned** one. Routing a core-owned removal to the adopter-owned table announces it where no consumer of that surface reads (BTG-200). | At deprecation announcement |
 | Migration guide | `docs/migrations/` or inline in spec | At deprecation announcement |
 | CHANGELOG entry | `CHANGELOG.md` under `[Unreleased]` → `Deprecated` | At deprecation announcement |
 | Consumer notification | Direct communication to known consumer teams | Within 1 business day of deprecation |
 
 ## Migration Documentation Requirements
 
-Every breaking change requires a migration guide. The guide must contain:
+Every breaking change or deprecation requires a dedicated migration guide containing:
 
-1. **What is changing:** Name the specific surface, field, endpoint, or behavior being deprecated.
-2. **Why it is changing:** Business or technical reason. Consumers deserve context, not just notice.
-3. **Before/After examples:** Concrete request/response or configuration examples showing the old way and the new way.
-4. **Timeline:** When the deprecation was announced, when the sunset will occur, and any intermediate milestones.
-5. **Migration steps:** Numbered, actionable steps a consumer can follow to migrate. Include code samples in languages consumers use.
-6. **Verification:** How the consumer can verify their migration is complete (e.g., "your service should no longer receive `Deprecation: true` headers").
-7. **Support:** Who to contact if migration is blocked or unclear.
+1. **What is changing:** Identify the exact surface, field, endpoint, CLI flag, or behavior being deprecated.
+2. **Why it is changing:** State the underlying business or architectural reason so consumers understand the rationale, not just the deadline.
+3. **Before/After examples:** Provide concrete side-by-side request/response payloads, CLI invocations, or configuration snippets illustrating the legacy form and the replacement form.
+4. **Timeline:** Specify the deprecation announcement version/date, the qualifying-cut sunset requirement, and any intermediate milestones.
+5. **Migration steps:** List numbered, actionable steps a consumer can execute to complete the transition, including code samples in the primary consumer languages.
+6. **Verification:** Explain how consumers can verify their migration succeeded (for example, confirming their service no longer receives `Deprecation: true` response headers or emits deprecation warnings).
+7. **Support:** Name the owning team or communication channel for migration assistance.
 
-Migration guides are stored in `docs/migrations/{surface-name}.md` or inline in the spec's Compatibility Impact section for smaller changes.
+Migration guides live in `docs/migrations/{surface-name}.md`, or inline within the specification's Compatibility Impact section for narrower changes.
 
 ## Sunset Process
 
-When the deprecation period has elapsed and the surface is ready for removal:
+Once the required deprecation window has fully elapsed and the surface is ready for removal:
 
 ### Pre-Sunset Checklist
 
-- [ ] Deprecation period has fully elapsed
-- [ ] All known consumers have been notified and confirmed migration (or acknowledged the timeline)
-- [ ] Deprecated surface metric (`deprecated_surface_calls_total`) shows zero or near-zero traffic for at least 1 week
-- [ ] Migration guide is published and accessible
-- [ ] Rollback plan documented in case removal causes unexpected breakage
+- [ ] Minimum deprecation period (in qualifying release cuts) has fully elapsed
+- [ ] All registered consumers have been notified and confirmed migration (or formally acknowledged the sunset timeline)
+- [ ] Deprecated surface telemetry (`deprecated_surface_calls_total`) shows zero or near-zero invocation volume for at least 1 week
+- [ ] Migration guide is published and reachable
+- [ ] Rollback plan is documented in case removal triggers unexpected downstream failures
 
 ### Sunset Execution
 
-1. **Feature flag removal:** If the deprecated surface was behind a feature flag, remove the flag and the deprecated code path.
-2. **Code removal:** Remove the deprecated endpoint, field, event handler, or schema element. Do not leave dead code with "deprecated" comments.
-3. **Test cleanup:** Remove or archive compatibility tests for the sunset version. Archived tests go to `archive/` with a note, not deleted entirely (audit trail).
-4. **Registry update:** Update **the registry that owns the surface** — `docs/policies/claire-surfaces.md`'s *Deprecated / relocated surfaces* table for a core-owned surface, `docs/policies/surface-registry.md`'s Deprecation Log for an adopter-owned one — moving the entry status from "Active" to "Complete." (BTG-200)
-5. **CHANGELOG entry:** Add entry under `Removed` in the changelog.
+1. **Feature flag removal:** If the deprecated surface was gated by a feature flag, remove both the flag definition and the legacy code path.
+2. **Code removal:** Delete the deprecated endpoint, field, event handler, or schema element completely. Never leave unreachable dead code behind "deprecated" comments.
+3. **Test cleanup:** Remove or archive compatibility tests targeting the retired surface. Archived contract tests move to `archive/` with an explanatory note rather than vanishing without a trace.
+4. **Registry update:** Update **the registry that owns the surface** — `docs/policies/cadence-surfaces.md`'s *Deprecated / relocated surfaces* table for a core-owned surface, or `docs/policies/surface-registry.md`'s Deprecation Log for an adopter-owned surface — transitioning the entry status from "Active" to "Complete." (BTG-200)
+5. **CHANGELOG entry:** Record the removal under the `Removed` heading in `CHANGELOG.md`.
 
 ### Post-Sunset Monitoring
 
-Monitor error rates and consumer health for 48 hours after sunset deployment. If unexpected breakage occurs, the rollback plan takes precedence over the sunset.
+Monitor service error rates and downstream consumer telemetry for 48 hours following sunset deployment. If unanticipated breakage surfaces, executing the documented rollback plan takes priority over keeping the sunset in place.
 
 ## Version Support Matrix
 
@@ -126,15 +92,15 @@ Monitor error rates and consumer health for 48 hours after sunset deployment. If
 | New version trigger | Any breaking change to a stable endpoint that cannot be made additive |
 | Previous version retirement | Follows standard deprecation period after new version is stable |
 
-When a new API version is introduced:
-1. The previous version is immediately marked as deprecated in the surface registry.
-2. Deprecation signals (headers, logs, metrics) are added to the previous version.
-3. The deprecation period clock starts.
-4. Both versions are maintained until sunset.
+When a new major API version is introduced:
+1. The prior version is immediately marked as `Deprecated` in the owning surface registry.
+2. Runtime deprecation signals (HTTP headers, structured warning logs, Mimir counters) are enabled on the prior version.
+3. The deprecation window counter begins.
+4. Both API versions are supported concurrently until the deprecation window closes.
 
 ## Emergency Breaking Changes
 
-For security vulnerabilities, compliance violations, or data integrity issues that require immediate breaking changes:
+When an active security vulnerability, regulatory compliance mandate, or critical data-integrity defect necessitates an immediate breaking change:
 
 | Step | Action | Timeline |
 |---|---|---|
@@ -145,11 +111,11 @@ For security vulnerabilities, compliance violations, or data integrity issues th
 | 5 | Provide migration support window | 1 week minimum |
 | 6 | Update surface registry and changelog | Within 24 hours |
 
-Emergency breaking changes bypass the normal deprecation period but still require documentation, consumer notification, and a migration path. The justification is recorded in the Deprecation Log of **the registry that owns the surface** (`docs/policies/claire-surfaces.md`'s *Deprecated / relocated surfaces* table when core-owned, `docs/policies/surface-registry.md`'s Deprecation Log when adopter-owned — BTG-200) with a note that the emergency process was used.
+Emergency breaking changes bypass the standard multi-cycle waiting period but still owe complete documentation, immediate consumer notification, and an actionable migration guide. The emergency justification is recorded in the Deprecation Log of **the registry that owns the surface** (`docs/policies/cadence-surfaces.md`'s *Deprecated / relocated surfaces* table when core-owned, or `docs/policies/surface-registry.md`'s Deprecation Log when adopter-owned — BTG-200) alongside an explicit note that the emergency fast-track was invoked.
 
 ## References
 
-- [CLAIRE Framework Surface Registry (core-owned)](claire-surfaces.md) — framework surfaces and their *Deprecated / relocated surfaces* table
+- [CADENCE Framework Surface Registry (core-owned)](cadence-surfaces.md) — framework surfaces and their *Deprecated / relocated surfaces* table
 - [Public Surface Registry (adopter-owned)](surface-registry.md) — your project's own surfaces and their Deprecation Log
-- [CLAIRE Org Configuration](../agentic-sdlc/CLAIRE_ORG.md) — Backwards Compatibility facet measures
+- [CADENCE Org Configuration](../agentic-sdlc/CADENCE_ORG.md) — Backwards Compatibility pillar measures
 - RFC 8594 — The Sunset HTTP Header Field

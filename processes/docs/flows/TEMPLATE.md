@@ -2,15 +2,15 @@
 
 ## Summary
 
-<!-- 1-2 sentence description of this business flow and its business value -->
+<!-- 1-2 sentence overview of this business flow and the domain value it delivers -->
 
 ## Trigger
 
-<!-- What initiates this flow: user action, scheduled job, external event, upstream service call -->
+<!-- What initiates this flow: user interaction, scheduled cron/worker job, inbound domain event, or upstream API call -->
 
 ## Sequence
 
-<!-- Ordered steps showing which service/component does what, including async handoffs -->
+<!-- Ordered interaction steps showing which service/component performs each action, including asynchronous handoffs -->
 
 ```mermaid
 sequenceDiagram
@@ -46,13 +46,13 @@ sequenceDiagram
 
 ## Invariants
 
-<!-- System-level invariants this flow relies on. These are assumptions that, if violated, break the flow. -->
+<!-- System-level and journey invariants this flow depends upon. Violating any of these breaks the business flow. -->
 
-- _Example: Patient must have a verified identity before reaching step 3_
-- _Example: Provider availability is guaranteed consistent by the Scheduling context's lock mechanism_
+- _Example: Patient must hold a verified identity record prior to reaching step 3_
+- _Example: Provider slot availability is guaranteed serialized by the Scheduling context's lock invariant_
 
 ## Related Specs
 
-<!-- Links to specs that implemented or modified this flow. Append as the flow evolves. -->
+<!-- Links to specifications (in `specs/` or `archive/`) that introduced or modified this flow. Append chronologically as the flow evolves. -->
 
-- `specs/{ticket-id}/` — {brief description of what was added/changed}
+- `specs/{ticket-id}/` — {concise summary of what was introduced or modified}

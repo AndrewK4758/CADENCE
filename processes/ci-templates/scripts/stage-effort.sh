@@ -3,24 +3,24 @@
 # stage-effort.sh -- BTG-112: the SINGLE site that resolves a per-stage review
 #                    multiplier and renders one stage's recorded effort.
 #
-# Bounded context: CLAIRE framework governance / the realized-effort audit
+# Bounded context: CADENCE framework governance / the realized-effort audit
 # ledger (`stage_effort[].effort` + `actual_effort` in `specs/{id}/metadata.yaml`).
-# Invariant relied on from outside this boundary: `CLAIRE_ORG.md` section 12
+# Invariant relied on from outside this boundary: `CADENCE_ORG.md` section 12
 # (Actual Effort Accumulation) is the SINGLE source of the per-stage review
 # multiplier values and of the multiply-then-round-UP-to-15m rule; this script
 # READS that table live and embeds no value of its own.
 #
 # Upstream: the seven effort-recording sites -- artifacts/commands/{triage,
 # write-spec,implement,review-code,maintain,elicit}.md and
-# artifacts/roles/claire-archivist.md -- each call this script at their stage's
+# artifacts/roles/cadence-archivist.md -- each call this script at their stage's
 # completion instead of performing the arithmetic themselves.
 # Downstream: the returned duration string is written verbatim as the
 # `stage_effort[].effort` value and added to `actual_effort`.
 # Spec: archive/BTG-112/spec.md (Proposed Design); decisions.md DEC-002.
 #
 # WHY A SCRIPT AND NOT SEVEN PROSE INSTRUCTIONS (DEC-002). Seven independent
-# copies of a resolution instruction is the drift shape BTG-002 and ADR_CLAIRE-0015
-# exist to prevent, and PROD_CLAIRE-005 is the recorded case where section 12's rule
+# copies of a resolution instruction is the drift shape BTG-002 and ADR_CADENCE-0015
+# exist to prevent, and PROD_CADENCE-005 is the recorded case where section 12's rule
 # was correct for 90+ entries and then silently stopped being executed. One
 # script called seven times makes agreement STRUCTURAL rather than
 # instructional. It also closes AC-11's new leak vector by construction:
@@ -48,7 +48,7 @@
 #   * An OPERATOR-SUPPLIED OVERRIDE that fails the accept grammar is QUIETLY
 #     IGNORED in favour of the section 12 value -- no halt, no warning, output
 #     byte-identical to an unset run. This is a requester-chosen deviation from
-#     CLAIRE_DIRECTIVES.md Behavior 5 (fail loud), recorded as BTG-112 DEC-003, and it is
+#     CADENCE_DIRECTIVES.md Behavior 5 (fail loud), recorded as BTG-112 DEC-003, and it is
 #     scoped to exactly this one input class.
 #   * An UNRESOLVABLE DEFAULT (the section 12 table cannot be parsed) or a
 #     CALLER BUG (unknown stage, non-integer observed) is FAIL-LOUD: exit 2
@@ -69,7 +69,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-ORG_FILE="$ROOT/docs/agentic-sdlc/CLAIRE_ORG.md"
+ORG_FILE="$ROOT/docs/agentic-sdlc/CADENCE_ORG.md"
 
 # --- Fail-loud caller validation --------------------------------------------
 # An unknown stage and an unparseable table both leave the multiplier
@@ -96,7 +96,7 @@ fi
 #    _CODE_REVIEW: a hyphen is not a valid POSIX shell identifier character, so
 #    the hyphenated form would be settable only out-of-band and the feature
 #    would become runtime-dependent (BTG-112 DEC-001).
-VAR="CLAIRE_STAGE_EFFORT_MULTIPLIER_$(printf '%s' "$STAGE" | tr '[:lower:]-' '[:upper:]_')"
+VAR="CADENCE_STAGE_EFFORT_MULTIPLIER_$(printf '%s' "$STAGE" | tr '[:lower:]-' '[:upper:]_')"
 
 # 2. Read it with `printenv`, never `$VAR` expansion (DEC-001). An unset
 #    variable is simply an empty read here -- not an error.

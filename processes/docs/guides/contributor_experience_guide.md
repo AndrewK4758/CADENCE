@@ -1,24 +1,24 @@
 # Contributor Experience Guide
 
-This guide describes how work is proposed, reviewed, and merged in any repository that has adopted CLAIRE and the Inner-Source SDLC. It applies to **anyone proposing work in the repo** — including the owning team. Repo-first SDLC means there are no shortcuts for owners: every change starts with an intent issue, and every change is reviewed against the project's stated intent.
+This guide explains how changes are proposed, specified, reviewed, and merged in any repository that has adopted CADENCE and the Inner-Source SDLC. It governs **everyone proposing work in the repository** — including members of the core owning team. Under a repo-first SDLC there are no backdoor shortcuts for owners: every modification starts with an intent issue, and every change is evaluated against the repository's declared intent.
 
-If you are part of the owning team, this guide describes your day-to-day workflow. If you are outside the owning team, it describes how to propose a change without guessing at the team's expectations. Both audiences read the same document because the process is the same.
+If you belong to the owning team, this document describes your daily engineering workflow. If you are contributing from another team, it shows you how to propose and land a change without having to guess unwritten team conventions. Both audiences read the exact same guide because the rules are identical.
 
 ## The starting point: PROJECT_INTENT.md
 
-Every CLAIRE-adopting repository has a `PROJECT_INTENT.md` at its root. Read it first. It tells you:
+Every CADENCE-adopting repository maintains a `PROJECT_INTENT.md` at its root. Read it before drafting any proposal. It establishes:
 
-- **Mission** — what the project exists to do.
-- **Scope** — what kinds of work belong here, and what does not.
-- **Non-Goals** — explicit things the project will not do, with reasons.
-- **Quality Stance** — what the project optimizes for when qualities conflict.
-- **Architecture Invariants** — structural commitments that cannot be violated without amending intent.
-- **Contribution Posture** — whether contributions from outside the owning team are welcome, and what kinds.
-- **SLAs and ladder thresholds** — the project's specific commitments for review timing and contributor advancement.
+- **Mission** — why this repository exists and what problem space it serves.
+- **Scope** — which capabilities belong in this codebase and which belong elsewhere.
+- **Non-Goals** — explicit capabilities the project refuses to take on, paired with the rationale.
+- **Quality Stance** — how the project resolves tradeoffs when engineering qualities pull in opposite directions.
+- **Architecture Invariants** — structural rules that no change may violate without first amending project intent.
+- **Contribution Posture** — whether cross-team contributions are accepted and under what conditions.
+- **SLAs and ladder thresholds** — the team's concrete commitments for review turnaround and contributor progression.
 
-If your idea fits the intent, you can proceed to filing an intent issue. If it does not fit, you have three paths: redirect to an adjacent project, propose an intent amendment (Section 10 of `PROJECT_INTENT.md`), or accept that this is not the right home for the work. Do not try to slip out-of-scope work past review — the maintainer reviews against intent, not against personal preference.
+When your proposal aligns with `PROJECT_INTENT.md`, proceed to filing an intent issue. When it falls outside current intent, you have three constructive options: route the work to the appropriate adjacent repository, submit an intent-amendment proposal (`PROJECT_INTENT.md` Section 10), or accept that this repository is not the right home. Never attempt to sneak out-of-scope changes through code review — the maintainer evaluates every MR against `PROJECT_INTENT.md`, not personal whim.
 
-If `PROJECT_INTENT.md` does not exist yet in a repo claiming CLAIRE adoption, that is itself a valid first contribution: file an intent issue proposing it, using the template at `docs/agentic-sdlc/PROJECT_INTENT_TEMPLATE.md`.
+If a repository claiming CADENCE adoption does not yet have a `PROJECT_INTENT.md`, authoring one from `docs/agentic-sdlc/PROJECT_INTENT_TEMPLATE.md` is itself an ideal first contribution.
 
 ## How work happens here
 
@@ -27,225 +27,222 @@ Intent issue → Triage → Spec → [Spec approval] → Implementation →
 [Code review] → [Maintainer acceptance] → Merge → Archive
 ```
 
-This applies uniformly. The owning team does not skip the intent issue, the spec, or the human gates.
+This lifecycle applies across the board. Core team members do not bypass the intent issue, the specification, or the human review gates.
 
-The lightweight track (described below) compresses but does not eliminate these steps for small, low-risk changes.
+For small, low-blast-radius changes, the lightweight track (detailed below) condenses the artifact ceremony without skipping human accountability.
 
-> **Editing an agent or skill?** `.claude/agents/` and `.claude/skills/` are **generated** from the runtime-neutral source under `artifacts/` by `ci-templates/scripts/claire-compile.sh`. Edit `artifacts/roles/` or `artifacts/commands/` and recompile — never edit the `.claude/` trees directly, or your change is overwritten on the next compile. See `artifacts/SCHEMA.md` and ADR_CLAIRE-0008.
+> **Editing an agent or skill?** `.agents/agents/` and `.agents/skills/` (as well as `.gemini/` on Antigravity) are **generated** from the runtime-neutral source tree under `artifacts/` by `ci-templates/scripts/cadence-compile.sh`. Always edit `artifacts/roles/` or `artifacts/commands/` and recompile — never edit the compiled `.agents/` or `.gemini/` directories directly, or your edits will be overwritten on the next compile pass. See `artifacts/SCHEMA.md` and ADR_CADENCE-0008.
 
 ### Drift prevention: the compile gate
 
-The recompile rule above is no longer left to memory — a compile gate enforces it mechanically. The gate runs one runner, `ci-templates/scripts/run-gates.sh`, which composes the existing checks (round-trip compile, manifest sync, reproducible build, schema, and the vendor-reference sweep) and exits non-zero if `.claude/` has drifted from `artifacts/`, the manifest is stale, the build is non-reproducible, or a primitive leaked. It runs locally:
+The recompile rule is enforced mechanically rather than left to human memory. A single gate runner, `ci-templates/scripts/run-gates.sh`, executes the full suite of structural checks (round-trip compile verification, manifest synchronization, reproducible build verification, schema validation, and the vendor-reference sweep) and exits non-zero whenever `.agents/` (or the bound runtime install tree) has drifted from `artifacts/`, the manifest is out of date, the build is non-deterministic, or a vendor-specific primitive leaked into neutral prose. You can wire it locally:
 
-- **Pre-commit hook (opt-in, the primary fast local guard).** Install it once, explicitly:
+- **Pre-commit hook (opt-in, fast local guard).** Install it once in your checkout:
   ```
   bash ci-templates/scripts/install-hooks.sh
   ```
-  After that, the same gate runs locally on every `git commit` and aborts the commit if anything has drifted — so you catch drift before you push, not after. The installer never runs by itself (no tool, skill, or agent installs it) and refuses to clobber an existing hook. To skip the hook for a work-in-progress commit, use `git commit --no-verify`.
+  Once installed, `run-gates.sh` executes automatically on every `git commit` and aborts the commit if any compiled surface has drifted — catching discrepancies before you push. The installer never runs silently on its own (no agent or skill invokes it behind your back) and refuses to overwrite an existing pre-commit hook. To bypass the hook temporarily for a work-in-progress commit, pass `git commit --no-verify`.
 
-Whether this repository ALSO runs the gate on a CI substrate after a push is recorded in one place, `docs/agentic-sdlc/CLAIRE_ORG.md` section 1 *Where (Network)*'s CI/CD row, and is deliberately not restated here. In YOUR repository that answer is whatever your own configuration says: this guide describes the reference implementation's local guard and assumes nothing about your forge.
+Whether a repository also runs `run-gates.sh` on a remote CI runner after push is declared in a single place — `docs/agentic-sdlc/CADENCE_ORG.md` section 1 *Where (Network)*'s CI/CD row — and is deliberately not duplicated here. In your repository, that setting reflects your own infrastructure: this guide documents the local pre-commit guard without making assumptions about your remote forge.
 
-Whatever that row says, there is only ever one runner: a post-push check would invoke the same `run-gates.sh` this hook does, so the two cannot reach different verdicts.
+Regardless of where it runs, there is only one gate script: any remote CI check invokes the exact same `run-gates.sh` binary as the local pre-commit hook, guaranteeing both reach identical verdicts.
 
 ## Filing an intent issue
 
-An intent issue is a short proposal — three to five sentences — describing what you plan to change and why. It is not a specification. It is the social contract: *"I intend to work on this; is that useful?"*
+An intent issue is a concise proposal — three to five sentences — stating what you want to change and why. It is not a full technical specification; it is the lightweight social contract: *"I plan to work on this problem; does it belong here?"*
 
-A good intent issue includes:
+Every well-formed intent issue covers four points:
 
-- **Problem.** What is wrong, missing, or unclear (one to two sentences).
-- **Proposed approach.** A sketch, not a design (two to three sentences).
-- **Surfaces affected.** Which public surfaces, if any, would change.
-- **Ask.** What you need from the maintainer — confirmation to proceed, guidance, a redirect, or a "not now."
+- **Problem.** What is broken, missing, or confusing (one to two sentences).
+- **Proposed approach.** A high-level direction rather than a detailed design (two to three sentences).
+- **Surfaces affected.** Which public or registered surfaces, if any, would be touched.
+- **Ask.** What you need from the maintainer — a green light to proceed, architectural pointers, a redirect, or a "not right now."
 
-The maintainer responds with one of:
+The maintainer replies with one of five dispositions:
 
-- **Proceed.** The work fits intent. File a spec, or submit a lightweight change proposal — see [`submitting-changes.md`](submitting-changes.md) for the three supported workflows (GitLab MR, GitHub PR, SourceHut patchset via `git send-email`).
-- **Modify.** The work fits intent but the approach needs adjustment.
-- **Redirect.** The work belongs in a different project; here is where.
-- **Decline.** The work does not fit intent. Includes a citation to the relevant Non-Goal or Scope-Out entry.
-- **Amend first.** The work would require changing intent; here is how to propose that.
+- **Proceed.** The proposal fits project intent. Advance to Triage and author a specification, or submit a lightweight change proposal — see [`submitting-changes.md`](submitting-changes.md) for the three supported forge workflows (GitLab MR, GitHub PR, and SourceHut patchset via `git send-email`).
+- **Modify.** The goal fits project intent, but the proposed direction needs adjustment before proceeding.
+- **Redirect.** The capability belongs in an adjacent repository or service (with a pointer to the right home).
+- **Decline.** The proposal conflicts with project intent, citing the specific Non-Goal or Scope-Out clause in `PROJECT_INTENT.md`.
+- **Amend first.** Delivering this work requires expanding or modifying `PROJECT_INTENT.md` first; here is how to propose that amendment.
 
-A "decline" or "amend first" is not a rejection of the contributor. It is a redirect to the right shape of conversation.
+A *Decline* or *Amend first* response is never a personal rejection of the contributor — it simply routes the discussion to the appropriate governance level before engineering hours are spent.
 
 ## Tracks
 
 ### Lightweight track
 
-The lightweight track applies when **all** of the following are true:
+A change qualifies for the lightweight track only when **every one** of the following conditions holds:
 
-- The change does not touch any public surface (API, event schema, shared contract, database schema).
-- The change does not affect any of the charter's compulsory full-spec categories: shared libraries, public APIs, core domain models, security posture, compliance obligations, persistence models, interoperability contracts, or cross-team user-visible behavior. (See `docs/policies/inner_source_sdlc_charter.md` §Specification Review Gate.)
-- The change does not violate any architecture invariant in `PROJECT_INTENT.md`.
-- The change is one of: documentation improvement, test coverage addition, bug fix with obvious root cause, configuration correction, or dependency update within the same major version.
-- The change fits within the LOC limit set in `PROJECT_INTENT.md` (default: 50 lines of production code, excluding tests).
+- No public or registered surface is touched (API endpoints, event schemas, shared DTOs, CLI contracts, database schemas).
+- None of the charter's compulsory full-specification categories are affected: shared libraries, public APIs, core domain models, security posture, compliance controls, persistence schemas, interoperability contracts, or cross-team user-visible behavior (see `docs/policies/inner_source_sdlc_charter.md` §Specification Review Gate).
+- Every architecture invariant in `PROJECT_INTENT.md` is preserved.
+- The work is strictly one of: a documentation improvement, an additional test case, an isolated bug fix with an obvious root cause, a configuration value update, or a non-breaking dependency bump within the same major version.
+- The production diff stays within the LOC ceiling declared in `PROJECT_INTENT.md` (default: 50 lines of production code, excluding tests).
 
-If any of these conditions is unmet, the change uses the standard track regardless of size.
+If even one of these conditions is not met, the change follows the standard track regardless of how small the diff looks.
 
-Lightweight contributions still file an intent issue, but the spec phase is collapsed: a `submission.md` written from [`specs/TEMPLATE/submission.md`](../../specs/TEMPLATE/submission.md) serves as the abbreviated specification, replacing the full `problem.md` / `spec.md` / `test-plan.md` / `decisions.md` set. Its `## Description` section is the body of the MR/PR (GitLab/GitHub) or the cover letter of the patchset (SourceHut) — see [`submitting-changes.md`](submitting-changes.md). It must include, at minimum:
+Lightweight changes still begin with an intent issue, but the formal multi-file specification phase is condensed: a single `submission.md` instantiated from [`specs/TEMPLATE/submission.md`](../../specs/TEMPLATE/submission.md) acts as the abbreviated specification in place of the full `problem.md` / `spec.md` / `test-plan.md` / `decisions.md` bundle. Its `## Description` section populates the MR/PR body (on GitLab/GitHub) or the patchset cover letter (on SourceHut) — see [`submitting-changes.md`](submitting-changes.md). At minimum, it must specify:
 
-- **Problem framing** — one paragraph stating what is wrong, missing, or unclear.
-- **Acceptance criteria** — bulleted, specific enough that a reviewer can verify them.
-- **Surfaces touched** — list the files or modules; explicitly state "no public surfaces" if applicable.
-- **Test approach** — which tests are added or updated and why.
+- **Problem framing** — a concise paragraph explaining what is broken, missing, or unclear.
+- **Acceptance criteria** — specific, falsifiable bullets a reviewer can verify directly.
+- **Surfaces touched** — the modified files or modules, explicitly noting "no public surfaces" when none are affected.
+- **Test approach** — which automated tests were added or updated and what they verify.
 
-A single approver — a Trusted Committer or maintainer — performs both the code review and maintainer acceptance evaluations in one pass. The maintainer acceptance is condensed because the lightweight track conditions exclude the categories that drive project-level impact (compatibility, architecture, mission alignment, security surface, dependency health). The approver still confirms each condensed dimension is genuinely not engaged before approving.
+A single human approver — either a Trusted Committer or a Maintainer — conducts both the code review and maintainer acceptance checks in a single pass. Maintainer acceptance is streamlined because the lightweight eligibility rules rule out the primary drivers of project-level risk (compatibility breakage, architectural drift, mission creep, security expansion, new dependencies). The reviewer explicitly confirms that none of those dimensions are engaged before approving.
 
 ### Standard track
 
-All other contributions follow the full CLAIRE lifecycle: intent issue, spec, spec review, implementation, code review, maintainer acceptance.
+All other changes traverse the complete CADENCE lifecycle: intent issue, `/cadence-triage`, `/cadence-spec`, Gate 1 Spec Approval, `/cadence-implement`, Gate 2 Code Review (`/cadence-review`), Gate 3 Maintainer Acceptance (`/cadence-maintain`), Merge, and `/cadence-archive`.
 
-The contributor may draft the spec. A maintainer reviews and approves it before implementation begins.
+Any contributor may author the specification; a designated reviewer/maintainer approves it at Gate 1 before implementation begins.
 
 ### Tier-driven defaults
 
-`docs/policies/change-tiers.md` defines four tiers (Trivial, Low, Medium, High) based on objective triggers (LOC, surface impact, blast radius). Tier determines the depth of process. The lightweight track maps to Trivial and most Low-tier changes. The standard track covers Medium and High.
+`docs/policies/change-tiers.md` defines four objective tiers (Trivial, Low, Medium, High) based on diff triggers (surface impact, schema changes, bounded-context crossings). The lightweight track corresponds to Trivial and narrow Low-tier work, while the standard track governs Medium and High tiers.
 
 ## Review expectations
 
-Each adopting repo sets its own SLAs in `PROJECT_INTENT.md` based on maintainer capacity. The defaults below are recommendations.
+Every adopting repository publishes its own review turnaround SLAs in `PROJECT_INTENT.md` calibrated to realistic maintainer bandwidth. The table below provides the recommended defaults:
 
 | Track | First response | Actionable feedback | Target merge (if approved) |
 |---|---|---|---|
 | Lightweight | 2 business days | 5 business days | 7 business days |
 | Standard | 5 business days | 10 business days | Depends on scope |
 
-"First response" means a substantive reaction: approval, a question, a concern, or an acknowledgment with an estimated timeline. Bot messages do not count.
+"First response" means a substantive human reply: an approval, a clarifying question, an architectural concern, or an acknowledgment with a concrete review date. Automated bot replies never count toward the SLA.
 
-If a maintainer cannot meet the stated SLA, the right move is to update `PROJECT_INTENT.md` to widen it — not to silently miss it. Honest SLAs build trust; aspirational SLAs erode it.
+Whenever maintainer bandwidth tightens and the team cannot consistently meet its published SLA, the honest remedy is to widen the SLA numbers in `PROJECT_INTENT.md` — never to miss them silently. Realistic SLAs sustain contributor trust; aspirational SLAs that are routinely ignored destroy it.
 
 ### Escalation
 
-If an intent issue or MR receives no response within the SLA:
+When an intent issue or MR receives no human response within the published SLA:
 
-1. Ping the maintainer in the project's open communication channel.
-2. After an additional 24 hours, escalate via the path documented in `PROJECT_INTENT.md` (typically: owning team's manager or the inner-source governance group).
-3. Persistent SLA misses are a signal that the maintainer role is under-resourced. Raise it in the team's retrospective rather than blaming individuals.
+1. Ping the maintainer in the repository's public communication channel (listed in `PROJECT_INTENT.md`).
+2. If no response arrives within an additional 24 business hours, escalate along the path documented in `PROJECT_INTENT.md` (typically the owning team's engineering lead or the inner-source stewardship group).
+3. Recurring SLA breaches signal that maintainership is under-resourced — address capacity at the team retrospective rather than blaming individual maintainers.
 
 ## The maintainer's job
 
-The maintainer is not a gatekeeper. They are a steward of project intent.
+Maintainers act as stewards of project intent, not arbitrary gatekeepers.
 
-In practice, that means:
+In day-to-day practice, stewardship means:
 
-- **Decisions are grounded in `PROJECT_INTENT.md`.** When the maintainer accepts or rejects work, they cite intent — Mission, Scope, Non-Goals, Quality Stance, Architecture Invariants, or Contribution Posture. *"I do not like it"* is not a reason; *"this violates the Auditability priority because X"* is.
-- **Capacity is finite and visible.** Maintainers commit to SLAs they can actually hit. When capacity is short, the SLA widens publicly. Treat maintainer load as a first-class concern, not a hidden tax.
-- **Out-of-scope is a redirect, not a rejection.** If a contribution is out of scope, the maintainer points at the Non-Goal or adjacent project. The contributor leaves with a path forward, not a dead end.
-- **Changing intent is a documented process.** When a contribution is good but does not fit current intent, the maintainer explains the amendment process. Intent is not immutable; it changes deliberately.
+- **Every disposition cites `PROJECT_INTENT.md`.** Whether accepting, requesting changes, or declining, the maintainer grounds the decision in documented Mission, Scope, Non-Goals, Quality Stance, Architecture Invariants, or Contribution Posture. *"I don't like this style"* is invalid; *"this conflicts with our Data Integrity pillar because mutations bypass the audit log"* is actionable and objective.
+- **Maintainer bandwidth is finite and transparent.** Maintainers commit only to turnaround windows they can reliably honor and update `PROJECT_INTENT.md` openly when capacity shifts.
+- **Out-of-scope proposals receive a redirect, not a dead end.** When a proposal belongs elsewhere, the maintainer cites the relevant Non-Goal and points the contributor toward the appropriate repository or intent-amendment path.
+- **Intent evolves through a documented process.** When a strong contribution reveals that `PROJECT_INTENT.md` is too narrow, the maintainer guides the contributor through a Section 10 intent amendment.
 
 ### What maintainers should not do
 
-- **Silent rejection.** Letting an MR sit until the contributor gives up. If you cannot review within the SLA, say so and provide a timeline.
-- **Scope creep.** Requesting unrelated improvements as a condition for merging. File a separate issue.
-- **Moving goalposts.** Changing requirements after the contributor has implemented the agreed approach.
-- **Gatekeeping knowledge.** Refusing to answer questions or pointing to documentation that does not exist. If the docs are missing, accept a contribution that adds them.
-- **Discouraging intent issues.** Treating early proposals as bothersome. Intent issues save everyone time.
-- **Personal-taste rejections.** Declining work because you would have written it differently, when it satisfies the spec and the project's stated quality stance.
+- **Pocket vetoes / silent ignoring.** Leaving an intent issue or MR unreviewed until the author walks away. If bandwidth is constrained, say so upfront and state when you can review.
+- **Unscoped piggybacking.** Demanding unrelated cleanups or feature additions as a hostage condition for merging an in-scope MR. File a separate follow-up ticket instead (`docs/policies/finding-classes.md`).
+- **Moving the goalposts.** Rewriting acceptance criteria at Gate 2 or Gate 3 after the contributor implemented the exact design approved at Gate 1 (unless a genuine production hazard surfaced, in which case follow `docs/policies/conflict-resolution.md` Scenario 1).
+- **Hoarding tribal knowledge.** Rejecting contributions for violating unwritten rules. If a convention matters, codify it in `AGENTS.md` or `PROJECT_INTENT.md`.
+- **Treating intent issues as noise.** Early 4-sentence intent checks prevent wasted multi-day implementations.
+- **Taste-based blocks.** Blocking an MR that satisfies its approved spec, passes all tests, and honors every Engineering Pillar simply because you would have coded it differently.
 
 ## Review etiquette
 
-Reviewers:
+For reviewers:
 
-- Comment on the code, not the person. *"This function has a race condition"* — not *"you did not think about concurrency."*
-- Distinguish blocking concerns from suggestions. Use a clear prefix: `[blocking]` or `[suggestion]`.
-- Explain *why* a change is needed, not just that it is. Link to the relevant standard, ADR, or section of `PROJECT_INTENT.md`.
-- Acknowledge good work. *"Nice approach here"* costs nothing and builds trust.
-- Stay in scope. Review against the stated intent of the MR, not a wish list.
+- Critique the code and architecture, never the author. Write *"This handler has a stale-read window under concurrent updates"* — never *"You didn't think about concurrency."*
+- Label findings clearly using `[blocking]` or `[suggestion]` (and the five normative non-blocking finding classes in `docs/policies/finding-classes.md`: `out-of-scope-defect`, `adr-owed`, `nit`, `hygiene`, `observation`).
+- Explain the *why* behind every blocking finding, citing the specific policy, ADR, spec requirement, or `PROJECT_INTENT.md` invariant.
+- Call out well-crafted work — acknowledging a clean test or clear boundary design reinforces quality standards.
+- Keep reviews scoped to the ticket's approved contract.
 
-Contributors:
+For contributors:
 
-- Respond to feedback within 5 business days or indicate that you need more time.
-- Ask clarifying questions rather than guessing at the reviewer's intent.
-- Accept that maintainers may have context not visible in the MR. If you disagree, say so explicitly and request the rationale — do not quietly comply or quietly refuse.
+- Reply to review feedback within 5 business days (or post a quick note if you need more time).
+- Ask for clarification whenever a review comment is ambiguous rather than guessing.
+- Recognize that maintainers hold system-wide context that may not be obvious from a single file. If you disagree with a finding, reply with concrete evidence (`docs/policies/conflict-resolution.md` Scenario 3) rather than complying silently or ignoring the comment.
 
 ## Growing as a contributor
 
-Trust grows with familiarity. The ladder below is a default — adopting repos may rename levels, adjust thresholds, or compress levels in `PROJECT_INTENT.md`. The point of the ladder is not bureaucracy; it is that someone who has merged ten things to a repo deserves more latitude than someone making their first contribution.
+Trust scales with demonstrated alignment. Adopting repositories may customize the thresholds or level names below in `PROJECT_INTENT.md`; the purpose of the ladder is to recognize contributors who consistently deliver clean, well-specified changes.
 
 ### Contributor
 
-Anyone who files an intent issue or submits an MR. No prerequisites.
+Anyone who opens an intent issue or submits a change proposal. Zero prerequisites.
 
 **Privileges:**
 
-- Submit intent issues and MRs.
-- Participate in discussions on issues and specs.
-- Request mentorship from maintainers.
+- File intent issues, specifications, and MRs.
+- Participate in design and review discussions.
+- Request onboarding guidance from Trusted Committers or Maintainers.
 
 ### Recurring Contributor
 
-A contributor who has met the project's threshold (default: **3 or more merged MRs** in the trailing 12 months — projects override in `PROJECT_INTENT.md`).
+A contributor who has reached the repository's activity threshold (default: **3 or more merged MRs** within the trailing 12 months, customizable in `PROJECT_INTENT.md`).
 
 **Additional privileges:**
 
-- Nominate issues for "Good First Issue" labeling.
-- Provide non-binding review on others' MRs.
-- Listed in the repository's CONTRIBUTORS file.
-- Projects may grant additional privileges (e.g., direct push to specific doc paths, advisory triage role) by configuring them in `PROJECT_INTENT.md`.
+- Nominate backlog tickets as "Good First Issue" candidates.
+- Provide advisory peer reviews on MRs.
+- Listed in `CONTRIBUTORS.md` at the repository root.
+- Eligible for repo-specific permissions configured in `PROJECT_INTENT.md` (such as advisory triage assistance).
 
 ### Trusted Committer
 
-A recurring contributor nominated by a maintainer and confirmed by the project's governance process. Trusted committers serve as the bridge between the owning team and the contributor community.
+An experienced recurring contributor nominated by a Maintainer and ratified through the repository's governance process. Trusted Committers bridge the core owning team and external inner-source contributors.
 
 **Additional privileges:**
 
-- Approve lightweight-track MRs.
-- Provide first-response on intent issues from outside the owning team.
-- Participate in spec reviews as a domain-knowledgeable voice.
-- Invited to roadmap and triage discussions.
+- Approve lightweight-track MRs (performing the combined Gate 2/Gate 3 check).
+- Provide official first-response verdicts on incoming intent issues.
+- Participate in Gate 1 Specification Approval reviews.
+- Join roadmap and backlog triage sessions.
 
 **Responsibilities:**
 
-- Respond to questions within the project's stated SLA.
-- Provide constructive, specific feedback within review SLAs.
-- Flag architectural or compatibility concerns early — before a contributor invests in the wrong direction.
-- Rotate the role on a cadence defined by the project (recommended: quarterly) to spread knowledge and prevent burnout.
+- Meet the repository's published review turnaround SLAs.
+- Deliver specific, evidence-backed review feedback.
+- Catch architectural or compatibility misalignments early — at the intent issue or spec stage rather than after code is written.
+- Rotate active triage/review duty on the schedule set by the project (recommended: quarterly) to share context and prevent reviewer fatigue.
 
 ### Maintainer
 
-Full ownership of acceptance decisions. Promotion follows the project's governance process and requires demonstrated judgment on compatibility, architecture, and stewardship of intent — not merely volume.
+Holds final stewardship authority over Gate 3 Maintainer Acceptance, surface compatibility, and `PROJECT_INTENT.md` integrity. Promotion to Maintainer follows the domain's governance process and reflects sustained architectural judgment and stewardship, not raw commit count.
 
 ## When contributions are out of scope
 
-Out of scope does not mean unwelcome. It means the contribution does not fit the project's stated intent right now. Three paths forward:
+When a proposal falls outside `PROJECT_INTENT.md`, it is not a dead end — it follows one of three structured paths:
 
-1. **Redirect.** The maintainer points to an adjacent project that owns this work.
-2. **Amend intent.** If the contribution is good but the project's intent should grow to include it, file an intent-amendment proposal (Section 10 of `PROJECT_INTENT.md`).
-3. **Park.** If neither redirect nor amendment fits, the work is documented in the project's decision log as deferred or declined, with rationale. The contributor's effort is preserved; if circumstances change, the decision is revisited.
+1. **Redirect.** The maintainer identifies the adjacent repository or service where the capability belongs.
+2. **Amend intent.** If the capability is valuable and the project's scope should expand to cover it, the contributor or maintainer proposes a Section 10 amendment to `PROJECT_INTENT.md`.
+3. **Park.** When neither redirection nor immediate amendment applies, the proposal and rationale are logged in `decisions.md` as deferred or declined so the context is preserved if priorities shift later.
 
 ## Recognition
 
-A healthy inner-source repo credits contributions visibly:
+Healthy inner-source repositories make contributor impact visible:
 
-- External contributors are credited in release notes when their work ships.
-- A `CONTRIBUTORS.md` file at the repo root lists everyone who has merged work.
-- Significant community contributions are highlighted in team communications.
-
-The goal is not vanity metrics. The goal is that contributors who invest in the repo see their investment acknowledged.
+- Cross-team contributors are credited by name in `docs/releases/` and `CHANGELOG.md` when their changes ship.
+- `CONTRIBUTORS.md` at the repository root records everyone who has landed work.
+- High-impact cross-boundary contributions are highlighted in engineering-wide updates.
 
 ## Disagreement
 
-Disagreements about approach are healthy. When they arise:
+Technical disagreement is a normal part of rigorous engineering. When perspectives differ:
 
-- Keep the discussion in writing (issue comments, MR/PR threads, or patchset email threads — whichever your forge uses) so others can learn from it.
-- Focus on tradeoffs and evidence, not authority. Cite intent, ADRs, prior decisions, or measured outcomes.
-- If consensus is not reached, the maintainer makes the call and records the rationale in the decision log.
-- A rejected approach is not a rejected contributor.
+- Keep the discussion in the written record (tracker comments, MR/PR threads, or patchset emails mirrored into `submission.md`) so future readers benefit from the context.
+- Ground arguments in empirical evidence, benchmarks, traces, ratified ADRs, and `PROJECT_INTENT.md` rather than job titles.
+- When consensus cannot be reached within a time-boxed discussion, follow the escalation ladder in [`docs/policies/conflict-resolution.md`](../policies/conflict-resolution.md) and log the outcome in `decisions.md`.
 
 ## Adoption checklist
 
-For a repo adopting this guide for the first time:
+When onboarding a repository onto this guide for the first time:
 
-- [ ] Author `PROJECT_INTENT.md` from `docs/agentic-sdlc/PROJECT_INTENT_TEMPLATE.md`.
-- [ ] Designate at least one maintainer; confirm they have the capacity to meet the stated SLAs.
-- [ ] Set up the open communication channel referenced in Contribution Posture.
-- [ ] Create the `CONTRIBUTORS.md` file at the repo root.
-- [ ] Set ladder thresholds, SLAs, and lightweight-track LOC limit in `PROJECT_INTENT.md`.
-- [ ] Link this guide and `PROJECT_INTENT.md` from the repo's README.
-- [ ] Schedule the first intent review (default: 6–12 months out).
+- [ ] Author `PROJECT_INTENT.md` at the repository root from `docs/agentic-sdlc/PROJECT_INTENT_TEMPLATE.md`.
+- [ ] Name at least one accountable Maintainer and verify they have bandwidth for the declared SLAs.
+- [ ] Configure the open communication channel referenced in `PROJECT_INTENT.md`.
+- [ ] Create `CONTRIBUTORS.md` at the repository root.
+- [ ] Record contributor ladder thresholds, review SLAs, and lightweight-track LOC limits in `PROJECT_INTENT.md`.
+- [ ] Link both this guide and `PROJECT_INTENT.md` prominently from `README.md`.
+- [ ] Schedule the recurring `PROJECT_INTENT.md` stewardship review (default: every 6–12 months).
 
 ## Relationship to the charter
 
-This guide implements the contributor-facing surface of the [Inner-Source SDLC Charter](../policies/inner_source_sdlc_charter.md). The charter defines governance and minimum controls; this guide defines the workflow within that framework. Where this guide and the charter conflict, the charter takes precedence.
+This guide operationalizes the contributor-facing workflow of the [Inner-Source SDLC Charter](../policies/inner_source_sdlc_charter.md). The charter establishes enterprise-wide baseline governance; this guide details how contributors and maintainers collaborate day to day within those guardrails. In any case of ambiguity between this guide and the charter, the charter governs.
 
-Repos may extend this guide with additional practices (office hours, pairing sessions, contribution sprints) provided they remain consistent with the charter and with `PROJECT_INTENT.md`.
+Adopting teams may supplement this guide with local practices (pairing hours, architecture office hours, inner-source hack days) provided they remain aligned with the charter and `PROJECT_INTENT.md`.

@@ -1,20 +1,20 @@
 # Chaos Profiles — Standardized Adversarial Test Library
 
-This document defines the standard chaos profiles applied to business journey tests. Each profile represents a real failure mode observed in distributed systems. Journey tests declare invariants; this library defines what attacks those invariants.
+This catalog defines the standardized chaos profiles applied to business journey tests under CADENCE. Each profile models a concrete failure mode observed in distributed production systems. While journey tests declare business invariants, this library defines the adversarial faults injected to test whether those invariants hold under stress.
 
 ## How It Works
 
-1. **Spec-author** declares journey invariants in `test-plan.md` — what must remain true regardless of infrastructure failures.
-2. **Implementer** builds stateful simulators for external dependencies with chaos toggles.
-3. **Journey tests** run in two passes:
-   - **Pass 1 (deterministic):** Happy-path business journey with all dependencies behaving normally. Asserts state transitions, emitted events, and final state.
-   - **Pass 2 (chaos):** Same journey replayed with each applicable chaos profile activated. Asserts invariants still hold.
+1. **Spec-author** (`cadence-spec-author`) declares journey invariants in `test-plan.md` — specifying what must remain true regardless of underlying infrastructure faults.
+2. **Implementer** (`cadence-implementer`) constructs stateful simulators for external dependencies equipped with programmable chaos toggles.
+3. **Journey tests** execute in two distinct passes:
+   - **Pass 1 (deterministic):** Executes the happy-path business journey with all dependencies operating normally, asserting state transitions, emitted events, and terminal state.
+   - **Pass 2 (chaos):** Replays the exact same journey with each applicable chaos profile activated in turn, asserting that all declared business invariants continue to hold.
 
 ## Chaos Profile Catalog
 
 ### CP-01: Slow Downstream
 
-**Failure mode:** A downstream service responds, but after a delay exceeding normal timeout thresholds.
+**Failure mode:** A downstream dependency responds, but only after a latency spike exceeding normal timeout thresholds.
 
 | Aspect | Detail |
 |--------|--------|
@@ -25,7 +25,7 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-02: Duplicate Event Delivery
 
-**Failure mode:** The same event/message is delivered more than once (at-least-once semantics).
+**Failure mode:** An identical event or message is delivered more than once (at-least-once delivery semantics).
 
 | Aspect | Detail |
 |--------|--------|
@@ -36,7 +36,7 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-03: Out-of-Order Delivery
 
-**Failure mode:** Events or messages arrive in a different order than they were produced.
+**Failure mode:** Events or messages arrive at a consumer in a sequence different from the order in which they were emitted.
 
 | Aspect | Detail |
 |--------|--------|
@@ -47,7 +47,7 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-04: Partial Failure (Mid-Journey)
 
-**Failure mode:** A multi-step operation fails after some steps have completed and committed.
+**Failure mode:** A multi-step workflow fails after one or more earlier steps have already completed and committed.
 
 | Aspect | Detail |
 |--------|--------|
@@ -58,7 +58,7 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-05: Stale Read Window
 
-**Failure mode:** A decision is made based on data that was modified by another process between read and write.
+**Failure mode:** A business decision is evaluated against state that was concurrently mutated by another process between the read and the subsequent write.
 
 | Aspect | Detail |
 |--------|--------|
@@ -69,7 +69,7 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-06: Poison Message
 
-**Failure mode:** A malformed, unexpected, or semantically invalid message arrives on a queue or webhook endpoint.
+**Failure mode:** A malformed, schema-violating, or semantically invalid payload arrives on a queue consumer or webhook endpoint.
 
 | Aspect | Detail |
 |--------|--------|
@@ -80,18 +80,18 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-07: Downstream Total Failure
 
-**Failure mode:** A downstream service is completely unreachable (connection refused, DNS failure).
+**Failure mode:** A downstream dependency is completely unreachable (connection refused, DNS resolution failure, or TCP reset).
 
 | Aspect | Detail |
 |--------|--------|
 | Injection point | Any outbound HTTP/gRPC call |
 | Parameters | `failure_type` (connection_refused, dns_failure, tcp_reset), `duration` (transient vs. sustained) |
 | What breaks if unhandled | Unhandled exceptions bubbling to user, fire-and-forget mutations lost silently, cascade failures |
-| Invariants to verify | Circuit breaker opens. Graceful degradation or clear error to caller. No silent data loss. Retry with backoff for transient failures. LINEAGE_GAP seam fires if side-effect was expected. |
+| Invariants to verify | Circuit breaker opens. Graceful degradation or clear error to caller. No silent data loss. Retry with backoff for transient failures. DELTA_AUDIT_GAP seam fires if side-effect was expected. |
 
 ### CP-08: Clock Skew / Time Anomaly
 
-**Failure mode:** System clocks disagree between services, or time-based logic encounters edge cases (DST, leap second, midnight rollover).
+**Failure mode:** System clocks drift across service nodes, or time-sensitive logic encounters boundary anomalies (DST transitions, leap seconds, UTC midnight rollover).
 
 | Aspect | Detail |
 |--------|--------|
@@ -102,7 +102,7 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-09: Resource Exhaustion
 
-**Failure mode:** A shared resource (connection pool, thread pool, disk, memory) is exhausted.
+**Failure mode:** A shared runtime resource (database connection pool, thread pool, file descriptors, or memory) reaches saturation.
 
 | Aspect | Detail |
 |--------|--------|
@@ -113,7 +113,7 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-10: Split Brain / Network Partition
 
-**Failure mode:** Two instances of the same service cannot communicate with each other or with a shared coordinator (e.g., leader election failure).
+**Failure mode:** Two instances of the same service lose connectivity with each other or with a shared coordination store (e.g., leader election split).
 
 | Aspect | Detail |
 |--------|--------|
@@ -124,20 +124,20 @@ This document defines the standard chaos profiles applied to business journey te
 
 ### CP-11: Session / Context Divergence
 
-**Failure mode:** A third-party system's own session or context state diverges from what the caller believes it to be. The session id, token, cursor, or context handle the caller holds has been silently invalidated, rotated, expired, or forked by the third party — often without an error the caller can distinguish from a normal response.
+**Failure mode:** A third-party system's internal session or context state diverges from what the caller believes it to be. The session ID, token, cursor, or context handle held by the caller has been silently invalidated, rotated, expired, or forked by the external system — frequently without returning an error distinguishable from a normal transport response.
 
-**Origin:** Added after a downstream adopting repository's journey work required an explicit evaluation of whether any existing profile covered a session-consistency fault against a stateful third-party API. That evaluation found CP-05 covers a concurrent mutation of data this system reads and writes, and CP-10 covers this system's own distributed coordination, but that neither models a divergence internal to a third party's own session model. Because adopters treat their installed copy of this catalog as read-only, the gap was filed upstream against this file rather than patched locally.
+**Origin:** Introduced after an adopting repository's journey testing required an explicit evaluation of whether any existing profile modeled a session-consistency fault against a stateful third-party API. That evaluation confirmed CP-05 covers concurrent mutation of data owned by this system, and CP-10 covers this system's own distributed coordination, whereas neither models state divergence inside a third party's own session lifecycle. Because adopters treat their installed copy of this catalog as read-only, the gap was filed upstream against this catalog rather than patched locally.
 
 | Aspect | Detail |
 |--------|--------|
 | Injection point | Any call carrying a session id, auth/refresh token, cursor, or context handle that a stateful third party issued and owns |
 | Parameters | `divergence_type` (invalidated, rotated, expired, forked), `diverge_at_call` (1-indexed call in the sequence at which the handle goes stale), `silent` (true = the third party answers successfully against a different session rather than erroring) |
 | What breaks if unhandled | Work applied to the wrong session or context, writes silently lost that the caller believes succeeded, an unbreakable re-authenticate loop, cross-session data exposure when a rotated handle is replayed |
-| Invariants to verify | Divergence is detected rather than assumed away — the caller validates the session identity it got back, not just the transport status. Re-establishing a session neither duplicates nor loses already-applied work. No operation is attributed to a session other than the one it was issued against. A divergence the caller cannot reconcile fails loudly (IMPOSSIBLE_STATE or LINEAGE_GAP seam fires) rather than continuing against a wrong context. |
+| Invariants to verify | Divergence is detected rather than assumed away — the caller validates the session identity it got back, not just the transport status. Re-establishing a session neither duplicates nor loses already-applied work. No operation is attributed to a session other than the one it was issued against. A divergence the caller cannot reconcile fails loudly (UNSOUND_CONDITION or DELTA_AUDIT_GAP seam fires) rather than continuing against a wrong context. |
 
 ## Applicability Matrix
 
-Not every profile applies to every journey. The spec-author does NOT select profiles — the implementer determines applicability based on which infrastructure patterns the journey uses:
+Not every chaos profile applies to every business journey. The `cadence-spec-author` does NOT cherry-pick profiles — the `cadence-implementer` determines applicability mechanically from the infrastructure patterns the journey exercises:
 
 | Journey Uses | Applicable Profiles |
 |---|---|
@@ -151,19 +151,19 @@ Not every profile applies to every journey. The spec-author does NOT select prof
 
 ## Stateful Simulator Requirements
 
-Each external dependency referenced in the spec must have a stateful simulator (test double) that:
+Every external dependency referenced by a specification must be backed by a stateful simulator (test double) that:
 
-1. **Supports deterministic mode:** Returns preconfigured responses for the happy-path journey test.
-2. **Supports chaos toggles:** Each applicable chaos profile can be activated independently via configuration.
-3. **Records interactions:** Captures all calls made to the simulator for assertion (verify expected calls, verify no unexpected calls, verify call order).
-4. **Supports state transitions:** For stateful dependencies (databases, caches), the simulator maintains state across calls within a test run.
-5. **Is deterministic under chaos:** Given the same seed and profile configuration, produces the same failure sequence. No flaky tests.
+1. **Supports deterministic mode:** Returns preconfigured responses during Pass 1 (the happy-path journey test).
+2. **Supports chaos toggles:** Allows each applicable chaos profile to be activated independently via test configuration.
+3. **Records interactions:** Captures all invocations made against the simulator for assertion (verifying expected calls, absence of unexpected calls, and invocation ordering).
+4. **Supports state transitions:** For stateful dependencies (databases, caches, session stores), maintains coherent state across calls within a single test execution.
+5. **Is deterministic under chaos:** Given an identical seed and profile configuration, produces the exact same fault sequence on every run — zero flaky tests.
 
 ## Adding New Profiles
 
-When a production incident reveals a failure mode not covered by existing profiles:
+When a production incident uncovers a failure mode not yet represented in this catalog:
 
-1. Add the new profile to this catalog with the standard structure (failure mode, injection point, parameters, what breaks, invariants).
-2. Add it to the Applicability Matrix.
-3. Existing journey tests automatically gain coverage on next run (if the journey uses the affected infrastructure pattern).
-4. Document the incident that motivated the addition in the profile's description.
+1. Add the new `CP-NN` profile to this catalog using the standard structure (failure mode, injection point, parameters, what breaks if unhandled, invariants to verify).
+2. Map the profile in the Applicability Matrix above.
+3. Existing journey tests that exercise the corresponding infrastructure pattern automatically inherit coverage on their next execution.
+4. Record the motivating production incident in the profile's description.

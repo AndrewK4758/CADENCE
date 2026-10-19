@@ -2,26 +2,26 @@
 #
 # dead-citation-gate.sh -- BTG-083 structural gate (AC-3 / AC-4 / AC-5).
 #
-# Bounded context: Build tooling / compile-gate flow, and the /claire-archive lifecycle
-# contract. Invariant relied on from outside this boundary: /claire-archive relocates
-# `specs/<id>/` to `archive/<id>/` (artifacts/commands/claire-archive.md step 2), so a
+# Bounded context: Build tooling / compile-gate flow, and the /cadence-archive lifecycle
+# contract. Invariant relied on from outside this boundary: /cadence-archive relocates
+# `specs/<id>/` to `archive/<id>/` (artifacts/commands/cadence-archive.md step 2), so a
 # `specs/<id>/` string literal outside archive/, for an id that now has an
 # archive/<id>/ directory, is a DEAD path -- a pointer to somewhere that no
-# longer exists. This is the recurrence production-insights.md PROD_CLAIRE-009 records.
+# longer exists. This is the recurrence production-insights.md PROD_CADENCE-009 records.
 #
 # ONE classifier, THREE callers (BTG-083 DEC-003, extended by BTG-133) -- not
 # three mechanisms, so a reader learns the classification rules once:
 #
 #   dead-citation-gate.sh [--root <dir>]        # repo-wide ratchet (the CI row)
-#   dead-citation-gate.sh --id <ticket>         # /claire-archive step 2b, that one id
-#   dead-citation-gate.sh --except-id <ticket>  # /claire-archive step 2c, every OTHER id
+#   dead-citation-gate.sh --id <ticket>         # /cadence-archive step 2b, that one id
+#   dead-citation-gate.sh --except-id <ticket>  # /cadence-archive step 2c, every OTHER id
 #   dead-citation-gate.sh --emit-baseline       # human-invoked ledger emitter
 #
-# Step 2c exists because /claire-archive's own ADR and intent-insight promotion write
+# Step 2c exists because /cadence-archive's own ADR and intent-insight promotion write
 # new files into the tree step 2b already scanned, and those files routinely cite
 # a DIFFERENT already-archived ticket -- structurally invisible to a single-id
-# scan. Live instance: BTG-127's archival shipped ADR_CLAIRE-0052 citing two dead paths
-# and turned the integration branch red (PROD_CLAIRE-015).
+# scan. Live instance: BTG-127's archival shipped ADR_CADENCE-0052 citing two dead paths
+# and turned the integration branch red (PROD_CADENCE-015).
 #
 # TWO EXCLUSIONS, TWO DIFFERENT AXES -- never conflate them (BTG-133 DEC-004):
 #   * `specs/$TICKET/` skipped as a CITING LOCATION -- WHERE A HIT LIVES. Inside
@@ -31,7 +31,7 @@
 #     derivation loop, ratchet path only, driven by --except-id.
 # Conflating them either silences the ticket's own sweep (scanned-target exclusion
 # leaking into --id mode) or makes step 2c double-report the archiving ticket
-# under the wrong remediation vocabulary. In the /claire-archive SKILL home the single-id
+# under the wrong remediation vocabulary. In the /cadence-archive SKILL home the single-id
 # step owns the archiving ticket's own id and the complement step owns every other
 # one. In the ARCHIVIST ROLE home that split does NOT hold: the complement step is
 # a TWO-CALL step that also re-runs the own-id sweep over the post-promotion tree,
@@ -48,7 +48,7 @@
 #
 # References: archive/BTG-083/{problem,spec,test-plan,decisions}.md ;
 #             ci-templates/scripts/effort-boundary-gate.sh (the shape copied) ;
-#             docs/agentic-sdlc/production-insights.md PROD_CLAIRE-009 / PROD_CLAIRE-005.
+#             docs/agentic-sdlc/production-insights.md PROD_CADENCE-009 / PROD_CADENCE-005.
 
 set -u
 
@@ -89,7 +89,7 @@ emit_seam() {
 # archived-id set is known. Both refuse with exit 2 -- a scope modifier that
 # cannot be honoured as asked is a setup failure, never a run at some other scope.
 if [[ -n "$EXCEPT_ID" && "$MODE" != "ratchet" ]]; then
-  emit_seam IMPOSSIBLE_STATE citation.except_id.mode_conflict "--except-id with --$MODE"
+  emit_seam UNSOUND_CONDITION citation.except_id.mode_conflict "--except-id with --$MODE"
   echo "dead-citation-gate: FATAL -- --except-id is a scope modifier on the ratchet and" >&2
   echo "cannot be combined with --$MODE. Refusing rather than silently picking one." >&2
   exit 2
@@ -103,14 +103,14 @@ fi
 failures=0
 fail_event() {
   local event="$1" detail="${2:-}"
-  emit_seam IMPOSSIBLE_STATE "$event" "$detail"
+  emit_seam UNSOUND_CONDITION "$event" "$detail"
   echo "dead-citation-gate: FAILED ($event) -- $detail" >&2
   failures=$((failures + 1))
 }
 
 warn_event() {
   local event="$1" detail="${2:-}"
-  emit_seam LINEAGE_GAP "$event" "$detail"
+  emit_seam DELTA_AUDIT_GAP "$event" "$detail"
   echo "dead-citation-gate: WARN ($event) -- $detail" >&2
 }
 
@@ -120,7 +120,7 @@ warn_event() {
 # "there is nothing wrong" -- the single worst confusion for a gate whose premise
 # is failing closed, and a false all-clear rather than a missing one. It is
 # checked HERE, once, for every scan this gate performs: the repo-wide ratchet
-# scan, the --id inbound scan on /claire-archive's blocking path, and the
+# scan, the --id inbound scan on /cadence-archive's blocking path, and the
 # repoint-target scan (S-3.8 / S-3.9 / S-3.10). A fourth scan added later
 # inherits the check by construction instead of re-acquiring the defect.
 #
@@ -160,21 +160,21 @@ CITE_TERM="($CITE_TERMCLASS|\$)"
 # gate would have no notion of exempt or baselined and would fail every file.
 LEDGER_LIB="$(dirname "${BASH_SOURCE[0]}")/dead-citation-ledgers.sh"
 if [[ ! -f "$LEDGER_LIB" ]]; then
-  echo "seam_type=IMPOSSIBLE_STATE event_name=citation.ledger.unreadable subject=$LEDGER_LIB" >&2
+  echo "seam_type=UNSOUND_CONDITION event_name=citation.ledger.unreadable subject=$LEDGER_LIB" >&2
   echo "dead-citation-gate: FATAL -- required module not found: $LEDGER_LIB" >&2
   exit 2
 fi
 # shellcheck source=/dev/null
 . "$LEDGER_LIB"
 
-# --- --id: the /claire-archive caller (AC-5) --------------------------------------
+# --- --id: the /cadence-archive caller (AC-5) --------------------------------------
 # The SAME classifier, scoped to one id at the moment of the move (DEC-003 R19) --
 # not a second implementation, so a reader learns the classification rules once.
 #
 # It DETECTS, CLASSIFIES and BLOCKS. It never rewrites: the measured
 # counterexamples prove a blanket repoint corrupts working code (a
 # `git show <ref>:specs/<id>/...` path is CORRECT as written because it addresses
-# a historical tree), and PROD_CLAIRE-009 itself says the historical-versus-live
+# a historical tree), and PROD_CADENCE-009 itself says the historical-versus-live
 # distinction "should force to a human/spec decision rather than resolve
 # silently".
 #
@@ -183,16 +183,16 @@ fi
 # makes the residual debt acceptable at all is lost (DEC-010 control 5).
 if [[ "$MODE" == "id" ]]; then
   if [[ ! -d "$ROOT/archive/$TICKET" && ! -d "$ROOT/specs/$TICKET" ]]; then
-    emit_seam IMPOSSIBLE_STATE citation.repoint.target_absent "$TICKET"
+    emit_seam UNSOUND_CONDITION citation.repoint.target_absent "$TICKET"
     echo "dead-citation-gate: FATAL -- neither archive/$TICKET/ nor specs/$TICKET/ exists." >&2
     exit 2
   fi
   if [[ ! -d "$ROOT/archive/$TICKET" ]]; then
-    emit_seam IMPOSSIBLE_STATE citation.repoint.target_absent "archive/$TICKET"
+    emit_seam UNSOUND_CONDITION citation.repoint.target_absent "archive/$TICKET"
     echo "dead-citation-gate: FATAL -- archive/$TICKET/ does not exist; run this AFTER the move." >&2
     exit 2
   fi
-  # /claire-archive's BLOCKING path: a suppressed scan failure here completes an archival
+  # /cadence-archive's BLOCKING path: a suppressed scan failure here completes an archival
   # with an undispositioned inbound citation AND a green check, which spec Risk
   # R-1 names as strictly worse than the no-gate status quo (S-3.9).
   ID_OUT="$(mktemp)"
@@ -219,7 +219,7 @@ if [[ "$MODE" == "id" ]]; then
     # judgement and never blanket-repointed.
     shape="comment"
     printf '%s' "$text" | grep -qE '^[[:space:]]*(#|//|--|\*)' || shape="NOT-A-COMMENT"
-    emit_seam LINEAGE_GAP archive.citation_sweep.undispositioned "$TICKET:$path:$lineno"
+    emit_seam DELTA_AUDIT_GAP archive.citation_sweep.undispositioned "$TICKET:$path:$lineno"
     echo "dead-citation-gate: BLOCKED -- $path:$lineno cites specs/$TICKET [$shape]" >&2
     if [[ "$shape" == "NOT-A-COMMENT" ]]; then
       echo "    This occurrence is CODE, not a comment (a filter argument, a variable" >&2
@@ -270,7 +270,7 @@ if [[ ${#ARCHIVED_IDS[@]} -eq 0 ]]; then
   # An archived id IS a directory, so `archive/` holding only files means zero
   # ids is the CORRECT answer, not evidence of a broken derivation. Keying on
   # any-entry fired a false CRITICAL on every fresh adopter, because
-  # /claire-adopt installs `archive/.gitkeep` -- caught by running a real
+  # /cadence-adopt installs `archive/.gitkeep` -- caught by running a real
   # adoption end to end (S-3.4b), not by reading the copy list.
   archive_subdirs=0
   if [[ -d "$ROOT/archive" ]]; then
@@ -298,7 +298,7 @@ fi
 # holding a placeholder and no ticket directories) a clean pass -- nothing to
 # sweep is not the same as a requested scope that could not be honoured.
 if [[ -n "$EXCEPT_ID" && ! -d "$ROOT/archive/$EXCEPT_ID" ]]; then
-  emit_seam IMPOSSIBLE_STATE citation.except_id.target_absent "$EXCEPT_ID"
+  emit_seam UNSOUND_CONDITION citation.except_id.target_absent "$EXCEPT_ID"
   echo "dead-citation-gate: FATAL -- archive/$EXCEPT_ID/ does not exist, so --except-id" >&2
   echo "$EXCEPT_ID excludes nothing and this run would silently widen to a plain" >&2
   echo "ratchet sweep. Refusing." >&2
@@ -310,7 +310,7 @@ fi
 SCAN_IDS=()
 for id in "${ARCHIVED_IDS[@]}"; do
   [[ -d "$ROOT/specs/$id" ]] && continue
-  # /claire-archive step 2c: the archiving ticket's own id is step 2b's business, under
+  # /cadence-archive step 2c: the archiving ticket's own id is step 2b's business, under
   # its own disposition contract. Skipped as a SCANNED TARGET here -- a different
   # axis from the citing-location exclusion in the --id branch (DEC-004).
   [[ -n "$EXCEPT_ID" && "$id" == "$EXCEPT_ID" ]] && continue

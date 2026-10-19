@@ -1,220 +1,220 @@
 # Skills (Slash Commands)
 
-These are the primary interface for working with the agentic SDLC. Run them in your agentic coding tool (reference instance: Claude Code).
+Slash commands in `.agents/skills/` (projected to `.gemini/skills/` or `.claude/skills/` per `docs/policies/cli-runtime-adoption-policy.md`) provide the primary operator interface for the CADENCE agentic SDLC. Invoke them directly in your agentic coding runtime (reference runtime: Google Antigravity / Gemini CLI).
 
-## `/claire-adopt <target-repo-root>`
+---
 
-Copy the CLAIRE framework file set into a target repository. Wraps the canonical bash script; never overwrites a file that already exists in the target. Use this when bootstrapping a new repo into the framework — it is the prerequisite for every other skill (without an adopted repo, there is nothing to triage or spec against).
+## Automatic Local Hardware Coprocessor Offload Across Commands
 
-```
-/claire-adopt /path/to/your-repo
-```
+When executing CADENCE slash commands, read-only discovery, test/build log compaction, and pre-review mechanical sweeps automatically offload to the local 2-tier hardware coprocessor pipeline (`local-offload` MCP server + `log-triage` and `repo-scout` subagents):
 
-**Alternative for adopters whose agentic coding tool does not load this skill:** run `scripts/adopt-claire.sh <target>` from a clone — the script is identical (the skill wraps it).
+- **Tier 1 — Always-On Zero-VRAM CPU (`127.0.0.1:9379`)**:
+  - `local-embed-cpu` (`nomic-embed-text`, 0 MB VRAM) + `repo-scout`: Activated during `/cadence-triage` and `/cadence-spec` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, and locate codebase symbols without bloating the primary model's context window.
+  - `local-fast-cpu` (`gemma-4-e2b-it`, 128MB 3D V-Cache, 0 MB VRAM) + `log-triage` (`offload_log_triage`): Activated during `/cadence-implement` TDD loops and CI verification to compact verbose test runner and compiler logs into verbatim failure lines, `file:line` coordinates, and coverage metrics while preserving the full raw log at `/tmp/agy-last-triage.log`.
+- **Tier 2 — On-Demand Hybrid MoE & GPU (`127.0.0.1:9380`)**:
+  - `local-moe-hybrid` (`gemma-4-26b-a4b-it`) & `local-12b-gpu` (`gemma-4-12b-it` on RTX 5070 Ti 12GB VRAM) via `offload_deep_review`: Activated during `/cadence-review` and `/cadence-maintain` for advisory pre-review sweeps checking Pillar 3 (`<400`-line file ceiling), comment discipline, and CHORD observability seam completeness before Gemini 4 Argon (`pro`) issues gate verdicts.
 
-**Outputs:** Per-file `copied: <path>` / `skip (exists): <path>` audit lines, followed by `Done: N copied, M skipped (already present).` Files are written into the target repo with the same paths they have in the source repo.
+All local coprocessor models run with `enable_write_tools: false` and never modify repository files.
 
-## `/claire-upgrade <new-version>`
+---
 
-Merge a newer CLAIRE core into an adopter's customized tree, using the PI-021 `.claire-version` stamp as the 3-way-merge base. Wraps the canonical merge engine; clean hunks auto-apply and are reported, conflicts are surfaced for human resolution (never a silent merge), the apply is atomic, and the stamp advances only on a fully-clean apply. Use this when an adopting repo that customized CLAIRE needs to pull in a newer framework release — it is the upgrade-time counterpart to `/claire-adopt`.
+## `/cadence-adopt <target-repo-root>`
 
-```
-/claire-upgrade 3.8.0
-/claire-upgrade 3.8.0 --dry-run
-```
-
-**`--dry-run` (preview, recommended):** compute the full 3-way merge in memory and report the outcome — total files in scope, how many would apply cleanly, how many would conflict, and the conflicting paths — to stdout, **writing nothing** (no `.claire-version` advance, no staging directory, no footprint write, no work-tree apply). The exit code is CI-keyable: **0** on a would-be-clean apply, **non-zero** on would-be-conflicts.
-
-**Pre-PI-021 adopters (no installed command tree yet):** a compiled-only adopter that predates the `.claire-version` stamp has no installed `.claude/skills/claire-upgrade/` tree to invoke. Run the engine directly from a local **core checkout** of the framework, pointing it at the adopter repo:
+Provision the CADENCE framework file set into a target repository. Wraps the canonical adoption script and never overwrites a file that already exists in the target tree. Run this command first when bootstrapping a repository into CADENCE — every downstream skill requires an adopted repository structure.
 
 ```
-UPGRADE_TARGET=<adopter-repo> bash <core>/artifacts/commands/claire-upgrade/upgrade-claire.sh <new-version>
+/cadence-adopt /path/to/your-repo
 ```
 
-The engine first runs the Step-0 footprint pre-check. If the `artifacts/footprint.generated` merge boundary is absent it halts (before any stamp write) and points at the auto-generate — run it, with explicit confirmation, via the engine's Step-0 mode: `AUTOGEN_CONFIRM=1 UPGRADE_TARGET=<repo> UPGRADE_CORE=<core> bash <core>/artifacts/commands/claire-upgrade/upgrade-claire.sh --autogen-footprint` (derives the footprint atomically from the core checkout). Once it exists, the same invocation performs the merge; add `--dry-run` to preview first. See the skill body (`.claude/skills/claire-upgrade/SKILL.md`) for the full pre-PI-021 flow.
+**CLI fallback (when your coding tool has not yet loaded the skill tree):** execute `scripts/adopt-cadence.sh <target>` from a local framework checkout — the skill wraps the exact same script.
 
-**Alternative for adopters whose agentic coding tool does not load this skill:** invoke the sidecar `.claude/skills/claire-upgrade/upgrade-claire.sh <new-version>` directly — the script is identical (the skill wraps it).
+**Outputs:** Per-file `copied: <path>` and `skip (exists): <path>` audit lines followed by `Done: N copied, M skipped (already present).` All framework artifacts are installed at their canonical paths in the target repository.
 
-## `/claire-triage [--file-only] [ticket-id | draft-path | problem description]`
+## `/cadence-upgrade <new-version>`
 
-Classify an incoming issue, search the codebase for related code, check for prior work, and create the spec stub.
+Merge a newer CADENCE core release into an adopter's customized repository tree, using the PI-021 `.cadence-version` stamp as the 3-way merge base. Clean hunks apply automatically and are reported; conflicting files surface for human resolution (never a silent overwrite); application is atomic; and `.cadence-version` advances only when the entire upgrade applies cleanly.
 
 ```
-/claire-triage TT-1234
-/claire-triage "Users report 500 error when activating campaigns with no bundles"
+/cadence-upgrade 3.8.0
+/cadence-upgrade 3.8.0 --dry-run
+```
+
+**`--dry-run` (preview mode, recommended):** computes the full 3-way merge in memory and prints the summary — total files in scope, clean auto-apply count, conflict count, and conflicting file paths — to stdout while **writing nothing** (no `.cadence-version` change, no staging directory, no footprint update, and no working-tree edits). Exits **0** when the upgrade would apply cleanly and **non-zero** when conflicts would occur.
+
+**Pre-PI-021 adopters (no installed upgrade command tree yet):** a repository adopted prior to the `.cadence-version` stamp does not yet have `.agents/skills/cadence-upgrade/` installed. Invoke the upgrade engine directly from a local **core checkout** of the framework, pointing `UPGRADE_TARGET` at the adopter repository:
+
+```
+UPGRADE_TARGET=<adopter-repo> bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh <new-version>
+```
+
+The engine first executes the Step-0 footprint check. When the `artifacts/footprint.generated` boundary manifest is missing, it halts before touching `.cadence-version` and prints the Step-0 auto-generation command: `AUTOGEN_CONFIRM=1 UPGRADE_TARGET=<repo> UPGRADE_CORE=<core> bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh --autogen-footprint` (which derives the footprint atomically from the core checkout). Once `footprint.generated` exists, re-run the upgrade command (optionally with `--dry-run` first). See `.agents/skills/cadence-upgrade/SKILL.md` for full details.
+
+**CLI fallback:** run `.agents/skills/cadence-upgrade/upgrade-cadence.sh <new-version>` directly.
+
+## `/cadence-triage [--file-only] [ticket-id | draft-path | problem description]`
+
+Classify an incoming issue, scan the codebase and insight registers (`repo-scout` / `local_semantic_embed`) for related work or duplicates, assign type/priority/scope/tier, and initialize the specification stub.
+
+```
+/cadence-triage TT-1234
+/cadence-triage "Users report 500 error when activating campaigns with no bundles"
 ```
 
 **Outputs:** `specs/{ticket-id}/problem.md`, `specs/{ticket-id}/metadata.yaml`
 
-**`--file-only` — file a ticket without triaging it.** The optional flag switches the skill to a filing mode: it allocates an id through the same `CLAIRE_ORG.md#id-allocation-binding` allocator, **always** writes both artifacts in that same operation, and runs **no** classification at all — no agent delegation, no duplicate scan, no type/priority/scope, and **no tier**. Use it when the request is "file an issue for X" and classifying now would be guessing; run `/claire-triage <id>` afterwards to classify. With the flag absent every existing invocation behaves exactly as before.
+**`--file-only` — file a ticket stub without classifying it.** Passing `--file-only` switches `/cadence-triage` into intake-filing mode: it allocates an identifier through `CADENCE_ORG.md#id-allocation-binding`, **always** writes both `problem.md` and `metadata.yaml` in that same atomic operation, and skips classification entirely — no subagent delegation, no duplicate scan, no type/priority/scope assignment, and **no tier** (`tier: ""`). Use this whenever the operator asks to "file an issue for X" and immediate classification would be premature; run `/cadence-triage <id>` later to classify. Without `--file-only`, standard triage runs as normal.
 
 ```
-/claire-triage --file-only specs/drafts/expired-coupons.md
+/cadence-triage --file-only specs/drafts/expired-coupons.md
 ```
 
-**The DRAFT-PATH form above is the recommended one (BTG-281).** Write the problem statement to a
-file first, then pass its path as a single bare token. A skill argument that is not a single bare
-token is not reliably delivered to the loaded skill body: it can arrive as a stray word from the
-middle of the text, or empty. A mangled *path* names a file that does not open, so the skill halts
-naming the unresolved token and burns no id -- whereas a mangled inline description is
-indistinguishable from a legitimate short one and is filed as though it were the problem.
+**Always prefer the `<draft-path>` form above (BTG-281).** Write the problem description to a file first (for example under `specs/drafts/`), then pass the file path as a single bare token. Multi-word free text passed inline on a skill argument channel can be truncated or split by the runtime; a mangled *file path* fails to open immediately and halts without burning an allocated ID, whereas a truncated inline string would silently file a malformed ticket.
 
-**The inline free-text form is DEPRECATED**, sunsetting in **2 release cycles**; it still works and
-emits a deprecation notice. Migration: [`docs/migrations/triage-file-only-draft-path.md`](../migrations/triage-file-only-draft-path.md).
+**The inline free-text form is DEPRECATED** and sunsets in **2 release cycles**; it remains functional during the deprecation window and emits a warning. See [`docs/migrations/triage-file-only-draft-path.md`](../migrations/triage-file-only-draft-path.md).
 
 ```
-/claire-triage --file-only "checkout total ignores expired coupons"   # deprecated
+/cadence-triage --file-only "checkout total ignores expired coupons"   # deprecated
 ```
 
-**Outputs (`--file-only`):** the same two files — `specs/{ticket-id}/problem.md` (the description recorded verbatim, Status `Draft`, every probe left unanswered) and `specs/{ticket-id}/metadata.yaml` with **`status: draft`** and **no tier** (`tier: ""`, carrying the reason). Downstream skills halt fail-closed on that empty tier, which is intended: the ticket is filed, not triaged. Where a tracker is bound the filed ticket is projected once; where none is (`#tracker-binding` = None) the skip is reported, never silently omitted.
+**Outputs (`--file-only`):** `specs/{ticket-id}/problem.md` (recording the draft text verbatim at Status `Draft` with all probe questions left `_(not yet answered)_`) and `specs/{ticket-id}/metadata.yaml` with **`status: draft`** and **`tier: ""`**. Downstream skills fail closed on an empty tier until `/cadence-triage <id>` classifies the ticket. When a tracker is bound, the filed stub is projected immediately; when `#tracker-binding` resolves to `None — inner-source`, the skip is reported explicitly.
 
-## `/claire-elicit <ticket-id>`
+## `/cadence-elicit <ticket-id>`
 
-Walk a human requester through any unfilled probe questions in `specs/{ticket-id}/problem.md` and capture verbatim answers as a structured `## Elicited Intent` section appended to the file. Use this after `/claire-triage` when the triage agent suggests it — typically because probe questions in the per-ticket problem.md are still marked `_(not yet answered)_`.
+Guide a human stakeholder through unanswered probe questions in `specs/{ticket-id}/problem.md` and append their verbatim responses under a structured `## Elicited Intent` section. Run this after `/cadence-triage` whenever probe questions in `problem.md` remain marked `_(not yet answered)_`.
 
-The skill is **tier-gated**: it proceeds only for Medium or High tier tickets and refuses Trivial or Low. The tier is read from `specs/{ticket-id}/metadata.yaml`; the skill does not modify it. It also enforces a **hard cap** of 7 probes per invocation (today's template ships 5; the extra slots are forward-compatibility headroom, not slots for skill-generated follow-up questions). See `docs/policies/change-tiers.md` for tier definitions.
+This skill is **tier-gated**: it executes only on Medium or High tier tickets and refuses Trivial or Low tier work (reading `tier` from `specs/{ticket-id}/metadata.yaml` without altering it). It enforces a **hard ceiling of 7 probes** per invocation (the standard `problem.md` template includes 5 probes; the remaining 2 slots provide forward-compatibility headroom rather than ad-hoc follow-up generation). See `docs/policies/change-tiers.md`.
 
-If an `## Elicited Intent` section already exists, the skill summarizes it and asks for explicit confirmation before overwriting.
-
-```
-/claire-elicit PI-005
-```
-
-**Outputs:** Appended (or replaced, with explicit confirmation) `## Elicited Intent` section in `specs/{ticket-id}/problem.md` containing the requester's verbatim answers and a provenance label.
-
-## `/claire-spec [ticket-id]`
-
-Generate a complete specification from a triaged issue. Requires `problem.md` and `metadata.yaml` to exist.
-
-At Medium and High tier the skill runs an **independent design-exploration pre-step** before the
-spec is authored: it delegates to the `claire-explorer` agent, which produces two or three structurally
-distinct, individually steelmanned options with no ranking and no recommendation. The
-`claire-spec-author` then converges against that option set and records the choice in the spec's
-Design Exploration section. The explorer is a step of this skill, never a sub-call the
-`claire-spec-author` makes, so the agent that produces the options is not the agent that picks one.
-Low and Trivial tier stop at Step 0 and never reach this step.
+If `## Elicited Intent` already exists in `problem.md`, the skill displays a summary and requests explicit confirmation before replacing it.
 
 ```
-/claire-spec TT-1234
+/cadence-elicit PI-005
 ```
 
-**Outputs:** `specs/{ticket-id}/design-options.md` (Medium/High only), `specs/{ticket-id}/spec.md`, `specs/{ticket-id}/test-plan.md`, `specs/{ticket-id}/decisions.md`
+**Outputs:** Appended (or confirmed replacement) `## Elicited Intent` section in `specs/{ticket-id}/problem.md` recording the stakeholder's verbatim answers and provenance timestamp.
 
-## `/claire-implement [ticket-id]`
+## `/cadence-spec [ticket-id]`
 
-Implement an approved specification using strict BDD red-green-refactor TDD — one Gherkin scenario per cycle, migrations via expand/contract, journey tests with chaos profiles. Delegates to the implementer agent, which works through the Implementation Order (from `test-plan.md` at Medium/High tier, or derived from `problem.md`'s acceptance criteria at Low tier) in red-green-accumulate-commit cycles.
+Author a complete architectural specification and BDD test plan from a triaged ticket. Requires `specs/{ticket-id}/problem.md` and `specs/{ticket-id}/metadata.yaml` to exist.
 
-```
-/claire-implement TT-1234
-```
-
-**Prerequisite:** Spec must exist and be human-approved (`metadata.yaml` shows `status: spec-approved`). The skill will not bypass this gate.
-
-**Outputs:** Feature branch with one commit per red-green cycle, full passing test suite, boundary documentation on cross-service code, drafted `specs/{ticket-id}/submission.md`, and `metadata.yaml` updated to `status: in-review`.
-
-## `/claire-review [MR number or branch name]`
-
-Review a merge request against its tier contract — the approved spec at Medium/High tier, `problem.md`'s acceptance criteria at Low tier. Checks acceptance criteria, test coverage, facet compliance, architecture, and security, then applies a two-axis adversarial lens: *verify-the-claim* (every "this is safe because X" is checked against the real source of X — real seed/config numbers, engine docs, every sibling writer, prod wiring, the canonical story file — never inherited) and *locate-the-failure* (places each candidate failure by its position relative to the diff: in it / in code it consumes / in code that consumes it / in unchanged code whose contract it silently changed — the last is the one diff-review misses by construction), scaling effort to change size, then probes how the change can fail *silently* (fallbacks/stubs, broad `except` clauses, consumed-contract assumptions, invariant completeness across all writers of newly-shared state, reused-state-across-transitions, test/config-environment fidelity, test/fake blind spots, declarative-config & runtime-engine omissions, claimed-bounds/out-of-scope recomputed against real numbers).
+For Medium and High tier tickets, `/cadence-spec` executes an **independent design-exploration pre-step** prior to authoring `spec.md`: the skill delegates first to `cadence-explorer`, which produces 2–3 structurally distinct, individually steelmanned architectural options in `design-options.md` without ranking or recommending a winner. Next, `cadence-spec-author` grounds the domain via the Contextual Grounding Matrix (6W×4L) and CHORD decomposition, converges against the explorer's option set, and records the winning option and trade-off axis in `spec.md`'s `## Design Exploration` section. Because `cadence-explorer` is invoked by the orchestrating skill rather than called by `cadence-spec-author`, option generation and option selection are structurally separated. Low and Trivial tier tickets stop at Step 0 and bypass full spec generation.
 
 ```
-/claire-review 142
-/claire-review impl/feature/ORD-40
+/cadence-spec TT-1234
 ```
 
-**Outputs:** Structured MR comments with verdict, AC checklist, facet compliance, and inline [BLOCKING]/[SUGGESTION]/[QUESTION] comments.
+**Outputs:** `specs/{ticket-id}/design-options.md` (Medium/High tier), `specs/{ticket-id}/spec.md`, `specs/{ticket-id}/test-plan.md`, and `specs/{ticket-id}/decisions.md`.
 
-## `/claire-maintain [MR number or branch name]`
+## `/cadence-implement [ticket-id]`
 
-Evaluate an MR for project-level acceptance after code review. The maintainer agent assesses backwards compatibility, architectural integrity, project goal alignment, maintenance cost, security impact, release readiness, and dependency health -- then presents a structured assessment and asks for your decision.
-
-```
-/claire-maintain 142
-/claire-maintain impl/feature/ORD-40
-```
-
-**Prerequisite:** Code review must be completed first (`/claire-review`).
-
-**Outputs:** Structured maintainer assessment with 8 dimension evaluations, blocking issues, and a decision prompt (Accept / Postpone / Reject). Based on your decision, updates metadata, changelog, and deprecation documentation.
-
-## `/claire-migrate [ticket-id] [--contract]`
-
-Author database migrations using the expand/contract pattern. Default mode is `expand` (additive, ships with the feature). Use `--contract` for follow-up cleanup after production verification.
+Execute a ticket's approved tier contract using strict BDD red-green-refactor TDD — one Gherkin scenario per commit cycle, database migrations via expand/contract, and journey invariant tests under chaos profiles. Delegates to `cadence-implementer`, which works sequentially through the Implementation Order (from `test-plan.md` at Medium/High tier, or derived from `problem.md` acceptance criteria at Low tier) in red-green-accumulate-commit loops while using `offload_log_triage` / `log-triage` on `:9379` to compact test output.
 
 ```
-/claire-migrate TT-1234
-/claire-migrate TT-1234 --contract
+/cadence-implement TT-1234
 ```
 
-**Prerequisite:** Entity class changes must be complete before running in expand mode.
+**Prerequisite:** For Medium/High tier tickets, the specification must exist and hold human Gate 1 approval (`metadata.yaml` has `status: spec-approved` and all required Gate 1 rulings recorded in `decisions.md`). The skill refuses to bypass this gate.
 
-**Outputs:** Migration files in the project's migrations directory. Expansion migrations are verified as backwards-compatible (no destructive operations). Contraction migrations are verified as safe to apply after the feature has been running in production.
+**Outputs:** Feature branch containing one atomic commit per red-green scenario cycle, a 100% passing test suite, cross-boundary documentation, a drafted `specs/{ticket-id}/submission.md`, and `metadata.yaml` advanced to `status: in-review`.
 
-The migration-author agent discovers your project structure (DbContext, migrations directory, startup project, DB provider) at runtime.
+## `/cadence-review [MR number or branch name]`
 
-## `/claire-archive [ticket-id]`
-
-Archive a merged ticket. Delegates to the archivist agent, which finalizes `submission.md`, moves `specs/{ticket-id}/` to `archive/{ticket-id}/`, **dispositions every inbound citation of the moved path (blocking — see below)**, generates a summary with metrics from git history, updates CHANGELOG.md, promotes ADR-worthy decisions and intent insights, syncs the repo's bound tracker (`CLAIRE_ORG.md#tracker-binding`), and cleans up the feature branch.
+Review a submitted change proposal against its governing tier contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md` acceptance criteria at Low tier). Runs an advisory local pre-review sweep (`offload_deep_review` on `:9380`) followed by `cadence-reviewer`, verifying acceptance criteria implementation, BDD test coverage, CADENCE Engineering Pillar compliance, architecture boundaries, and security posture, and applying the two-axis adversarial review lens: *verify-the-claim* (checking every safety assumption against authoritative seed/config/code sources) and *locate-the-failure* (probing inside the diff, in consumed code, in callers, and in unchanged sibling code whose assumptions were invalidated), plus silent-failure probes (silent fallbacks, broad catch blocks, multi-writer invariant gaps, state reuse across transitions, fake blind spots, and environment asset parity).
 
 ```
-/claire-archive TT-1234
+/cadence-review 142
+/cadence-review impl/feature/ORD-40
 ```
 
-**Prerequisite:** The change proposal must be merged (`metadata.yaml` shows `status: merged`, or the merge commit is reachable on the integration branch resolved from `CLAIRE_ORG.md#branch-strategy-binding` — ADR_CLAIRE-0020; never hardcode a branch name).
+**Outputs:** Structured review report in `submission.md` (and on the forge MR/PR) with overall verdict, AC verification table, pillar compliance audit, and inline `[BLOCKING]` / `[SUGGESTION]` / `[QUESTION]` findings.
 
-**Blocking steps (BTG-083 / PROD_CLAIRE-009, BTG-133 / PROD_CLAIRE-015):** the move turns every external reference to `specs/{ticket-id}/` into a dead pointer, so after the move the archivist runs `ci-templates/scripts/dead-citation-gate.sh --id {ticket-id}` (step 2b). But `/claire-archive`'s step 2 also writes **new files** into that tree before either sweep runs — the ADR promotion and the intent-insight promotion — and those routinely cite a **different**, already-archived ticket's `specs/` path. The gap is one of **scope, not ordering**: a single-id scan is structurally unable to see such a citation, whenever it runs. So once 2b has exited 0 the archivist also runs `ci-templates/scripts/dead-citation-gate.sh --except-id {ticket-id}` (step 2c), which sweeps every archived id **except** this one. **One classifier, three callers** — the `dead-citation` CI gate row, 2b, and 2c — never a second implementation. Each hit from either step gets exactly one disposition: **REPOINT** (the default; for 2c the target is the **other** ticket's archive directory) or **EXEMPT** (an allowlist entry naming the class and the reason). A hit reported as `NOT-A-COMMENT` is code and is dispositioned individually; nothing is ever auto-rewritten, and `--emit-baseline` is never a way to clear a hit. **Archival does not complete while any hit from either step is undispositioned.**
+## `/cadence-maintain [MR number or branch name]`
 
-**Conditional on the classifier being installed (BTG-099):** both steps first test that `ci-templates/scripts/dead-citation-gate.sh` exists **and is non-empty** (a zero-byte script exits 0 and would be read as a clean sweep). If the classifier is not installed, the step does **not** halt and does **not** silently skip: it emits a named notice — the gate is not installed, PROD_CLAIRE-009 rot is unguarded for this archival, how to enable it, and an explicitly ungoverned one-off manual fallback the operator may take or decline — records the outcome in `summary.md` under `DEAD-CITATION-SWEEP: SKIPPED` or `DEAD-CITATION-SWEEP: MANUAL`, and continues. An installed classifier that exits **2** (its setup-failure status) **halts** under a distinct name.
+Evaluate a change proposal at Gate 3 (Maintainer Acceptance) after Gate 2 code review has passed. `cadence-maintainer` assesses eight project-level dimensions — surface compatibility, architectural integrity, `PROJECT_INTENT.md` charter alignment, ongoing maintenance cost, security boundary impact, release readiness, dependency health, and system documentation currency — presents the structured evaluation, and prompts the human maintainer for a final verdict (`Accept`, `Postpone`, or `Reject`).
 
-**Outputs:** All artifacts under `archive/{ticket-id}/` including `summary.md` (carrying a *Citation Dispositions* table), updated CHANGELOG.md, `metadata.yaml` set to `status: archived`, and any flow doc update proposals flagged for human review.
+```
+/cadence-maintain 142
+/cadence-maintain impl/feature/ORD-40
+```
+
+**Prerequisite:** Gate 2 code review (`/cadence-review`) must be completed first.
+
+**Outputs:** 8-dimension maintainer assessment, follow-up candidate dispositions recorded in `submission.md`, and (upon `Accept`) updated metadata, changelog, and surface-registry / deprecation records.
+
+## `/cadence-migrate [ticket-id] [--contract]`
+
+Author EF Core database migrations following the expand/contract discipline. Defaults to `expand` mode (strictly additive changes shipped alongside the feature). Pass `--contract` in a follow-up ticket/MR to remove retired schema elements once production telemetry confirms zero legacy usage.
+
+```
+/cadence-migrate TT-1234
+/cadence-migrate TT-1234 --contract
+```
+
+**Prerequisite:** Domain/ORM entity class changes must be present before running in `expand` mode.
+
+**Outputs:** Reversible, idempotent migration files in the project's migrations directory, verified via a local `apply → rollback → reapply` cycle. `cadence-migration-author` discovers the repository's `DbContext`, migrations path, startup project, and database provider automatically.
+
+## `/cadence-archive [ticket-id]`
+
+Enshrine a merged ticket into the permanent repository archive. Delegates to `cadence-archivist`, which finalizes `submission.md`, moves `specs/{ticket-id}/` to `archive/{ticket-id}/`, **dispositions every inbound citation of the moved `specs/{ticket-id}/` path (blocking — see below)**, compiles `summary.md` with cycle metrics, updates `CHANGELOG.md`, promotes architectural decisions to `docs/ADR/` and intent discoveries to `docs/agentic-sdlc/intent-insights.md`, syncs the bound tracker (`CADENCE_ORG.md#tracker-binding`), and cleans up the merged feature branch.
+
+```
+/cadence-archive TT-1234
+```
+
+**Prerequisite:** The change proposal must be merged (`metadata.yaml` shows `status: merged`, or the merge commit is reachable on the integration branch resolved from `CADENCE_ORG.md#branch-strategy-binding` — ADR_CADENCE-0020; never hardcode a branch name).
+
+**Blocking citation sweeps (BTG-083 / PROD_CADENCE-009, BTG-133 / PROD_CADENCE-015):** moving `specs/{ticket-id}/` to `archive/{ticket-id}/` turns any remaining reference to `specs/{ticket-id}/` into a broken link, so after moving the directory the archivist runs `ci-templates/scripts/dead-citation-gate.sh --id {ticket-id}` (step 2b). Because step 2 also writes **newly promoted files** (ADRs and intent-insight entries) that may cite a *different*, previously archived ticket's `specs/` path, a single-ticket scan cannot catch those cross-ticket references. Therefore, once step 2b exits 0, the archivist immediately runs `ci-templates/scripts/dead-citation-gate.sh --except-id {ticket-id}` (step 2c) to sweep every archived ticket ID except the current one. **One shared classifier, three call sites** — the `dead-citation` CI gate, step 2b, and step 2c. Every reported hit from either step requires an explicit disposition: **REPOINT** (the default; updating the link to the target ticket's `archive/` path) or **EXEMPT** (an allowlist entry recording the exemption class and rationale). Any hit flagged `NOT-A-COMMENT` is executable code and must be dispositioned individually; nothing is silently rewritten, and `--emit-baseline` is never used to suppress a hit. **Archival cannot complete while any citation hit from step 2b or 2c remains undispositioned.**
+
+**Behavior when the classifier script is absent (BTG-099):** both steps first check that `ci-templates/scripts/dead-citation-gate.sh` exists **and is non-empty** (since a zero-byte file would exit 0 and masquerade as a clean sweep). If the script is not installed, archival neither halts nor silently skips: it emits an explicit notice naming the missing gate and PROD_CADENCE-009 risk, offers an optional manual fallback, records `DEAD-CITATION-SWEEP: SKIPPED` or `DEAD-CITATION-SWEEP: MANUAL` in `summary.md`, and proceeds. An installed classifier exiting with status **2** (setup failure) **halts** immediately.
+
+**Outputs:** Enshrined artifacts under `archive/{ticket-id}/` including `summary.md` (with its *Citation Dispositions* table), updated `CHANGELOG.md`, `metadata.yaml` set to `status: archived`, and any proposed updates to `docs/flows/` or `docs/SYSTEM_OVERVIEW.md`.
 
 ---
 
-## `/claire-sync-jira [ticket-id | all]`
+## `/cadence-sync-jira [ticket-id | all]`
 
-Push spec metadata from the repo to Jira Server/DC. One-directional: repo is source of truth.
+Project specification metadata, lifecycle status, and stage-effort worklogs from the repository to on-prem Jira Server/DC. Strictly one-directional: the Git repository is the source of truth.
 
 ```
-/claire-sync-jira TT-1234
-/claire-sync-jira all
+/cadence-sync-jira TT-1234
+/cadence-sync-jira all
 ```
 
 ---
 
-## `/claire-bump-model <from-model> <to-model>`
+## `/cadence-bump-model <from-model> <to-model>`
 
-Bump the model declaration in agent YAML frontmatter AND in the concrete-model column of `CLAIRE_ORG.md#model-tier-mapping`, from one version to another. Finds all references in `.claude/agents/*/AGENT.md` plus the matching mapping row, and substitutes them after a confirmation diff.
+Update the concrete model identifier across agent YAML frontmatter (`.agents/agents/*/AGENT.md` and `artifacts/roles/*/ROLE.md`) AND the Concrete Model column of `CADENCE_ORG.md#model-tier-mapping` within a single capability tier. Displays a confirmation diff before applying changes and verifies consistency afterward.
 
-**Scope:** Operates only on `model:` fields in agent YAML frontmatter and the concrete-model column of the tier-mapping table in `CLAIRE_ORG.md#model-tier-mapping`. Does not touch documentation prose, CI configuration, external routing, or any other system. One tier per invocation — cross-tier changes are architectural decisions that warrant a spec.
+**Scope:** Modifies only `model:` declarations in agent frontmatter and the matching tier row in `CADENCE_ORG.md#model-tier-mapping`. Does not alter prose documentation, CI scripts, or external routing. Operates on one capability tier per invocation — moving an agent between capability tiers is an architectural change requiring a specification.
 
-**Outputs:** Diff of edits across both targets, confirmation prompt, post-edit verification of both. Changes are not committed automatically — review with `git diff` and commit per your normal workflow.
+**Outputs:** Preview diff across all targets, operator confirmation prompt, and post-apply verification. Review with `git diff` and commit via the standard worktree PR workflow.
 
-### Example (Claude Code)
-
-This repo dogfoods Claude Code. Concrete invocations:
+### Example (Gemini / Antigravity Runtime)
 
 ```
-/claire-bump-model claude-opus-4-6 claude-opus-4-7
-/claire-bump-model claude-sonnet-4-5 claude-sonnet-4-6
+/cadence-bump-model gemini-3.5-pro gemini-4-argon
+/cadence-bump-model gemini-3.5-flash gemini-3.8-flash
 
-/claire-bump-model claude-opus-4-6 claude-sonnet-4-7  # refused — cross-tier
+/cadence-bump-model gemini-4-argon gemini-3.8-flash  # refused — cross-tier substitution
 ```
 
 ---
 
-## `/claire-release [major|minor|patch]`
+## `/cadence-release [major|minor|patch]`
 
-Cut a new release from the accumulated `## [Unreleased]` entries in `CHANGELOG.md`. Resolves the repository's bound version scheme from `CLAIRE_ORG.md#version-scheme-binding` and determines the bump from the entry content under that scheme's rule (**major** for any breaking change: removed/renamed surface, broken contract, enacted deprecation; **minor** for additive capability: new agents/skills/probes, non-breaking changes; **patch** for fixes/docs only), proposes the next version with its reasoning, and **confirms with the user before writing anything**. The optional argument forces a bump, but the skill still shows its own analysis and warns on a disagreement (e.g. a forced downgrade past a breaking change).
+Cut a governed release from the accumulated `## [Unreleased]` entries in `CHANGELOG.md`. Resolves the repository's bound versioning scheme from `CADENCE_ORG.md#version-scheme-binding`, computes the appropriate version increment under that scheme's rules (**major** for breaking surface changes or enacted deprecations; **minor** for additive capabilities, new agents/skills, or non-breaking enhancements; **patch** for bug fixes and documentation updates), presents the proposed version number and rationale, and **requests operator confirmation before modifying any file**. Passing an explicit `major|minor|patch` argument forces that bump level while still displaying the computed analysis and warning if the forced level under-bumps a breaking change.
 
-On confirmation it runs the full cut: finalize `[Unreleased]` as `[X.Y.Z] - <date>` and open a fresh empty `[Unreleased]`, bump the README version line, draft `docs/releases/vX.Y.Z.md`, commit `RELEASE-X.Y.Z`, create an **annotated** tag, and — after a final confirmation, since pushing is outward-facing — push the branch and tag.
+Upon confirmation, the skill finalizes `## [Unreleased]` as `## [X.Y.Z] - <YYYY-MM-DD>`, opens a fresh empty `## [Unreleased]` section, updates the version stamp in `README.md` (and `.cadence-version` where applicable), drafts `docs/releases/vX.Y.Z.md`, creates the `RELEASE-X.Y.Z` commit and an **annotated** git tag, and prompts a second time before pushing the branch and tag to `origin`.
 
-**Scope:** Runs inline (it pauses for confirmation, so no subagent). Touches `CHANGELOG.md`, `README.md`, and `docs/releases/vX.Y.Z.md`; creates one commit and one annotated tag. Does **not** publish a forge Release object, sync external trackers, or rewrite history — the tag stays local until you confirm the push.
+**Scope:** Executes inline in the main session (because it pauses for two operator confirmations). Modifies `CHANGELOG.md`, `README.md`, and `docs/releases/vX.Y.Z.md`, creating one commit and one annotated tag.
 
-**Outputs:** The proposed version + reasoning, two confirmation gates (version, then push), the release commit, the annotated tag, and a drafted release-notes file the author should read and enrich.
+**Outputs:** Proposed version + rationale, two confirmation checkpoints (pre-edit and pre-push), the release commit, the annotated tag, and a drafted release-notes document in `docs/releases/vX.Y.Z.md`.
 
 ### Example
 
 ```
-/claire-release           # analyze Unreleased, propose a bump, confirm, cut, tag, push
-/claire-release minor     # force a minor bump (still shows analysis)
-/claire-release patch     # force patch — warns if the changelog looks like a feature or breaking change
+/cadence-release           # analyze Unreleased, propose bump, confirm, cut, tag, push
+/cadence-release minor     # force minor bump (still displays analysis)
+/cadence-release patch     # force patch — warns if Unreleased contains features or breaking changes
 ```

@@ -1,81 +1,81 @@
 # Conflict Resolution & Escalation
 
-When gates disagree — a spec is approved but the maintainer rejects the MR, or two reviewers have opposing views — the process needs a clear escalation path. Without one, conflicts stall work or get resolved by whoever has the most organizational power, not the best argument.
+When governance gates reach conflicting conclusions — for example, a specification passes Gate 1 approval but the maintainer rejects the implementation MR at Gate 3, or two reviewers hold opposing views at Gate 2 — the workflow requires a deterministic escalation path. Without an explicit protocol, disagreements either stall delivery or get settled by organizational hierarchy rather than engineering evidence.
 
 ## Principles
 
-1. **Evidence over authority.** The person with the strongest evidence wins, regardless of title. "The trace shows this will deadlock under concurrent writes" beats "I think it's fine" regardless of who says each.
-2. **Decisions are recorded.** Every conflict resolution is logged in `specs/{ticket-id}/decisions.md` so future work has context on why a choice was made.
-3. **Escalation is not failure.** Disagreement at gates is the system working — it means reviewers are engaging critically. Escalation is the release valve, not a blame mechanism.
-4. **Time-box disagreement.** If a conflict cannot be resolved in one synchronous discussion (30 min max), escalate. Extended async back-and-forth erodes velocity and morale.
+1. **Evidence over authority.** The argument backed by verifiable evidence prevails regardless of seniority or title. "The concurrency trace demonstrates a deadlock when two workers write simultaneously" outweighs "I think the locking is fine" no matter who states each position.
+2. **Decisions are recorded.** Every resolved disagreement is appended to `specs/{ticket-id}/decisions.md` so future contributors and agents can inspect the exact rationale and evidence behind the outcome.
+3. **Escalation is not failure.** Disagreement at review gates indicates the governance model is functioning as intended — reviewers are critically evaluating changes. Escalation serves as a structured release valve, not a mechanism for blame.
+4. **Time-box disagreement.** If a technical conflict cannot be settled within a single synchronous conversation (30 minutes maximum), escalate immediately. Prolonged asynchronous back-and-forth drains delivery momentum and team morale.
 
 ## Common Conflict Scenarios
 
 ### Scenario 1: Spec approved (Gate 1) but MR rejected (Gate 3)
 
-The maintainer rejects an MR for architectural reasons that were baked into the approved spec.
+The maintainer rejects an implementation MR on architectural grounds that were already present in the approved specification.
 
-**Root cause:** The spec review didn't catch the architectural issue, or the issue only became visible during implementation.
+**Root cause:** The Gate 1 spec review missed an architectural constraint, or the structural problem only became apparent once translated into concrete code.
 
 **Resolution path:**
-1. Maintainer documents the concern in `decisions.md` with evidence (ADR conflict, boundary violation, unsustainable pattern)
-2. Spec reviewer (Gate 1 approver) is notified and reviews the maintainer's concern
-3. If spec reviewer agrees: spec is reopened, revised, and re-approved before implementation continues
-4. If spec reviewer disagrees: escalate to the engineering lead (see Escalation Ladder below)
+1. The maintainer records the architectural concern in `decisions.md` backed by concrete evidence (ADR contradiction, bounded-context violation, or unsustainable coupling pattern).
+2. The Gate 1 spec reviewer is notified and evaluates the maintainer's documented concern.
+3. If the spec reviewer concurs: the specification is reopened, revised, and re-approved before implementation resumes.
+4. If the spec reviewer disagrees: escalate to the engineering lead (see Escalation Ladder below).
 
-**Key rule:** The maintainer's rejection is not overridden by pointing to the spec approval. The spec approval predates implementation reality — the maintainer may have information the spec reviewer didn't.
+**Key rule:** A maintainer's rejection at Gate 3 cannot be overruled simply by pointing to prior Gate 1 approval. Spec approval predates implementation reality — the maintainer often sees system-level interactions that were not obvious at spec review time.
 
 ### Scenario 2: Two reviewers disagree at the same gate
 
-One reviewer approves, another blocks. Common at Gate 2 (Code Review) with multiple reviewers.
+One reviewer approves while another raises a blocking finding — most commonly at Gate 2 (Code Review) when multiple reviewers participate.
 
 **Resolution path:**
-1. The blocker must articulate a specific, evidence-based concern (not "I would have done it differently")
-2. The author addresses the concern or explains why the current approach is correct
-3. If the blocker is satisfied: unblock
-4. If still unresolved after one round of discussion: the reviewer with the most relevant domain expertise makes the call
-5. If domain expertise is equal or unclear: escalate to the maintainer gate (it's designed for exactly this — project-level judgment)
+1. The blocking reviewer must state a specific, evidence-backed defect or policy violation (never "I would have structured this differently").
+2. The author either remedies the issue or provides evidence demonstrating why the current implementation is sound.
+3. If the blocking reviewer is satisfied: the block is lifted.
+4. If the disagreement persists after one round of exchange: the reviewer with deeper domain expertise in the affected subsystem makes the call.
+5. If domain expertise is equal or ambiguous: escalate to the Maintainer gate (Gate 3), which exists specifically to exercise project-wide architectural judgment.
 
-**Key rule:** Style preferences are not blocking. The bar for blocking is: "This will break in production," "This violates an ADR," "This creates a maintenance burden the team hasn't agreed to," or "This violates a policy." "I prefer a different abstraction" is a suggestion, not a block.
+**Key rule:** Personal style preferences are never blocking. A valid block requires demonstrating that: "This will fail in production," "This contradicts a ratified ADR," "This introduces an unapproved operational burden," or "This violates a normative policy." "I prefer an alternative abstraction" is a non-blocking suggestion, never a block.
 
 ### Scenario 3: Author disagrees with reviewer
 
-The author believes the reviewer's concern is wrong or the requested change would make things worse.
+The author believes a reviewer's blocking finding is factually mistaken or that the requested modification would degrade the design.
 
 **Resolution path:**
-1. Author responds with evidence: benchmark, trace, example, or reference to prior art
-2. Reviewer evaluates the evidence and either withdraws the concern or reaffirms with counter-evidence
-3. If agreement: move on
-4. If stalemate: bring in a third reviewer (tie-breaker). The third reviewer reads the discussion and picks a side. Their decision stands.
-5. If the third reviewer can't decide: escalate to engineering lead
+1. The author replies with concrete evidence: a benchmark, execution trace, reproduction test, or citation to ratified prior art.
+2. The reviewer evaluates the evidence and either withdraws the block or reaffirms it with counter-evidence.
+3. If consensus is reached: proceed.
+4. If deadlocked: bring in a third reviewer as a tie-breaker. The third reviewer inspects the written thread, weighs the evidence, and selects one position. That ruling stands.
+5. If the tie-breaker cannot reach a clear verdict: escalate to the engineering lead.
 
-**Key rule:** The author is not automatically wrong because they're the author. They have the deepest context on the change. But they also have the most bias toward shipping it.
+**Key rule:** An author is not automatically wrong merely by being the author — they possess the deepest immediate context on the change. However, they also carry the strongest natural bias toward shipping their work.
 
 ### Scenario 4: Change tier dispute
 
-The author claims Low tier; a reviewer says it should be Medium or High.
+The author classifies a change as Low tier, while a reviewer argues it triggers Medium or High tier requirements.
 
 **Resolution path:**
-1. Refer to `docs/policies/change-tiers.md` objective triggers
-2. If the triggers clearly indicate a tier: that tier applies, no discussion needed
-3. If the triggers are ambiguous (edge case): the reviewer's call stands — err toward more rigor, not less
-4. If the author believes the triggers are wrong (the policy needs updating): follow the process at the higher tier now, file an issue to revise the tier policy separately
+1. Consult the objective trigger tables in `docs/policies/change-tiers.md`.
+2. If the objective triggers unambiguously match a tier: that tier governs immediately without further debate.
+3. If a genuine boundary ambiguity exists: the reviewer's higher-tier classification prevails — always err toward greater verification rigor rather than less.
+4. If the author believes the policy triggers themselves are flawed: comply with the higher tier for the current ticket, and file a separate follow-up issue proposing an amendment to `change-tiers.md`.
 
-**Key rule:** Tier disputes are resolved by the triggers, not by negotiation. If the triggers don't clearly resolve it, the higher tier wins.
+**Key rule:** Tier disputes are settled by evaluating objective diff triggers, never by bargaining. Whenever trigger evaluation is genuinely ambiguous, the higher tier wins.
 
 ### Scenario 5: Fast-track payback not completed within 48h
 
-The payback ticket from an emergency fast-track is overdue.
+The mandatory retroactive payback ticket following an emergency fast-track deployment has breached its 48-hour SLA.
 
 **Resolution path:**
-1. Maintainer flags the overdue payback in the next team sync
-2. If there's a legitimate reason (another incident, team member out): extend by 48h, once
-3. If it's deprioritized by choice: engineering lead intervenes — payback is mandatory, not best-effort
-4. If it's blocked by a deeper issue (the fix revealed the system is worse than thought): convert to a proper High-tier spec and prioritize it
+1. The maintainer surfaces the overdue payback ticket at the next team synchronization.
+2. If a legitimate operational blocker prevented completion (e.g., a secondary production incident or responder absence): grant a single 48-hour extension.
+3. If payback was deprioritized in favor of routine feature work: the engineering lead intervenes — fast-track payback is a mandatory governance obligation, not best-effort cleanup.
+4. If payback revealed that the underlying subsystem is more fragile than understood during the incident: promote the payback ticket into a full High-tier specification and prioritize its delivery.
 
 ## Escalation Ladder
 
-When local resolution fails, escalate in this order:
+When gate-level resolution does not settle a dispute, escalate sequentially through these levels:
 
 | Level | Who | When to use | Decision scope |
 |---|---|---|---|
@@ -85,22 +85,22 @@ When local resolution fails, escalate in this order:
 | **4. Architecture Council** | Group of leads (if org has one) | Systemic disagreement about patterns, boundaries, or standards | Org-wide standards |
 
 **Escalation rules:**
-- Never skip a level. Level 1 before Level 2 before Level 3.
-- Each level has 24 hours to resolve before escalating further.
-- The escalation decision (and who made it) is recorded in `decisions.md`.
-- Escalation is always to a person, never to a committee (except Level 4). One human, one decision.
+- Never skip a rung on the ladder. Resolve at Level 1 before Level 2, and Level 2 before Level 3.
+- Each escalation level has a maximum 24-hour window to issue a ruling before escalating to the next rung.
+- Both the ruling and the decision-maker's identity must be recorded in `specs/{ticket-id}/decisions.md`.
+- Every escalation targets a single accountable individual rather than a committee (with the sole exception of Level 4). One human, one decision.
 
 ## What Doesn't Constitute a Conflict
 
-Not every disagreement needs this process:
+Routine review exchanges that do not require this escalation workflow:
 
-- **Suggestions vs. blocks:** A `[SUGGESTION]` comment is not a conflict — it's a recommendation the author can accept or decline without discussion.
-- **Style preferences:** "I would have named this differently" is not actionable unless it violates documented conventions.
-- **"I don't understand":** This is a request for clarification, not a block. The author explains; the reviewer re-evaluates. If after explanation the reviewer still can't understand the change, THAT is a signal the change needs better documentation (boundary docs, flow docs, or clearer naming).
+- **Suggestions vs. blocks:** A non-blocking `[SUGGESTION]` (or `nit` / `observation` class finding) is not a conflict — the author may adopt or decline it without escalation.
+- **Style preferences:** "I would have named this helper differently" is non-actionable unless it violates an explicit rule in `comment-discipline.md` or `AGENTS.md`.
+- **"I don't understand":** A reviewer asking for clarification is raising a comprehension signal, not a block. The author clarifies; the reviewer re-evaluates. If the reviewer still cannot follow the logic after explanation, *that* signals the code or boundary documentation needs clearer structure before merge.
 
 ## Recording Decisions
 
-Every conflict resolution adds an entry to `specs/{ticket-id}/decisions.md`:
+Every escalated conflict resolution appends a structured record to `specs/{ticket-id}/decisions.md`:
 
 ```markdown
 ## Decision: {short title}
@@ -113,11 +113,11 @@ Every conflict resolution adds an entry to `specs/{ticket-id}/decisions.md`:
 **Decided by:** {who made the final call}
 ```
 
-This ensures the team learns from conflicts and doesn't relitigate the same disagreements.
+Logging resolutions in the repository ensures the team compounds institutional knowledge instead of relitigating identical design tradeoffs across future tickets.
 
 ## Anti-Patterns
 
-- **HiPPO resolution** (Highest-Paid Person's Opinion): If the engineering lead always sides with the senior engineer regardless of evidence, the escalation ladder is broken. Decisions are evidence-based, not rank-based.
-- **Conflict avoidance:** Approving to avoid confrontation, then complaining about the code later. If you have a concern, voice it at the gate. Silent approval is full approval.
-- **Weaponized process:** Using tier escalation or gate disagreement to slow down work you don't like for political reasons. If the triggers say Low and the evidence says it's safe, blocking on "principle" is not legitimate.
-- **Relitigating settled decisions:** If `decisions.md` records a resolution, it's settled. New evidence can reopen it (add a new decision entry with reversal context), but "I still disagree" without new evidence does not.
+- **HiPPO resolution** (Highest-Paid Person's Opinion): If an engineering leadreflexively backs the most senior engineer without weighing the technical evidence, the escalation ladder is compromised. Rulings must be grounded in evidence, not rank.
+- **Conflict avoidance:** Rubber-stamping a review to avoid friction and complaining about the design afterward. Raise concerns at the gate where they belong; silent approval constitutes full endorsement.
+- **Weaponized process:** Invoking tier escalation or gate blocks to stall a change for political reasons when objective triggers classify it as Low and all tests pass.
+- **Relitigating settled decisions:** Once `decisions.md` records a ratified resolution, the question is closed. Newly discovered empirical evidence can reopen a decision (recorded via a new superseding `DEC` entry), but repeating "I still disagree" without new evidence never reopens a gate.

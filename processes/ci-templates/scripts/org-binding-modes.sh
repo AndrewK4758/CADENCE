@@ -5,7 +5,7 @@
 #
 # Bounded context: Governance config / per-repo binding resolution.
 # Invariants relied on from outside this boundary:
-#   - `CLAIRE_ORG.md` is the single per-repo binding mechanism (ADR_CLAIRE-0010 cl.2).
+#   - `CADENCE_ORG.md` is the single per-repo binding mechanism (ADR_CADENCE-0010 cl.2).
 #   - §9 / §10 / §13's absent-value polarities DIFFER and are never unified.
 #
 # THE SEAM, now three-way and stated once here:
@@ -70,7 +70,7 @@
 # A WILDCARD ROW IS EMITTED LAST AND CONTRIBUTES 0 TO N. It names no prefix -- it
 # says "any prefix, inner-source" -- so a caller counting configured projects must
 # not count it, while a caller RENDERING the choice still needs to know it is
-# there (the `/claire-triage --file-only` menu shows it as a final "any prefix" row).
+# there (the `/cadence-triage --file-only` menu shows it as a final "any prefix" row).
 # Emitting it, marked, serves both; omitting it would serve only the first.
 #
 # A repo with no table prints NOTHING and exits 0. That is the answer, not a
@@ -79,7 +79,7 @@
 #
 # A repo with no §9 AT ALL is the different case, and it halts. N = 0 there is
 # indistinguishable from the legitimate scalar repo above, and the caller that
-# reads it is `/claire-triage --file-only`'s menu step -- so a silent 0 suppresses the
+# reads it is `/cadence-triage --file-only`'s menu step -- so a silent 0 suppresses the
 # prefix menu on a multi-prefix repo, which is `triage.fileonly.menu_bypassed`
 # produced by the resolver rather than detected by it.
 resolve_prefixes() {
@@ -113,7 +113,7 @@ EOF
 # BEFORE it can decide whether to call the resolver at all, and while no mode
 # answered it each consumer hand-rolled its own table-presence lexer
 # (`js_org_perprefix_table`, `yt_org_perprefix_table`, `mint-id.sh`'s
-# `resolver_required`). That is the PROD_CLAIRE-005 drift DEC-004 exists to prevent, and
+# `resolver_required`). That is the PROD_CADENCE-005 drift DEC-004 exists to prevent, and
 # it has already produced one defect: the copies and the canonical parser
 # disagreed about where a per-prefix table ends.
 #
@@ -158,7 +158,7 @@ resolve_form() {
 # §10 AND ONLY §10. resolve_prefixes() above walks §9's TRACKER table; the two
 # tables are declared INDEPENDENTLY and may name different prefix sets, so
 # reusing it here would seed whatever the TRACKER binding happens to name --
-# PROD_CLAIRE-022's own named second-order trap. A prefix with a §9 row and no §10 row
+# PROD_CADENCE-022's own named second-order trap. A prefix with a §9 row and no §10 row
 # would be seeded, and a prefix with a §10 row and no §9 row -- the
 # inner-source-allocator case this binding exists to support -- would be MISSED.
 # So this function never calls section_region 9 and never calls
@@ -194,7 +194,7 @@ resolve_allocator_prefixes() {
   # region can anchor HALTs. §10's mint polarity governs an ABSENT declaration,
   # never a present-and-unreadable one -- and an empty enumeration here would
   # tell both seed steps "this repo declares no prefixes" about a file that
-  # plainly declares several, which is the silent underrun PROD_CLAIRE-022 records,
+  # plainly declares several, which is the silent underrun PROD_CADENCE-022 records,
   # produced by the remediation itself.
   require_locatable_10 "$sec10"
   rows="$(table_rows "$sec10" allocator)"
@@ -209,7 +209,7 @@ resolve_allocator_prefixes() {
     # literals, the bare three byte-unchanged (the sibling rule is stated at
     # resolve_allocator()'s short-circuit in org-binding-resolve.sh).
     case "$rp" in ADR|II|PROD) continue ;; esac
-    case "$rp" in ADR_CLAIRE|II_CLAIRE|PROD_CLAIRE) continue ;; esac
+    case "$rp" in ADR_CADENCE|II_CADENCE|PROD_CADENCE) continue ;; esac
     if [ "$rp" = "*" ]; then
       echo "org-binding-resolve: §10 declares a wildcard '*' allocator row; it names no prefix, so it is SKIPPED -- §10 has no wildcard grammar (that is §9's) and a ledger high-water row is keyed by a prefix" >&2
       continue
