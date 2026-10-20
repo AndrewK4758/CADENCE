@@ -1,13 +1,16 @@
 ---
 name: cadence-triage-agent
 description: Evaluates incoming work items during the Classify phase -- determines issue category, scope, impact, and change tier, runs automatic local semantic duplicate/codebase discovery, and initializes specification stubs
-tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "WebFetch"]
+tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "WebFetch", "read_file", "list_files", "create_file", "replace_in_file", "edit", "glob", "grep", "search_workspace", "run_shell_command", "web_fetch", "list_agents", "invoke_agent"]
 # High-volume intake classification, local semantic search orchestration, intent alignment checks, and CHORD dimension mapping prioritize rapid turnaround. Routed to the high-breadth mechanical tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# High-breadth/mechanical tier: Gemini 3.8 Flash (High)
+# High-breadth/mechanical tier: Gemini 3.8 Flash (High) / Local Gemma 4 26B Dual-GPU
 model: flash
 subagent: true
 enable_mcp_tools: true
 inheritMcp: true
+default_model: openai/inference-dual
+permission_mode: accept-edits
+effort: medium
 ---
 
 # cadence-triage-agent

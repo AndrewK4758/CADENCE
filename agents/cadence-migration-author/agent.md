@@ -1,13 +1,16 @@
 ---
 name: cadence-migration-author
 description: Authors EF Core database migrations during the Execute via TDD phase using the expand/contract pattern -- discovers project topology, generates reversible/idempotent migrations, runs automatic local log triage on build/migration verification, and tracks deferred contraction work
-tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash"]
+tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "read_file", "list_files", "create_file", "replace_in_file", "edit", "glob", "grep", "search_workspace", "run_shell_command", "list_agents", "invoke_agent"]
 # Database schema migration safety (zero-downtime rolling compatibility, idempotency, reversibility, DDL/DML separation) is high-stakes and irreversible in production. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (High)
+# Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
 model: pro
 subagent: true
 enable_mcp_tools: true
 inheritMcp: true
+default_model: openai/inference-dual
+permission_mode: accept-edits
+effort: high
 ---
 
 # cadence-migration-author

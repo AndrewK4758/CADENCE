@@ -4,8 +4,8 @@
 # implementation (plus optional secondary CLI adapters per docs/policies/cli-runtime-adoption-policy.md).
 #
 # Usage:
-#   link-sdlc.sh <target-repo> [--claude] [--opencode]
-#   link-sdlc.sh --global     (promotes ~/projects/sdlc into global ~/.agents/ and ~/.gemini/config/)
+#   link-sdlc.sh <target-repo> [--claude] [--opencode] [--blitz]
+#   link-sdlc.sh --global     (promotes ~/projects/sdlc into global ~/.agents/, ~/.gemini/config/, and ~/.blitz/)
 set -euo pipefail
 
 SDLC_ROOT="/home/ak/projects/sdlc"
@@ -23,8 +23,11 @@ if [[ "${1:-}" == "--global" ]]; then
   # 2. Global Antigravity / Gemini Configuration (~/.gemini/config/)
   mkdir -p /home/ak/.gemini/config/agents /home/ak/.gemini/config/skills
   rm -rf /home/ak/.gemini/config/agents/claire-* /home/ak/.gemini/config/skills/claire-*
-  for agent_dir in "$SDLC_ROOT"/agents/cadence-*; do
-    [[ -d "$agent_dir" ]] && ln -sfn "$agent_dir" "/home/ak/.gemini/config/agents/$(basename "$agent_dir")"
+  for agent_dir in "$SDLC_ROOT"/agents/cadence-* "$SDLC_ROOT"/agents/log-triage "$SDLC_ROOT"/agents/repo-scout; do
+    if [[ -d "$agent_dir" ]]; then
+      rm -rf "/home/ak/.gemini/config/agents/$(basename "$agent_dir")"
+      ln -sfn "$agent_dir" "/home/ak/.gemini/config/agents/$(basename "$agent_dir")"
+    fi
   done
   for skill_dir in "$SDLC_ROOT"/skills/cadence-*; do
     [[ -d "$skill_dir" ]] && ln -sfn "$skill_dir" "/home/ak/.gemini/config/skills/$(basename "$skill_dir")"
@@ -35,7 +38,18 @@ if [[ "${1:-}" == "--global" ]]; then
   cp "$SDLC_ROOT/import/skills.json" /home/ak/.gemini/config/skills.json
   cp "$SDLC_ROOT/hooks/hooks.json" /home/ak/.gemini/config/hooks.json
 
-  echo "Promoted CADENCE ($SDLC_ROOT) globally into ~/.agents/ (primary) and ~/.gemini/config/ (Antigravity reference)"
+  # 3. Global Blitz Configuration (~/.blitz/agents/*.md & ~/.blitz/skills/)
+  mkdir -p /home/ak/.blitz/agents /home/ak/.blitz/skills
+  for agent_dir in "$SDLC_ROOT"/agents/cadence-* "$SDLC_ROOT"/agents/log-triage "$SDLC_ROOT"/agents/repo-scout; do
+    if [[ -d "$agent_dir" && -f "$agent_dir/agent.md" ]]; then
+      ln -sfn "$agent_dir/agent.md" "/home/ak/.blitz/agents/$(basename "$agent_dir").md"
+    fi
+  done
+  for skill_dir in "$SDLC_ROOT"/skills/cadence-*; do
+    [[ -d "$skill_dir" ]] && ln -sfn "$skill_dir" "/home/ak/.blitz/skills/$(basename "$skill_dir")"
+  done
+
+  echo "Promoted CADENCE ($SDLC_ROOT) globally into ~/.agents/ (primary), ~/.gemini/config/ (Antigravity reference), and ~/.blitz/ (Blitz flat agent/skill symlinks)"
   exit 0
 fi
 
@@ -69,6 +83,9 @@ for arg in "$@"; do
       ln -sfn "../.agents/agents" "$TARGET_REPO/.opencode/agent"
       ln -sfn "../.agents/skills" "$TARGET_REPO/.opencode/command"
       echo "Projected .agents/ -> .opencode/ in $TARGET_REPO"
+      ;;
+    --blitz)
+      bash "$SDLC_ROOT/processes/ci-templates/scripts/adapters/blitz.sh" "$TARGET_REPO"
       ;;
   esac
 done

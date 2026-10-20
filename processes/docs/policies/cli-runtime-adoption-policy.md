@@ -81,6 +81,7 @@ When a contributor or team uses another CLI tool alongside or instead of `agy`, 
 | **Antigravity / Gemini CLI (Reference)** | `.gemini/agents -> ../.agents/agents`<br>`.gemini/skills -> ../.agents/skills`<br>`.gemini/hooks.json -> ../.agents/hooks/hooks.json` | `AGENTS.md` + `.gemini/GEMINI.md` | `ci-templates/scripts/adapters/gemini-agy.sh` |
 | **Claude Code** | `.claude/agents -> ../.agents/agents`<br>`.claude/skills -> ../.agents/skills`<br>`.claude/hooks -> ../.agents/hooks` | `AGENTS.md` + `CLAUDE.md` | `ci-templates/scripts/adapters/claude-code.sh` |
 | **OpenCode** | `.opencode/agent -> ../.agents/agents`<br>`.opencode/command -> ../.agents/skills` | `AGENTS.md` | `ci-templates/scripts/adapters/opencode.sh` |
+| **Blitz** | `~/.blitz/agents/<role>.md -> .agents/agents/<role>/agent.md`<br>`~/.blitz/skills/<skill> -> .agents/skills/<skill>` | `AGENTS.md` + `~/.blitz/.env.toml` | `ci-templates/scripts/adapters/blitz.sh` |
 
 ### Mandatory Invariants for All CLI Adapters
 1. **Single Source of Truth (Behavior 6):** Editing an agent, skill, or hook inside `.claude/` or `.gemini/` is forbidden if it breaks the symlink to `.agents/`. All edits happen in `.agents/` (or in `/home/ak/projects/sdlc` when linked globally) so every CLI runtime observes the exact same governance behavior immediately.
