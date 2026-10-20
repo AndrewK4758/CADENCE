@@ -46,7 +46,13 @@ if [[ "${1:-}" == "--global" ]]; then
     fi
   done
   for skill_dir in "$SDLC_ROOT"/skills/cadence-*; do
-    [[ -d "$skill_dir" ]] && ln -sfn "$skill_dir" "/home/ak/.blitz/skills/$(basename "$skill_dir")"
+    [[ -d "$skill_dir" ]] || continue
+    skill_name="$(basename "$skill_dir")"
+    rm -rf "/home/ak/.blitz/skills/$skill_name"
+    mkdir -p "/home/ak/.blitz/skills/$skill_name"
+    for item in "$skill_dir"/*; do
+      [[ -e "$item" ]] && ln -sfn "$item" "/home/ak/.blitz/skills/$skill_name/$(basename "$item")"
+    done
   done
 
   echo "Promoted CADENCE ($SDLC_ROOT) globally into ~/.agents/ (primary), ~/.gemini/config/ (Antigravity reference), and ~/.blitz/ (Blitz flat agent/skill symlinks)"

@@ -22,7 +22,12 @@ done
 
 for skill_dir in "$AGENTS_DIR"/skills/cadence-*; do
   [[ -d "$skill_dir" ]] || continue
-  ln -sfn "$(readlink -f "$skill_dir")" "$HOME/.blitz/skills/$(basename "$skill_dir")"
+  skill_name="$(basename "$skill_dir")"
+  rm -rf "$HOME/.blitz/skills/$skill_name"
+  mkdir -p "$HOME/.blitz/skills/$skill_name"
+  for item in "$(readlink -f "$skill_dir")"/*; do
+    [[ -e "$item" ]] && ln -sfn "$item" "$HOME/.blitz/skills/$skill_name/$(basename "$item")"
+  done
 done
 
 echo "blitz adapter: projected .agents/ -> ~/.blitz/agents/*.md and ~/.blitz/skills/ (from $TARGET_ROOT)"
