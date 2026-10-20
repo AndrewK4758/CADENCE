@@ -1,6 +1,13 @@
 {
   "cadence-local-offload-enforcer": {
     "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "/home/ak/projects/sdlc/hooks/local-offload-enforcer.sh",
+        "timeout": 10
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "run_command|Bash",

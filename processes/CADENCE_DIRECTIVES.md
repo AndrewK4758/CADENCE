@@ -92,12 +92,12 @@ Key constraints:
 - `cadence-implementer` writes application source and test files plus the ticket's `specs/` execution artifacts (`submission.md` draft, `test-plan.md` infrastructure discovery fields)
 - All agents enforce the core behaviors above
 
-### Automatic 2-Tier Local Hardware Coprocessor Offload
+### Automatic 2-Tier Local Hardware Coprocessor Offload (`127.0.0.1:11434`)
 
-Alongside the cloud reasoning tiers (`gemini-4-argon` / `pro` and `gemini-3.8-flash` / `flash`), CADENCE integrates an automatic **2-Tier Local Hardware Coprocessor Offload** pipeline via the `local-offload` MCP server (`offload_log_triage`, `offload_deep_review`, `local_semantic_embed`) and read-only helper subagents (`log-triage`, `repo-scout`):
+Alongside the cloud reasoning tiers (`gemini-4-argon` / `pro` and `gemini-3.8-flash` / `flash`), CADENCE integrates an automatic **2-Tier Local Hardware Coprocessor Offload** pipeline served by the unified `llama-swap` gateway (`local-ai-offload.service` on `127.0.0.1:11434`) via the `local-offload` MCP server (`offload_log_triage`, `offload_deep_review`, `local_semantic_embed`) and read-only helper subagents (`log-triage`, `repo-scout`) across **both general/ad-hoc prompts and governed `/cadence-*` workflows**:
 
-- **Tier 1 — Always-On Zero-VRAM CPU (`127.0.0.1:9379`)**: Runs `local-fast-cpu` (`gemma-4-e2b-it`, 128MB 3D V-Cache, 0 MB GPU VRAM) and `local-embed-cpu` (`nomic-embed-text`, 768-dim embeddings). Automatically handles noisy test/build/compiler log compaction during `/cadence-implement` TDD loops (`offload_log_triage`, writing full raw output with line numbers to `/tmp/agy-last-triage.log`) and semantic repository/insight/duplicate discovery during `/cadence-triage` and `/cadence-spec` (`local_semantic_embed` / `repo-scout`).
-- **Tier 2 — On-Demand Hybrid MoE & GPU (`127.0.0.1:9380`)**: Runs `local-moe-hybrid` (`gemma-4-26b-a4b-it`) and `local-12b-gpu` (`gemma-4-12b-it` on RTX 5070 Ti 12GB VRAM). Automatically runs advisory pre-review mechanical sweeps (`offload_deep_review`) checking the `<400`-line file ceiling, comment discipline, and CHORD seam completeness before `cadence-reviewer` and `cadence-maintainer` issue gate verdicts.
+- **Tier 1 — Always-On Zero-VRAM CPU (`embedding` / `local-embed-cpu` on `127.0.0.1:11434`)**: Runs `nomic-embed-text` (768-dim embeddings, 128MB 3D V-Cache, 0 MB GPU VRAM). Automatically handles Step 0 semantic file, symbol, insight, and duplicate discovery (`local_semantic_embed` / `repo-scout`) before broad repository file reads on every prompt.
+- **Tier 2 — Warm Dual-GPU / Hybrid Inference (`inference` / `local-moe-hybrid` on `127.0.0.1:11434`)**: Runs `gemma-4-26b-a4b-it` (Dual-GPU RTX 5080 + RTX 5070 Ti when docked) or `gemma-4-12b-it` (RTX 5070 Ti when undocked). Automatically handles noisy test/build/compiler/diagnostic log compaction (`offload_log_triage`, writing full raw output with line numbers to `/tmp/agy-last-triage.log`) and advisory pre-commit / pre-PR / gate mechanical sweeps (`offload_deep_review`) checking the `<400`-line file ceiling, comment discipline, and CHORD seam completeness.
 - **Strict Read-Only Guardrail**: Local models act exclusively as read-only analytical and retrieval coprocessors (`enable_write_tools: false`) and never author or edit project files.
 
 ---
@@ -198,7 +198,7 @@ The `cadence-implementer` agent executes strict red-green-refactor cycles for ev
 
 1. **RED** — Author the failing test for the current scenario. Confirm it fails for the expected reason.
 2. **GREEN** — Write the minimum production code required to make the test pass. Nothing extra.
-3. **ACCUMULATE** — Execute the complete test suite (using `offload_log_triage` / `log-triage` on `:9379` to compact verbose test logs while preserving verbatim failure output in `/tmp/agy-last-triage.log`). Every test must pass.
+3. **ACCUMULATE** — Execute the complete test suite (using `offload_log_triage` / `log-triage` on `:11434` to compact verbose test logs while preserving verbatim failure output in `/tmp/agy-last-triage.log`). Every test must pass.
 4. **COMMIT** — Create one atomic commit per scenario cycle.
 
 Scenarios are executed in strict order: happy path → not-found → validation → variations → boundaries → concurrency → auth → E2E.
