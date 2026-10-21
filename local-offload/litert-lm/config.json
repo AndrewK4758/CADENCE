@@ -1,0 +1,18 @@
+{
+  "default": {
+    "backend": "cpu",
+    "cpu_thread_count": 16,
+    "max_num_tokens": 4096,
+    "temperature": 0.2
+  },
+  "models": {
+    "gemma3-1b-gpu-custom": {
+      "backend": "cpu",
+      "cpu_thread_count": 16
+    },
+    "gemma-4-e2b": {
+      "backend": "cpu",
+      "cpu_thread_count": 16
+    }
+  }
+}

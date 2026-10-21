@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "local-offload": {
+      "command": "/home/ak/.local/bin/uv",
+      "args": [
+        "run",
+        "--script",
+        "/home/ak/.local/bin/antigravity-local-offload-mcp"
+      ],
+      "env": {
+        "LLAMA_SWAP_URL": "http://127.0.0.1:11434/v1",
+        "LOCAL_AI_TIER1_URL": "http://127.0.0.1:11434/v1",
+        "LOCAL_AI_TIER2_URL": "http://127.0.0.1:11434/v1"
+      }
+    },
+    "youtrack": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@abdullahtas/youtrack-mcp-server"
+      ],
+      "env": {
+        "YOUTRACK_URL": "https://youtrack.example.com",
+        "YOUTRACK_TOKEN": "<YOUR_YOUTRACK_PERMANENT_TOKEN>"
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 ---
 name: cadence-architect
 description: Senior architecture specialist for pre-flight boundary analysis during the Architect & Explore phase. Invoke BEFORE implementing or specifying changes whose blast radius spans multiple bounded contexts or services. Maps implicit cross-boundary contracts via automated local repo-scout discovery, predicts downstream perturbation, and emits status-tagged draft Gherkin boundary contracts.
-tools: ["Read", "Grep", "Glob", "Bash", "read_file", "list_files", "grep", "glob", "search_workspace", "run_shell_command", "web_fetch", "list_agents", "invoke_agent"]
+tools: ["read_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Cross-boundary contract analysis, strict Observed/Inferred/Unknown epistemic separation, and refusal to hallucinate Gherkin specs demand deep reasoning. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
 model: pro
