@@ -17,7 +17,7 @@ Every script communicates strictly across three channels. The orchestrator never
 | Channel | Carries | Consumed by |
 |---|---|---|
 | **stdout** | Machine-readable `key=value` pairs **exclusively**, drawn from that script's contracted output keys (`issue_id=2-13461`, `youtrack_url=…`, `worklog_watermark_advance=<iso8601>`, `assign_result=applied`). Zero prose. Scripts with no output keys emit nothing on stdout. | The orchestrator, which accumulates stdout lines across steps and computes the single end-of-operation `metadata.yaml` write-back |
-| **stderr** | Structured `syncyt.*` audit condition lines and diagnostic messages. Never parsed for orchestrator control flow (when verbose non-zero stderr output exceeds 30 lines, the orchestrator routes it through `offload_log_triage` on `:9379` while saving raw output to `/tmp/agy-last-triage.log`). | The human operator and session transcript |
+| **stderr** | Structured `syncyt.*` audit condition lines and diagnostic messages. Never parsed for orchestrator control flow (when verbose non-zero stderr output exceeds 30 lines, the orchestrator routes it through `offload_log_triage` on `:11434` while saving raw output to `/tmp/agy-last-triage.log`). | The human operator and session transcript |
 | **exit code** | Numeric status code (table below). | The orchestrator's halt gate (`yt_run_step`) |
 
 ### Exit codes

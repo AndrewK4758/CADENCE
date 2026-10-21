@@ -73,7 +73,7 @@ Never use `[ -f ]` alone because a 0-byte file exits `0` without scanning anythi
   ```bash
   bash ci-templates/scripts/dead-citation-gate.sh --id {ticket-id}
   ```
-  *(If output exceeds 30 lines, automatically pass it through `offload_log_triage` on `:9379` while preserving `/tmp/agy-last-triage.log`.)*
+  *(If output exceeds 30 lines, automatically pass it through `offload_log_triage` on `:11434` while preserving `/tmp/agy-last-triage.log`.)*
   Interpret the exit code strictly as three distinct outcomes (`0` clean; `1` violation hits; `2` setup failure):
   - **Exit `0`:** Proceed to Step 3 (`G-1` state).
   - **Exit `1`:** For **every** reported hit, apply **exactly one** disposition (never auto-rewrite without inspecting each line; `NOT-A-COMMENT` hits represent code such as filter globs or historical `git show <ref>:specs/<id>/...` references where repointing would break working code!):
@@ -166,7 +166,7 @@ Verify `CADENCE_ORG.md#tracker-binding` resolves a bound tracker and sync skill 
 
 ### Step 8: Propose Living Flow Documentation Updates (`docs/flows/` & `docs/SYSTEM_OVERVIEW.md`)
 
-**Automatically run `local_semantic_embed`** (`local-embed-cpu` on `:9379`, 0 MB VRAM) to match the archived spec's endpoints, events, queues, and bounded contexts against `docs/flows/*.md` and `docs/SYSTEM_OVERVIEW.md`:
+**Automatically run `local_semantic_embed`** (`local-embed-cpu` on `:11434`, 0 MB VRAM) to match the archived spec's endpoints, events, queues, and bounded contexts against `docs/flows/*.md` and `docs/SYSTEM_OVERVIEW.md`:
 - Draft updates to modified `docs/flows/{flow-name}.md` files (or instantiate from `docs/flows/TEMPLATE.md` for new flows), append `- archive/{ticket-id}/ — {brief description}` under `Related Specs`, update `docs/SYSTEM_OVERVIEW.md` if topology changed, and commit for human review:
   ```bash
   git add docs/flows/ docs/SYSTEM_OVERVIEW.md

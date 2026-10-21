@@ -31,7 +31,7 @@ Before running its evaluation, `/cadence-maintain` verifies that **Gate 2 Code R
 To give `cadence-maintainer` and the human Maintainer complete repository-wide visibility without context bloat, `/cadence-maintain` automatically engages CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`):
 
 1. **Cross-Boundary & Pillar Pre-Scan (`offload_deep_review` on `local-moe-hybrid` / `local-12b-gpu`):** Audits the full integration-branch diff against `docs/policies/surface-registry.md`, `docs/policies/cadence-surfaces.md`, `docs/policies/deprecation-policy.md`, and `docs/policies/doc-maintenance-policy.md` (including verifying the two-search reconciliation sweep record and `< 400`-line file ceiling).
-2. **Semantic ADR & Intent Alignment Check (`local_semantic_embed` / `repo-scout` on `local-embed-cpu`):** Runs zero-VRAM semantic searches (`nomic-embed-text` on port `9379`) across `docs/ADR/`, `PROJECT_INTENT.md`, and `docs/flows/` to detect subtle contradictions against ratified ADRs or un-updated flow narratives.
+2. **Semantic ADR & Intent Alignment Check (`local_semantic_embed` / `repo-scout` on `local-embed-cpu`):** Runs zero-VRAM semantic searches (`nomic-embed-text` on port `11434`) across `docs/ADR/`, `PROJECT_INTENT.md`, and `docs/flows/` to detect subtle contradictions against ratified ADRs or un-updated flow narratives.
 
 All pre-scan signals are verified by the primary `cadence-maintainer` reasoning model before producing the 8-dimension Maintainer Assessment.
 

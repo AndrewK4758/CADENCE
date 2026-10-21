@@ -29,7 +29,7 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
 1. **Read the intake artifacts and run automatic local codebase discovery:**
    - Read `specs/$ticket_id/problem.md` and `specs/$ticket_id/metadata.yaml`.
-   - **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `local-moe-hybrid`).** Prior to broad repository file reads, automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) and `local-moe-hybrid` (`local-moe-hybrid` on `:9380`) to map affected codebase symbols, cross-boundary contracts, CHORD seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`), and prior architecture records (`docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`). Forward the resulting symbol map and exact `file:line` references to `cadence-explorer` (Step 2) and `cadence-spec-author` (Step 3).
+   - **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `local-moe-hybrid`).** Prior to broad repository file reads, automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) to map affected codebase symbols, cross-boundary contracts, CHORD seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`), and prior architecture records (`docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`). Forward the resulting symbol map and exact `file:line` references to `cadence-explorer` (Step 2) and `cadence-spec-author` (Step 3).
 
 2. **Explore the design space (mandatory independent pre-step).** Invoke the `cadence-explorer` subagent, which will:
    - Inspect `specs/$ticket_id/problem.md`, `specs/$ticket_id/metadata.yaml`, and the affected source files identified in Step 1
@@ -59,7 +59,7 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
    This deterministic structural gate — the specification counterpart to `/cadence-elicit`'s unfilled-probe grep — verifies that all required headings are present, every mandatory Engineering Pillar is evaluated, CHORD decompositions (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`) and Gherkin scenarios exist, and zero template placeholders remain unfilled.
 
-   - **Automatic Failure Triage (`offload_log_triage`).** Whenever `verify-spec.sh` exits **non-zero** (or emits multi-line failure output), automatically pass its output through `offload_log_triage` (`local-fast-cpu` on `:9379`, preserving raw numbered lines in `/tmp/agy-last-triage.log`) to extract the verbatim failing check assertions and exact `file:line` coordinates of unfilled placeholders. Return those exact failures to `cadence-spec-author` for remediation, then **re-run `verify-spec.sh`. Repeat this loop until the script exits 0.** Never advance to Step 5 while any structural check fails.
+   - **Automatic Failure Triage (`offload_log_triage`).** Whenever `verify-spec.sh` exits **non-zero** (or emits multi-line failure output), automatically pass its output through `offload_log_triage` (`local-fast-cpu` on `:11434`, preserving raw numbered lines in `/tmp/agy-last-triage.log`) to extract the verbatim failing check assertions and exact `file:line` coordinates of unfilled placeholders. Return those exact failures to `cadence-spec-author` for remediation, then **re-run `verify-spec.sh`. Repeat this loop until the script exits 0.** Never advance to Step 5 while any structural check fails.
    - `WARN` diagnostics (such as an acceptance-criterion count difference between `problem.md` and `spec.md`) do not block execution, but must be surfaced to the operator in Step 7 so the human spec-approval gate can verify no criterion was inadvertently dropped.
 
    Remember that `verify-spec.sh` checks *structural completeness*, not *engineering soundness*. Judging whether the Contextual Grounding Matrix (6W×4L) cells are accurate, whether the CHORD edge cases are realistic, and whether the chosen architecture is sound belongs to Step 5 and the human spec-approval gate.
@@ -70,7 +70,7 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
    .agents/skills/cadence-spec/verify-facts.sh $ticket_id
    ```
 
-   This script validates every `Files Affected` entry (`Add`/`Modify`/`Delete`) and every backticked `path:N` line citation against the actual repository tree — eliminating manual proofreading of mechanical file facts. It blocks only when `spec.md` carries the `**Gate 1 rulings:** required` sentinel under Open Questions (specs without that sentinel emit `WARN` lines only and exit 0). Whenever `verify-facts.sh` exits non-zero, automatically pass the output through `offload_log_triage` (`local-fast-cpu` on `:9379`), hand the verbatim `FAIL` lines back to `cadence-spec-author`, and re-run until clean.
+   This script validates every `Files Affected` entry (`Add`/`Modify`/`Delete`) and every backticked `path:N` line citation against the actual repository tree — eliminating manual proofreading of mechanical file facts. It blocks only when `spec.md` carries the `**Gate 1 rulings:** required` sentinel under Open Questions (specs without that sentinel emit `WARN` lines only and exit 0). Whenever `verify-facts.sh` exits non-zero, automatically pass the output through `offload_log_triage` (`local-fast-cpu` on `:11434`), hand the verbatim `FAIL` lines back to `cadence-spec-author`, and re-run until clean.
 
 5. **Verify engineering completeness (judgment review).** Once both mechanical gates exit 0, verify:
    - Every acceptance criterion in `problem.md` maps to a concrete design element in `spec.md` and a Gherkin scenario in `test-plan.md`
@@ -97,6 +97,6 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 ```
 
 ## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 1 automatically invokes `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) and `local-moe-hybrid` (`local-moe-hybrid` on `:9380`) to gather type signatures, cross-boundary contracts, and prior insights without polluting the primary context window.
-- Step 4 automatically pipes any `verify-spec.sh` or `verify-facts.sh` failure output through `offload_log_triage` (`local-fast-cpu` on `:9379`) to extract verbatim `FAIL` assertions and `file:line` coordinates.
+- Step 1 automatically invokes `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) to gather type signatures, cross-boundary contracts, and prior insights without polluting the primary context window.
+- Step 4 automatically pipes any `verify-spec.sh` or `verify-facts.sh` failure output through `offload_log_triage` (`local-fast-cpu` on `:11434`) to extract verbatim `FAIL` assertions and `file:line` coordinates.
 - Contextual Grounding Matrix (6W×4L) analysis, CHORD decomposition, divergent design options, and Gherkin test plans remain 100% authored by `gemini-4-argon-high`.

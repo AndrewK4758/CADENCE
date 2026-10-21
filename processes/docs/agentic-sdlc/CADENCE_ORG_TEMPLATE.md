@@ -416,7 +416,7 @@ Production → Seam fires with structured signal → Next issue triaged with ful
 | Agent | Action |
 |---|---|
 | **`cadence-triage-agent`** | Classifies production defects into `LOGIC_FAULT` / `DELTA_AUDIT_GAP` / `DRIFT_SIGNAL` / `BOUNDARY_FAULT`, maps each to its CHORD dimension (`Conditions`, `Handling`, `Outcomes`, `Rules`, `Deltas`), and appends a `PROD-NNN` entry to `production-insights.md` |
-| **`cadence-spec-author`** | Queries `production-insights.md` (via `repo-scout` / `local_semantic_embed` on `:9379`) before authoring `spec.md`; mandates CHORD observability seams for components with prior incidents and intensifies edge-case derivation on historically weak dimensions |
+| **`cadence-spec-author`** | Queries `production-insights.md` (via `repo-scout` / `local_semantic_embed` on `:11434`) before authoring `spec.md`; mandates CHORD observability seams for components with prior incidents and intensifies edge-case derivation on historically weak dimensions |
 | **`cadence-implementer`** | Reviews relevant `PROD-NNN` entries for the target domain; implements CHORD observability seams as red-green-refactor TDD scenarios; emits structured JSON seam events per `docs/policies/observability-patterns.md` |
 | **`cadence-archivist`** | Compiles periodic pattern summaries in `production-insights.md` and promotes recurring cross-ticket lessons to formal ADRs |
 
@@ -448,8 +448,8 @@ This section declares the capability tiers and concrete model identifiers used b
 |---|---|
 | Deep-reasoning | gemini-4-argon (`pro`) |
 | Fast-mechanical | gemini-3.8-flash (`flash`) |
-| Local-coprocessor Tier 1 (Always-On CPU `:9379`) | `local-fast-cpu` (`gemma-4-e2b-it`, 128MB 3D V-Cache, 0 VRAM) + `local-embed-cpu` (`nomic-embed-text`, 0 VRAM) |
-| Local-coprocessor Tier 2 (On-Demand Hybrid/GPU `:9380`) | `local-moe-hybrid` (`gemma-4-26b-a4b-it`) + `local-12b-gpu` (`gemma-4-12b-it`, RTX 5070 Ti 12GB VRAM) |
+| Local-coprocessor Tier 1 (Always-On CPU `:11434`) | `local-fast-cpu` (`gemma-4-e2b-it`, 128MB 3D V-Cache, 0 VRAM) + `local-embed-cpu` (`nomic-embed-text`, 0 VRAM) |
+| Local-coprocessor Tier 2 (On-Demand Hybrid/GPU `:11434`) | `local-moe-hybrid` (`gemma-4-26b-a4b-it`) + `local-12b-gpu` (`gemma-4-12b-it`, RTX 5070 Ti 12GB VRAM) |
 
 ### Tier → Agents
 
@@ -459,13 +459,13 @@ This section declares the capability tiers and concrete model identifiers used b
 | Fast-mechanical | cadence-triage-agent, cadence-archivist, cadence-implementer |
 | Local-coprocessor (Read-Only Subagents & MCP Tools) | `log-triage` (`offload_log_triage`), `repo-scout` (`local_semantic_embed`), `offload_deep_review` |
 
-> **Why `cadence-implementer` and `cadence-reviewer` sit on distinct capability tiers.** `cadence-implementer` executes on Fast-mechanical (or Deep-reasoning when overridden for complex multi-context TDD) while `cadence-reviewer` runs on Deep-reasoning. More importantly, review-gate independence from the implementer is **structural** — `cadence-reviewer` runs in an isolated context window, re-derives expected behavior directly from `spec.md` and `test-plan.md` (assisted by `offload_deep_review` mechanical pre-scans on `:9380`), and never inherits the implementer's session reasoning. See [ADR_CADENCE-0007](../ADR/0007-review-gate-independence-is-structural.md).
+> **Why `cadence-implementer` and `cadence-reviewer` sit on distinct capability tiers.** `cadence-implementer` executes on Fast-mechanical (or Deep-reasoning when overridden for complex multi-context TDD) while `cadence-reviewer` runs on Deep-reasoning. More importantly, review-gate independence from the implementer is **structural** — `cadence-reviewer` runs in an isolated context window, re-derives expected behavior directly from `spec.md` and `test-plan.md` (assisted by `offload_deep_review` mechanical pre-scans on `:11434`), and never inherits the implementer's session reasoning. See [ADR_CADENCE-0007](../ADR/0007-review-gate-independence-is-structural.md).
 
 ### Automatic 2-Tier Local Hardware Coprocessor Offload Rules
 
 1. **Zero Autonomous File Writes:** Local coprocessor models (`gemma-4-e2b-it`, `gemma-4-12b-it`, `gemma-4-26b-a4b-it`, `nomic-embed-text`) act strictly as read-only analytical and retrieval coprocessors (`enable_write_tools: false`). All planning, specification authoring, code generation, and gate verdicts remain 100% owned by the primary cloud tiers.
-2. **Verbatim Log Extraction + Raw Escape Hatch:** During `/cadence-implement` TDD cycles, `offload_log_triage` (`local-fast-cpu` on `:9379`) compacts verbose test/compiler output into verbatim error lines, `file:line` coordinates, and coverage metrics while writing the complete unedited log with line numbers to `/tmp/agy-last-triage.log` for deeper inspection whenever needed.
-3. **Zero-VRAM Semantic Discovery & On-Demand Pre-Review Sweeps:** `/cadence-triage` and `/cadence-spec` use `local_semantic_embed` / `repo-scout` (`:9379`) to search insights and codebase symbols at 0 MB GPU VRAM, while `/cadence-review` and `/cadence-maintain` invoke `offload_deep_review` (`:9380`) for advisory mechanical checks prior to issuing gate verdicts.
+2. **Verbatim Log Extraction + Raw Escape Hatch:** During `/cadence-implement` TDD cycles, `offload_log_triage` (`local-fast-cpu` on `:11434`) compacts verbose test/compiler output into verbatim error lines, `file:line` coordinates, and coverage metrics while writing the complete unedited log with line numbers to `/tmp/agy-last-triage.log` for deeper inspection whenever needed.
+3. **Zero-VRAM Semantic Discovery & On-Demand Pre-Review Sweeps:** `/cadence-triage` and `/cadence-spec` use `local_semantic_embed` / `repo-scout` (`:11434`) to search insights and codebase symbols at 0 MB GPU VRAM, while `/cadence-review` and `/cadence-maintain` invoke `offload_deep_review` (`:11434`) for advisory mechanical checks prior to issuing gate verdicts.
 
 ### Adopter substitution
 

@@ -126,7 +126,7 @@ dotnet ef migrations add {TicketId}_Expand_{Description} \
   --startup-project {startup-project-path} \
   --output-dir Migrations
 ```
-*(Automatic Log Offload: whenever `dotnet ef` or compiler output exceeds 30 lines or exits non-zero, **automatically pass the output to `offload_log_triage`** on `local-fast-cpu` `:9379` so exact compiler/EF errors and `file:line` coordinates are extracted while raw logs are saved to `/tmp/agy-last-triage.log`.)*
+*(Automatic Log Offload: whenever `dotnet ef` or compiler output exceeds 30 lines or exits non-zero, **automatically pass the output to `offload_log_triage`** on `local-fast-cpu` `:11434` so exact compiler/EF errors and `file:line` coordinates are extracted while raw logs are saved to `/tmp/agy-last-triage.log`.)*
 
 ### 2.4 Audit & Harden the Generated Migration File
 
@@ -202,7 +202,7 @@ dotnet ef database update {PreviousMigrationName} --project {data-project} --sta
 # 3. Re-apply forward migration
 dotnet ef database update --project {data-project} --startup-project {startup-project}
 ```
-Route any command output exceeding 30 lines or any non-zero exit through `offload_log_triage` (`local-fast-cpu` on `:9379`). All three steps must succeed (if no local test database is reachable, document the exact manual verification commands and flag it prominently in your return report).
+Route any command output exceeding 30 lines or any non-zero exit through `offload_log_triage` (`local-fast-cpu` on `:11434`). All three steps must succeed (if no local test database is reachable, document the exact manual verification commands and flag it prominently in your return report).
 
 ## Phase 5: Deferred Contraction Tracking (`expand` Mode Only)
 

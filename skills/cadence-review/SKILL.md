@@ -12,7 +12,7 @@ Audit the change proposal `$mr_ref` (whether a GitLab MR, GitHub PR, or SourceHu
 
 ## Steps
 
-0. **Mandatory Automatic Mechanical Pre-Scan (`offload_deep_review`).** Once the target branch and integration branch diff (`git diff <integration-branch>...{branch-name}`) are resolved in Steps 1–3, automatically invoke `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:9380`) on the diff **before** delegating to `cadence-reviewer`. The local coprocessor performs an advisory mechanical audit checking:
+0. **Mandatory Automatic Mechanical Pre-Scan (`offload_deep_review`).** Once the target branch and integration branch diff (`git diff <integration-branch>...{branch-name}`) are resolved in Steps 1–3, automatically invoke `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) on the diff **before** delegating to `cadence-reviewer`. The local coprocessor performs an advisory mechanical audit checking:
    - Single-pass readability ceiling (`<400` lines per modified/added file under the Agentic Ergonomics pillar)
    - Comment and docstring preservation discipline
    - Presence of CHORD observability seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`) and obvious security boundary patterns
@@ -93,6 +93,6 @@ Audit the change proposal `$mr_ref` (whether a GitLab MR, GitHub PR, or SourceHu
 ```
 
 ## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically invokes `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:9380`) to execute an advisory mechanical pre-scan over the branch diff (verifying the `<400`-line Agentic Ergonomics ceiling, comment preservation discipline, CHORD observability seams, and security boundary patterns).
-- Step 6c uses `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) / `local-moe-hybrid` when checking `specs/` and `archive/` for prior-work deduplication.
+- Step 0 automatically invokes `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) to execute an advisory mechanical pre-scan over the branch diff (verifying the `<400`-line Agentic Ergonomics ceiling, comment preservation discipline, CHORD observability seams, and security boundary patterns).
+- Step 6c uses `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) / `local-moe-hybrid` when checking `specs/` and `archive/` for prior-work deduplication.
 - `gemini-4-argon-high` independently verifies all mechanical flags and conducts the four-position adversarial review against the approved tier contract (`spec.md` or `problem.md`) before issuing the verdict.

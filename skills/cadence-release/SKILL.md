@@ -112,7 +112,7 @@ A simple file-existence check (`[ -f ]`) is **insufficient**: a truncated zero-b
 bash ci-templates/scripts/authored-doc-gate.sh --path docs/releases/vX.Y.Z.md
 ```
 
-If `authored-doc-gate.sh` (or an accompanying `dead-citation-gate.sh` check) produces noisy diagnostic output exceeding 30 lines, **automatically route the output through `offload_log_triage` (`local-fast-cpu` on `:9379`)** to extract verbatim violation lines and `file:line` coordinates while preserving the complete raw log in `/tmp/agy-last-triage.log`.
+If `authored-doc-gate.sh` (or an accompanying `dead-citation-gate.sh` check) produces noisy diagnostic output exceeding 30 lines, **automatically route the output through `offload_log_triage` (`local-fast-cpu` on `:11434`)** to extract verbatim violation lines and `file:line` coordinates while preserving the complete raw log in `/tmp/agy-last-triage.log`.
 
 This script is the **exact same classifier** executed by the `authored-doc` CI gate, `cadence-triage-agent`'s PROD-entry checks, and `/cadence-archive`'s insights checks — one canonical gate script that **detects, classifies, and blocks without ever auto-rewriting files.**
 

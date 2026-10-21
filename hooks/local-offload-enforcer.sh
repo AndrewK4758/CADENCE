@@ -1,11 +1,15 @@
 #!/bin/sh
-# Lifecycle hook (PreInvocation + PostToolUse) for universal CADENCE / LiteRT Local Hardware Coprocessor Offload enforcement.
-# Routes all prompts (both general/ad-hoc requests and /cadence-* skills) through the unified llama-swap gateway on 127.0.0.1:11434
-# (`local-offload` MCP tools: `local_semantic_embed`, `offload_log_triage`, `offload_deep_review`, and subagents: `repo-scout`, `log-triage`).
-# Supports both Antigravity (PreInvocation -> injectSteps ephemeralMessage; PostToolUse -> queues reminder) and Claude Code (PostToolUse -> systemMessage).
+# Global Lifecycle Hook (PreInvocation + PostToolUse) for Universal LiteRT / CADENCE Local Offload (:11434).
+# Installed globally in ~/.gemini/config/hooks.json and ~/.agents/hooks.json so it runs on ALL repositories
+# without per-repo configuration, and deduplicates across both global and repo-level hook invocations.
 
 fail_safe() { exit 0; }
 trap fail_safe EXIT
+
+if [ "${AGY_DISABLE_LITERT:-0}" = "1" ]; then
+  printf '{}'
+  exit 0
+fi
 
 raw=$(cat 2>/dev/null)
 [ -n "$(printf '%s' "$raw" | tr -d ' \t\r\n')" ] || exit 0
@@ -44,9 +48,10 @@ if [ -n "$inv_num" ] && ! printf '%s' "$raw" | grep -q '"toolCall"'; then
     fi
   fi
 
-  # On the first invocation of a user prompt turn (invocationNum == 1), inject a transient reminder
-  if [ "$inv_num" = "1" ]; then
-    msg="[MANDATORY LITERT / LOCAL-OFFLOAD PIPELINE (:11434)]: On THIS prompt (whether ad-hoc or /cadence-*), you MUST use your local-offload MCP tools (call_mcp_tool ServerName='local-offload' — read /home/ak/.gemini/antigravity-cli/mcp/local-offload/<tool>.json first if lazy-loaded) and offload subagents (repo-scout, log-triage): (1) Step 0 Discovery: call local_semantic_embed or invoke_subagent(TypeName='repo-scout') to rank candidate files before broad read_file/grep/find sweeps; (2) Log Triage: route test/build/diagnostic commands or >30-line outputs through offload_log_triage (log_text_or_command='cmd:<command>' or text/path) or log-triage; (3) Pre-Commit Review: call offload_deep_review on modified files before committing or opening a PR."
+  first_file="/tmp/agy-offload-first.${safe_sid}"
+  if [ ! -f "$first_file" ]; then
+    printf '%s' "$inv_num" > "$first_file" 2>/dev/null
+    msg="[MANDATORY LITERT / LOCAL-OFFLOAD PIPELINE (:11434) — INLINE SCHEMAS READY (DO NOT read_file .json schemas)]: Call call_mcp_tool(ServerName='local-offload', ToolName=..., Arguments=...) directly on Turn 1 without reading /home/ak/.gemini/antigravity-cli/mcp/local-offload/*.json: (1) local_semantic_embed: Arguments={'texts':['<file_or_dir>',...],'query':'<search_query>','top_k':6} — returns AST-aligned Pinned Context Slices + full File Symbol Maps (sym@L<line>); answer directly from pinned slices and only read_file specific missing StartLine..EndLine ranges; (2) offload_log_triage: Arguments={'log_text_or_command':'cmd:<shell_cmd>' or '<log_path_or_text>','model':'inference'} — runs/triages tests & builds on :11434 and writes raw log to /tmp/agy-triage/<repo_name>/<pid>.log (eliminates run_command for tests); (3) offload_deep_review: Arguments={'prompt':'<task>','context_files':['<path>',...],'model':'inference'} before commit/PR. NOTE: If [LiteRT Pre-Modified Execution Pack (:11434)] is ALREADY in the prompt, do NOT re-run local_semantic_embed or offload_log_triage."
     printf '{"injectSteps":[{"ephemeralMessage":"%s"}]}' "$msg"
     exit 0
   fi
@@ -60,6 +65,17 @@ fi
 # ---------------------------------------------------------------------------
 is_agy=0
 printf '%s' "$raw" | grep -q '"toolCall"' && is_agy=1
+
+step_idx=$(extract_int stepIdx)
+if [ -n "$step_idx" ]; then
+  post_dedup="/tmp/agy-offload-posttool.${safe_sid}"
+  prev_step=$(cat "$post_dedup" 2>/dev/null || echo "")
+  if [ "$prev_step" = "$step_idx" ]; then
+    [ "$is_agy" -eq 1 ] && printf '{}'
+    exit 0
+  fi
+  printf '%s' "$step_idx" > "$post_dedup" 2>/dev/null
+fi
 
 cmd_str=$(printf '%s' "$raw" | sed -n 's/.*"CommandLine"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
 if [ -z "$cmd_str" ]; then
@@ -75,7 +91,7 @@ remind_file="/tmp/agy-offload-remind.${safe_sid}"
 
 case "$cmd_str" in
   *"dotnet test"*|*"dotnet build"*|*"dotnet ef"*|*"pytest"*|*"npm test"*|*"pnpm test"*|*"cargo test"*|*"cargo check"*|*"go test"*|*"verify-spec.sh"*|*"verify-facts.sh"*|*"authored-doc-gate.sh"*|*"dead-citation-gate.sh"*)
-    msg="CADENCE Automatic Local Offload (:11434): Route any test/build/compiler/gate output exceeding 30 lines or exiting non-zero through call_mcp_tool(ServerName='local-offload', ToolName='offload_log_triage', Arguments={'log_text_or_command': ...}) or invoke_subagent(TypeName='log-triage') (raw log saved at /tmp/agy-last-triage.log)."
+    msg="CADENCE Automatic Local Offload (:11434): Route any test/build/compiler/gate output exceeding 30 lines or exiting non-zero through call_mcp_tool(ServerName='local-offload', ToolName='offload_log_triage', Arguments={'log_text_or_command': ...}) or invoke_subagent(TypeName='log-triage') (raw log saved at /tmp/agy-triage/<repo_name>/<pid>.log)."
     if [ "$is_agy" -eq 1 ]; then
       printf '%s' "$msg" > "$remind_file" 2>/dev/null
       printf '{}'

@@ -35,12 +35,17 @@ mkdir -p \
   "$HOME/.gemini/config" \
   "$HOME/.gemini/antigravity-cli/mcp/local-offload"
 
-# 1. Install FastMCP server & lifecycle hook to ~/.local/bin (normalizing /home/ak -> $HOME)
+# 1. Install FastMCP server, lifecycle hook, and agy wrapper to ~/.local/bin (normalizing /home/ak -> $HOME)
 sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/mcp/antigravity-local-offload-mcp" > "$HOME/.local/bin/antigravity-local-offload-mcp"
 chmod +x "$HOME/.local/bin/antigravity-local-offload-mcp"
 
 sed "s|/home/ak|$HOME|g" "$REPO_ROOT/hooks/antigravity-local-offload-hook" > "$HOME/.local/bin/antigravity-local-offload-hook"
 chmod +x "$HOME/.local/bin/antigravity-local-offload-hook"
+
+if [[ -f "$SCRIPT_DIR/mcp/agy" && -x /usr/bin/agy ]]; then
+  sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/mcp/agy" > "$HOME/.local/bin/agy"
+  chmod +x "$HOME/.local/bin/agy"
+fi
 
 # 2. Install llamaswap-server, local-ai-offload-serve, and llama-swap configs
 sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/llama-swap/llamaswap-server" > "$HOME/.local/bin/llamaswap-server"

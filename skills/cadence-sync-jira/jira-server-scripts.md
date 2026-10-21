@@ -35,7 +35,7 @@ never scrapes prose.
 | `3` | Transport unreachable (`syncjs.transport.rest_unreachable`) — distinct from a ticket-resolution failure | **Halt** this ticket |
 | `4` | Config marker absent or malformed — a fail-loud config key could not be resolved (`syncjs.config.marker_unresolved`) | **Halt** this ticket |
 
-Any non-zero exit halts the orchestrator **for that ticket** (`AGENTS.md` Behavior 5). When a script exits non-zero with verbose Jira REST/HTML error payloads or stack diagnostics on stderr (`> 30` lines), route the diagnostic stream through `offload_log_triage` (`local-fast-cpu` on `:9379`) to extract the verbatim `syncjs.*` condition and HTTP status while preserving the unedited response in `/tmp/agy-last-triage.log`. Explicitly
+Any non-zero exit halts the orchestrator **for that ticket** (`AGENTS.md` Behavior 5). When a script exits non-zero with verbose Jira REST/HTML error payloads or stack diagnostics on stderr (`> 30` lines), route the diagnostic stream through `offload_log_triage` (`local-fast-cpu` on `:11434`) to extract the verbatim `syncjs.*` condition and HTTP status while preserving the unedited response in `/tmp/agy-last-triage.log`. Explicitly
 **best-effort** operations (assignment, acceptance-criteria write, linking, self-identity) exit `0` and
 report a skip or rejection as a stdout `*_result=` payload plus a stderr condition, allowing the orchestrator
 to continue.

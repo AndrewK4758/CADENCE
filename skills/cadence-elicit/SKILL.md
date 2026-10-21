@@ -25,7 +25,7 @@ Prior to presenting any prompt to the requester, verify all four preconditions i
 
 ### 0. Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `local-moe-hybrid`)
 
-Before drafting candidate probe answers in step 3a or evaluating decomposition boundaries in step 4c, automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:9380`) once to retrieve relevant codebase symbols, adjacent system contracts, and prior insights from `docs/agentic-sdlc/intent-insights.md` and `specs/`/`archive/` without performing broad manual file reads in the primary context window. When grounding a candidate answer as `Observed` in step 3a, explicitly read the specific file coordinate surfaced by `local-moe-hybrid` in this turn.
+Before drafting candidate probe answers in step 3a or evaluating decomposition boundaries in step 4c, automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) once to retrieve relevant codebase symbols, adjacent system contracts, and prior insights from `docs/agentic-sdlc/intent-insights.md` and `specs/`/`archive/` without performing broad manual file reads in the primary context window. When grounding a candidate answer as `Observed` in step 3a, explicitly read the specific file coordinate surfaced by `local-moe-hybrid` in this turn.
 
 ### 1. Tier gate
 
@@ -323,5 +323,5 @@ When `PI-006` is Trivial or Low tier, halts immediately citing the tier and `doc
 When `specs/PI-007/problem.md` already contains `## Elicited Intent`, displays a 1–2 line summary of the existing section and prompts for confirmation before overwriting.
 
 ## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically calls `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:9380`) to gather codebase context and prior insights before candidate composition (step 3a) and plurality split analysis (step 4c).
+- Step 0 automatically calls `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) to gather codebase context and prior insights before candidate composition (step 3a) and plurality split analysis (step 4c).
 - Candidate rubric filtering, interactive elicitation, and verbatim capture remain 100% owned by Gemini.

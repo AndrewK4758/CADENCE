@@ -47,7 +47,7 @@ If the proposal is ambiguous on any of these three points, **halt and ask for cl
 ## Step 2: Automatically Map Concepts Across Boundaries (Automatic Local Offload + Cross-Context Search)
 
 For every domain concept identified in Step 1, **automatically run a local semantic and hybrid MoE boundary sweep first** before manual file-by-file reading:
-- Invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB GPU VRAM) and/or delegate to the `repo-scout` subagent (`local-moe-hybrid` 26B-A4B on `:9380`) to locate all occurrences of each concept across modules, schemas, events, DTOs, and `docs/flows/`.
+- Invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB GPU VRAM) and/or delegate to the `repo-scout` subagent (`local-moe-hybrid` 26B-A4B on `:11434`) to locate all occurrences of each concept across modules, schemas, events, DTOs, and `docs/flows/`.
 - Supplement the local offload sweep with the project's configured cross-context knowledge source (LightRAG, code search index, `Grep`/`Glob`, or architectural docs) searching for concept names alongside schema, event, payload, column, and contract keywords.
 - *(Fallback guard: if the local offload server is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and execute the search directly via `Grep`/`Glob`.)*
 

@@ -46,7 +46,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
 1. **Read the ticket's archival inputs and match affected flow docs via `local_semantic_embed`:**
    - Read `specs/$ticket_id/metadata.yaml` (lifecycle status, URLs, timestamps, effort ledger)
    - Read `specs/$ticket_id/submission.md` (resolution summary and review/maintainer discussion record, if present)
-   - **Automatic Semantic Flow Matching (`local_semantic_embed`).** Automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) to compare the ticket's specification/summary against `docs/flows/*.md`, `docs/ADR/*.md`, and `docs/agentic-sdlc/intent-insights.md`. Pass the matched flow documents and related ADRs to `cadence-archivist` in Step 2 so flow-documentation update proposals and ADR cross-references are grounded without brute-force reading of unrelated docs.
+   - **Automatic Semantic Flow Matching (`local_semantic_embed`).** Automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) to compare the ticket's specification/summary against `docs/flows/*.md`, `docs/ADR/*.md`, and `docs/agentic-sdlc/intent-insights.md`. Pass the matched flow documents and related ADRs to `cadence-archivist` in Step 2 so flow-documentation update proposals and ADR cross-references are grounded without brute-force reading of unrelated docs.
 
 1b. **Disposition recorded `adr-owed` findings** prior to delegating to `cadence-archivist` (`PROD_CADENCE-015`). First, enforce `docs/policies/finding-classes.md` Routing step 1's unlabelled-entry check across all undispositioned Non-Blocking items in `submission.md`'s `## Discussion`, ensuring any human-supplied class label (including `adr-owed`) is written as a Routing step 1 note before `adr-owed` items are gathered. Next, extract every `[adr-owed]` item from `## Discussion` (live path) — including items tagged `adr-owed` via a Routing step 1 note ("read it exactly as if" rule) — and display each item alongside its recorded trigger precondition and current evidence (`docs/policies/finding-classes.md`, *adr-owed at archive*). The human operator selects either **promote** (author the ADR now) or **defer-with-reason** (never re-litigating whether the ADR was owed in the first place). Write each ruling as a single line in `## Discussion` prior to Step 2:
    - Items chosen for **promotion** are passed directly to `cadence-archivist` (Step 2) as mandatory ADR inputs (never re-evaluated or duplicated from `decisions.md`).
@@ -87,7 +87,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
     bash ci-templates/scripts/dead-citation-gate.sh --id $ticket_id
     ```
 
-    **Automatic Output Triage (`offload_log_triage`).** Whenever `dead-citation-gate.sh` exits non-zero or emits violation hits exceeding 30 lines, automatically pass its output through `offload_log_triage` (`local-fast-cpu` on `:9379`, saving the complete numbered raw output to `/tmp/agy-last-triage.log`) to extract every verbatim hit, classification tag (`NOT-A-COMMENT`, etc.), and exact `file:line` coordinate.
+    **Automatic Output Triage (`offload_log_triage`).** Whenever `dead-citation-gate.sh` exits non-zero or emits violation hits exceeding 30 lines, automatically pass its output through `offload_log_triage` (`local-fast-cpu` on `:11434`, saving the complete numbered raw output to `/tmp/agy-last-triage.log`) to extract every verbatim hit, classification tag (`NOT-A-COMMENT`, etc.), and exact `file:line` coordinate.
 
     This invokes the **exact same script** used by the `dead-citation` CI gate row and by Step 2c below — one shared classifier across all three call sites. (In adopter repositories that have not copied the optional Beta `run-gates.sh` harness, Step 2b and Step 2c are the sole callers.) The classifier **detects, classifies, and blocks; it never auto-edits files.**
 
@@ -180,7 +180,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
     bash ci-templates/scripts/dead-citation-gate.sh --except-id $ticket_id
     ```
 
-    Whenever the output exceeds 30 lines, automatically pass it through `offload_log_triage` (`local-fast-cpu` on `:9379`, saving raw numbered output to `/tmp/agy-last-triage.log`).
+    Whenever the output exceeds 30 lines, automatically pass it through `offload_log_triage` (`local-fast-cpu` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`).
 
     `--except-id $ticket_id` scans every archived ticket ID in the repository **except** `$ticket_id`. Together, Step 2b (`--id $ticket_id`) and Step 2c (`--except-id $ticket_id`) partition the entire `archive/` set with zero overlap and complete coverage — subject to one documented carve-out: files carrying a **blanket file-level exemption** in `dead-citation-exemptions.txt` (such as the append-only ledger `docs/agentic-sdlc/intent-insights.md`, per BTG-133 DEC-033) are excluded from both passes by design.
 
@@ -226,7 +226,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
     bash ci-templates/scripts/authored-doc-gate.sh --path docs/agentic-sdlc/production-insights.md
     ```
 
-    (If output exceeds 30 lines, automatically compact via `offload_log_triage` on `:9379`.) This runs the **same classifier** invoked by the `authored-doc` CI gate, `/cadence-release` step 4b, and triage's `PROD`-entry append:
+    (If output exceeds 30 lines, automatically compact via `offload_log_triage` on `:11434`.) This runs the **same classifier** invoked by the `authored-doc` CI gate, `/cadence-release` step 4b, and triage's `PROD`-entry append:
     - **Exit 0:** proceed to Step 2e.
     - **Exit 1:** remediate each hit by either generalizing the org-specific phrase in the newly written prose or adding a sentence-anchored exemption row in `ci-templates/scripts/authored-doc-ledgers.sh` (anchored strictly to the offending **sentence**, never blanket-exempting the entire file). **Never edit historical archived `PROD-NNN` entries in place**; use a sentence-anchored ledger row for immutable historical records. Record every hit and disposition in `archive/$ticket_id/summary.md`.
     - **Exit 2:** **HALT** immediately on setup failure.
@@ -271,6 +271,6 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
 ```
 
 ## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 1 and Step 2e.c automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) to match archived ticket changes against `docs/flows/*.md` and deduplicate follow-up candidates against `specs/` and `archive/`.
-- Steps 2b, 2c, and 2d automatically pipe `dead-citation-gate.sh` and `authored-doc-gate.sh` output exceeding 30 lines through `offload_log_triage` (`local-fast-cpu` on `:9379`, saving raw numbered output to `/tmp/agy-last-triage.log`).
+- Step 1 and Step 2e.c automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) to match archived ticket changes against `docs/flows/*.md` and deduplicate follow-up candidates against `specs/` and `archive/`.
+- Steps 2b, 2c, and 2d automatically pipe `dead-citation-gate.sh` and `authored-doc-gate.sh` output exceeding 30 lines through `offload_log_triage` (`local-fast-cpu` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`).
 - Archival summary authoring, ADR/insight promotion, and citation disposition decisions remain 100% owned by Gemini (`cadence-archivist` / Argon).

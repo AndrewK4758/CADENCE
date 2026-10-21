@@ -11,7 +11,7 @@ Consult this document **only** when modifying how the orchestrator sequences ste
 
 ## 1. One step of the ticket sequence -- `yt_run_step`
 
-Executes one operation script, appends its stdout `key=value` lines into `$YT_SYNC_PAYLOAD`, streams stderr audit conditions directly to the operator, and returns non-zero whenever the ticket sequence must halt. When a step exits non-zero and emits verbose REST/diagnostic output exceeding 30 lines, the orchestrator also routes the error log through `offload_log_triage` (`local-fast-cpu` on `:9379`) to extract verbatim `syncyt.*` error lines while preserving full raw output in `/tmp/agy-last-triage.log`.
+Executes one operation script, appends its stdout `key=value` lines into `$YT_SYNC_PAYLOAD`, streams stderr audit conditions directly to the operator, and returns non-zero whenever the ticket sequence must halt. When a step exits non-zero and emits verbose REST/diagnostic output exceeding 30 lines, the orchestrator also routes the error log through `offload_log_triage` (`local-fast-cpu` on `:11434`) to extract verbatim `syncyt.*` error lines while preserving full raw output in `/tmp/agy-last-triage.log`.
 
 **The halt check inspects the script's exit code ALONE.** A step's *class* (`blocking` vs. `best-effort`) governs only whether the script itself may report a tracker refusal as a clean exit `0`: when a best-effort step encounters a tracker refusal it cannot overcome, it exits **0** with `<step>_result=rejected` on stdout so the ticket sequence can proceed; any non-zero exit code from any step halts the ticket regardless of class. Keeping exit-code semantics uniform across all scripts ensures a crash or usage error in a best-effort script is never mistaken for a benign refusal.
 

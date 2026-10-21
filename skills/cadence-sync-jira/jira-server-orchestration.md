@@ -9,7 +9,7 @@ Consult this document **only** when modifying how the orchestrator sequences ste
 
 ## 1. One step of the ticket sequence — `run_step`
 
-Executes one operation script, appends its stdout `key=value` lines into `$SYNC_PAYLOAD`, streams stderr audit conditions directly to the operator, and returns non-zero whenever the ticket sequence must halt. When a step exits non-zero and emits verbose REST/diagnostic output exceeding 30 lines, the orchestrator also routes the error log through `offload_log_triage` (`local-fast-cpu` on `:9379`) to extract verbatim `syncjs.*` error lines while preserving full raw output in `/tmp/agy-last-triage.log`. The halt decision inspects the **exit code alone**; the step class (`blocking` vs. `best-effort`) governs only whether the script itself may report a tracker refusal as a clean exit `0` (see the class table in `SKILL.md`).
+Executes one operation script, appends its stdout `key=value` lines into `$SYNC_PAYLOAD`, streams stderr audit conditions directly to the operator, and returns non-zero whenever the ticket sequence must halt. When a step exits non-zero and emits verbose REST/diagnostic output exceeding 30 lines, the orchestrator also routes the error log through `offload_log_triage` (`local-fast-cpu` on `:11434`) to extract verbatim `syncjs.*` error lines while preserving full raw output in `/tmp/agy-last-triage.log`. The halt decision inspects the **exit code alone**; the step class (`blocking` vs. `best-effort`) governs only whether the script itself may report a tracker refusal as a clean exit `0` (see the class table in `SKILL.md`).
 
 ```bash
 #   $1 = blocking|best-effort   $2 = step name (for the report)   $3.. = argv

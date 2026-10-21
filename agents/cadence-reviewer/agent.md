@@ -49,13 +49,13 @@ Read `specs/{ticket-id}/problem.md` (its Acceptance Criteria checklist is the be
 
 ### Step 0: Mandatory Automatic Local Coprocessor Pre-Scan (`offload_deep_review`)
 
-Before beginning manual line-by-line inspection, **automatically invoke `offload_deep_review` on the `local-offload` MCP server** (`local-moe-hybrid` 26B-A4B or `local-12b-gpu` on `127.0.0.1:9380`) passing the `git diff` and touched file line counts, plus `offload_log_triage` (`local-fast-cpu` on `:9379`) if any test/linter command output exceeds 30 lines:
+Before beginning manual line-by-line inspection, **automatically invoke `offload_deep_review` on the `local-offload` MCP server** (`local-moe-hybrid` 26B-A4B or `local-12b-gpu` on `127.0.0.1:11434`) passing the `git diff` and touched file line counts, plus `offload_log_triage` (`local-fast-cpu` on `:11434`) if any test/linter command output exceeds 30 lines:
 - The local coprocessor performs an instant mechanical sweep for:
   1. `<400`-line file ceiling breaches (`<=150` scenario function / `<=400` general function ceiling for BDD test harnesses `ci-templates/scripts/tests/*.test.sh` and `*-lib/*.sh`)
   2. Comment discipline violations (`docs/policies/comment-discipline.md`: change narratives, `specs/` path citations instead of ticket IDs, multi-line rationales not moved to `decisions.md`)
   3. Missing CHORD observability seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`)
   4. Obvious security/PII leaks
-- Treat the local coprocessor output strictly as an **advisory checklist**: you (Gemini 4 Argon) must independently verify every flagged `file:line` coordinate and conduct the full 10-point evaluation below. *(Fallback guard: if `:9380` is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and perform the mechanical checks directly.)*
+- Treat the local coprocessor output strictly as an **advisory checklist**: you (Gemini 4 Argon) must independently verify every flagged `file:line` coordinate and conduct the full 10-point evaluation below. *(Fallback guard: if `:11434` is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and perform the mechanical checks directly.)*
 
 **Maintain epistemic independence from the author's narrative.** Never rubber-stamp claims in `submission.md`'s `## Description` (such as `"handles all edge cases"` or `"backwards compatible"`). Derive what the contract (`spec.md` or `problem.md` ACs) requires **first**, then verify the diff against your independent derivation.
 

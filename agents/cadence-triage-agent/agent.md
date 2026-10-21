@@ -53,7 +53,7 @@ Whenever the ID-allocation binding (`CADENCE_ORG.md#id-allocation-binding`, §10
 
 3. **Execute automatic local semantic discovery for related code, prior specs, and duplicates (Zero-VRAM Offload — Automatic).**
    Before running manual broad file reads across the repository, **automatically invoke the local hardware coprocessor** so discovery runs at 0 MB GPU VRAM without polluting the primary context window:
-   - Call `local_semantic_embed` (on the `local-offload` MCP server, backed by `local-embed-cpu` / `nomic-embed-text` at `127.0.0.1:9379`) and/or delegate to the `repo-scout` subagent with the problem statement as the query and candidate summaries drawn from `specs/`, `archive/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md`.
+   - Call `local_semantic_embed` (on the `local-offload` MCP server, backed by `local-embed-cpu` / `nomic-embed-text` at `127.0.0.1:11434`) and/or delegate to the `repo-scout` subagent with the problem statement as the query and candidate summaries drawn from `specs/`, `archive/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md`.
    - Use the top-ranked semantic matches alongside targeted `Grep` and `Glob` lookups to locate:
      - Affected domain entities and models
      - Application service implementations
