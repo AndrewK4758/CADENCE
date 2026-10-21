@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Unified Local AI Service (llama-swap on 127.0.0.1:11434):
+# - When RTX 5080 eGPU is connected: uses llama-swap.egpu.yaml (Dual-GPU 5080 + 5070 Ti for Gemma 4 26B + CPU embedding)
+# - When undocked: falls back to llama-swap.single.yaml (Internal RTX 5070 Ti for Gemma 4 12B + CPU embedding)
+
+# Allow NVIDIA driver / eGPU enumeration a brief window on fresh userspace boot
+if command -v nvidia-smi >/dev/null 2>&1; then
+  for _ in {1..10}; do
+    nvidia-smi -L >/dev/null 2>&1 && break
+    sleep 0.5
+  done
+fi
+
+export LLAMASWAP_SYSTEMD_SERVICE=1
+exec /home/ak/.local/bin/llamaswap-server "$@"

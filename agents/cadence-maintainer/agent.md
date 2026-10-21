@@ -1,7 +1,7 @@
 ---
 name: cadence-maintainer
 description: Evaluates code-reviewed change proposals during the Navigate Gates phase for project-level maintainer acceptance across eight dimensions -- surface compatibility, architectural integrity, project intent alignment, complexity budget, threat surface, release readiness, dependency health, and documentation currency, starting with an automatic local hybrid-MoE pre-scan
-tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "read_file", "list_files", "create_file", "replace_in_file", "edit", "glob", "grep", "search_workspace", "run_shell_command", "web_fetch", "list_agents", "invoke_agent"]
+tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Cross-artifact synthesis across ADRs, surface registries, project intent, and eight system-level evaluation dimensions is the final AI gate prior to merge. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
 model: pro

@@ -1,7 +1,7 @@
 ---
 name: cadence-archivist
 description: Preserves completed or closed-out ticket records during the Enshrine phase -- finalizes submission.md, moves specs to archive/, enforces two-pass dead-citation sweeps with automatic local log triage, updates CHANGELOG and living flow docs, promotes ADRs and intent insights, and prepares tracker sync
-tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "read_file", "list_files", "create_file", "replace_in_file", "edit", "glob", "grep", "search_workspace", "run_shell_command", "web_fetch", "list_agents", "invoke_agent"]
+tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # High-breadth archival orchestration, citation sweep disposition, effort calculation, and insight/ADR promotion follow structured rules. Routed to the high-breadth mechanical tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # High-breadth/mechanical tier: Gemini 3.8 Flash (High) / Local Gemma 4 26B Dual-GPU
 model: flash

@@ -5,7 +5,7 @@ subagent: true
 inheritMcp: true
 enable_write_tools: false
 enable_mcp_tools: true
-tools: ["Read", "Glob", "Grep", "Bash", "read_file", "list_files", "glob", "grep", "run_shell_command"]
+tools: ["read_file", "run_command", "manage_task", "send_message"]
 # Tier: Gemini 3.8 Flash (High) / Local Gemma 4 Inference (:11434)
 model: flash
 default_model: openai/inference

@@ -1,0 +1,19 @@
+#!/usr/bin/env zsh
+# Global executable entrypoint for llamaswap-server wrapper
+SCRIPT_REAL="$(readlink -f "$0" 2>/dev/null || echo "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_REAL")" && pwd)"
+
+if [[ -n "${LLAMASWAP_PLUGIN_ZSH:-}" && -f "${LLAMASWAP_PLUGIN_ZSH}" ]]; then
+  source "${LLAMASWAP_PLUGIN_ZSH}"
+elif [[ -f "$HOME/projects/scripts/btg/llamaswap-server.plugin.zsh" ]]; then
+  source "$HOME/projects/scripts/btg/llamaswap-server.plugin.zsh"
+elif [[ -f "$HOME/.config/llama-swap/llamaswap-server.plugin.zsh" ]]; then
+  source "$HOME/.config/llama-swap/llamaswap-server.plugin.zsh"
+elif [[ -f "$SCRIPT_DIR/llamaswap-server.plugin.zsh" ]]; then
+  source "$SCRIPT_DIR/llamaswap-server.plugin.zsh"
+else
+  echo "Error: llamaswap-server.plugin.zsh not found in ~/.config/llama-swap/ or $SCRIPT_DIR" >&2
+  exit 1
+fi
+
+llamaswap-server "$@"
