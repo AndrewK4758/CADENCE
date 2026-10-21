@@ -73,7 +73,7 @@ Execute the script (appending `--gitignore-machinery` only when requested by the
 
 When the adopter omits the flag, invoke the script without it (preserving byte-identical default behavior with zero `.gitignore` I/O). When the flag is supplied, the script writes or replaces a single managed block and reports `.gitignore (machinery block written|replaced)` in its per-file output stream.
 
-Stream stdout and stderr directly to the adopter verbatim. Never alter, condense, or paraphrase the per-file status lines or final summary — they constitute the adoption audit trail. If the script exits non-zero or emits diagnostic/gate output exceeding 30 lines (for example during post-copy gate checks such as `authored-doc-gate.sh` or `dead-citation-gate.sh`), automatically route the noisy log output through `offload_log_triage` (`local-fast-cpu` on `:9379`) to extract verbatim error lines while preserving the complete raw output in `/tmp/agy-last-triage.log`.
+Stream stdout and stderr directly to the adopter verbatim. Never alter, condense, or paraphrase the per-file status lines or final summary — they constitute the adoption audit trail. If the script exits non-zero or emits diagnostic/gate output exceeding 30 lines (for example during post-copy gate checks such as `authored-doc-gate.sh` or `dead-citation-gate.sh`), automatically route the noisy log output through `offload_log_triage` (`local-fast-cpu` on `:11434`) to extract verbatim error lines while preserving the complete raw output in `/tmp/agy-last-triage.log`.
 
 ### 5. Verify the file set landed in the target
 

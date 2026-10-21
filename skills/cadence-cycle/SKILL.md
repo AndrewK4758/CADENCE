@@ -53,8 +53,8 @@ Running `read_state.py` executes both preflight checks and exits non-zero with t
 
 Across every implement/review iteration in `/cadence-cycle`, enforce two automatic local coprocessor offloads:
 
-1. **Test, Build, and Migration Log Compaction (`offload_log_triage`).** On **every** test runner, compiler build, linter, or migration verification step inside `/cadence-implement` (and any gate script) whose output exceeds 30 lines, automatically pipe the output through `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:9379`, 0 MB VRAM), saving the full numbered raw output to `/tmp/agy-last-triage.log` and returning verbatim failing assertions, compiler errors, and `file:line` coordinates.
-2. **Pre-Review & Pre-MR Mechanical Diff Scan (`offload_deep_review`).** Automatically run `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:9380`) on `git diff <integration-branch>...HEAD` before opening or updating the implementation MR and at Step 0 of each `/cadence-review` cycle to verify the `<400`-line Agentic Ergonomics ceiling, comment discipline, and CHORD seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
+1. **Test, Build, and Migration Log Compaction (`offload_log_triage`).** On **every** test runner, compiler build, linter, or migration verification step inside `/cadence-implement` (and any gate script) whose output exceeds 30 lines, automatically pipe the output through `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:11434`, 0 MB VRAM), saving the full numbered raw output to `/tmp/agy-last-triage.log` and returning verbatim failing assertions, compiler errors, and `file:line` coordinates.
+2. **Pre-Review & Pre-MR Mechanical Diff Scan (`offload_deep_review`).** Automatically run `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) on `git diff <integration-branch>...HEAD` before opening or updating the implementation MR and at Step 0 of each `/cadence-review` cycle to verify the `<400`-line Agentic Ergonomics ceiling, comment discipline, and CHORD seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
 
 ## Step 1 — resolve the argument
 
@@ -394,6 +394,6 @@ Never guess or silently fall back on any of the following conditions:
 - Every halt message must name the state where it halted and what action unblocks it.
 
 ## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically pipes every test, build, linter, or migration verification output exceeding 30 lines during `/cadence-implement` cycles through `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:9379`, 0 MB VRAM), preserving raw numbered output at `/tmp/agy-last-triage.log`.
-- Step 0 automatically invokes `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:9380`) for pre-MR and pre-review mechanical diff checks (`<400`-line ceiling, comment discipline, CHORD seams).
-- At the Low-tier follow-up gate, `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) / `local-moe-hybrid` assists prior-work deduplication across `specs/` and `archive/`.
+- Step 0 automatically pipes every test, build, linter, or migration verification output exceeding 30 lines during `/cadence-implement` cycles through `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:11434`, 0 MB VRAM), preserving raw numbered output at `/tmp/agy-last-triage.log`.
+- Step 0 automatically invokes `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) for pre-MR and pre-review mechanical diff checks (`<400`-line ceiling, comment discipline, CHORD seams).
+- At the Low-tier follow-up gate, `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) / `local-moe-hybrid` assists prior-work deduplication across `specs/` and `archive/`.

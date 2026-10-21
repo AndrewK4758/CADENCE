@@ -79,7 +79,7 @@ Strict Red-Green-Accumulate-Commit discipline is 100% identical at `Low` tier.
 4. **Load the Implementation Order work queue** from `test-plan.md` (`Medium`/`High`) or your derived AC order (`Low`).
 
 5. **Verify clean baseline test suite (Mandatory Automatic Log Offload).**
-   Run the repository's sanctioned test runner (`PROJECT_INTENT.md`). **Whenever the test runner or compiler output exceeds 30 lines or exits non-zero, automatically pass the raw output to `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:9379`, or invoke the `log-triage` subagent)** so only verbatim failing assertions, `file:line` coordinates, and coverage metrics enter your context window while the full numbered output is preserved in `/tmp/agy-last-triage.log`.
+   Run the repository's sanctioned test runner (`PROJECT_INTENT.md`). **Whenever the test runner or compiler output exceeds 30 lines or exits non-zero, automatically pass the raw output to `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:11434`, or invoke the `log-triage` subagent)** so only verbatim failing assertions, `file:line` coordinates, and coverage metrics enter your context window while the full numbered output is preserved in `/tmp/agy-last-triage.log`.
 
 ### Phase 1: Red-Green-Accumulate-Commit Cycles (Unit Scenarios)
 
@@ -98,7 +98,7 @@ Execute each unit scenario `S-{X.Y}` from the Implementation Order in strict seq
 
 3. **ACCUMULATE — Execute the full test suite (Automatic Log Offload):**
    - Run the entire test suite across all test projects.
-   - Automatically route noisy test/build logs (`>30` lines) through `offload_log_triage` (`local-fast-cpu` on `:9379`).
+   - Automatically route noisy test/build logs (`>30` lines) through `offload_log_triage` (`local-fast-cpu` on `:11434`).
    - Every test — including all pre-existing suites — must pass before committing. Fix any regression immediately.
 
 4. **REFACTOR (Optional, In-Scope Only):**
@@ -167,7 +167,7 @@ For any database migrations included in the branch, verify compliance with `docs
 
 1. **Run the complete test suite, formatter, and clean build one final time** (automatically compacting any output `>30` lines via `offload_log_triage` and preserving `/tmp/agy-last-triage.log`).
 2. **Execute an automatic local coprocessor pre-review scan (`offload_deep_review`):**
-   - Call `offload_deep_review` (`local-moe-hybrid` on `:9380`) on `git diff` to check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
+   - Call `offload_deep_review` (`local-moe-hybrid` on `:11434`) on `git diff` to check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
 3. **Update `specs/{ticket-id}/metadata.yaml`:**
    - Set `branch: {branch-name}`.
    - Do **not** modify `status`, lifecycle timestamps (`implementation_started_at`, `review_started_at`), `spec_approved_at`/`spec_mr` (leave `""` at Low tier), or tracker state — `/cadence-implement` owns status transitions and tracker projection (`CADENCE_ORG.md` §9).

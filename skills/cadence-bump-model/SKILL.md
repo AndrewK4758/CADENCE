@@ -97,7 +97,7 @@ Verify BOTH post-conditions:
 - `cadence-compile.sh --check` exits 0 (confirming every compiled agent `model:` line matches the adapter's fresh tier resolution).
 - The `### Tier → Concrete Model` cell in `docs/agentic-sdlc/CADENCE_ORG.md` now contains `$to_model`.
 
-If `cadence-compile.sh --check` exits non-zero, propagation is incomplete (`bump-model.reference_search.incomplete_representation_set`): if the compiler diagnostic output exceeds 30 lines, automatically pass the output through `offload_log_triage` (`local-fast-cpu` on `:9379`, preserving the full raw log in `/tmp/agy-last-triage.log`), then halt loud, report the diverging files, and instruct the operator to inspect `git diff` and revert manually — never attempt silent workarounds. This `--check` gate prevents any recurrence of representation drift (such as updating `CADENCE_ORG.md` or compiled files without updating the adapter script).
+If `cadence-compile.sh --check` exits non-zero, propagation is incomplete (`bump-model.reference_search.incomplete_representation_set`): if the compiler diagnostic output exceeds 30 lines, automatically pass the output through `offload_log_triage` (`local-fast-cpu` on `:11434`, preserving the full raw log in `/tmp/agy-last-triage.log`), then halt loud, report the diverging files, and instruct the operator to inspect `git diff` and revert manually — never attempt silent workarounds. This `--check` gate prevents any recurrence of representation drift (such as updating `CADENCE_ORG.md` or compiled files without updating the adapter script).
 
 ### 7. Report outcome
 
@@ -117,7 +117,7 @@ Provide a clear completion summary covering:
 
 - **Narrative documentation.** Prose references to model versions inside release notes, architecture discussions, or examples carry historical context and are never bulk-rewritten by this skill.
 - **CI pipeline manifests.** External or repository CI workflow files that hardcode model names outside `ci-templates/scripts/adapters/` are not modified here.
-- **External gateway routing.** API proxies, Portkey configurations, or local llama-server systemd units (`:9379` / `:9380`) are managed outside this skill.
+- **External gateway routing.** API proxies, Portkey configurations, or local llama-server systemd units (`:11434`) are managed outside this skill.
 - **Cross-tier reassignments.** Swapping a tier from one model family to another is an architectural change requiring a specification, not a version bump.
 - **Multi-tier batching.** Each invocation updates exactly one tier so diffs and commit histories remain unambiguous.
 

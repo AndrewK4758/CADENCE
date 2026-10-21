@@ -21,7 +21,7 @@ Draft | In Review | Approved | Executing | Complete
 Tests for newly introduced behavior are authored **before** production code. Every BDD scenario executes through a strict cycle:
 1. **Red** -- compile (adding minimal stubs where necessary) and fail, proving the target behavior is not yet present
 2. **Green** -- pass after introducing the minimum production code required for that scenario
-3. **Accumulate** -- re-run all prior tests (including the pre-existing test suite, using `offload_log_triage` / `log-triage` on `:9379` to compact verbose output while preserving verbatim failures in `/tmp/agy-last-triage.log`) and verify zero regressions
+3. **Accumulate** -- re-run all prior tests (including the pre-existing test suite, using `offload_log_triage` / `log-triage` on `:11434` to compact verbose output while preserving verbatim failures in `/tmp/agy-last-triage.log`) and verify zero regressions
 
 BDD formatting applies to **newly authored tests only**. Existing tests are never rewritten into BDD style; pre-existing test frameworks, helpers, and conventions remain untouched.
 
