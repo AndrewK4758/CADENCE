@@ -1,0 +1,34 @@
+{
+  "allowNonWorkspaceAccess": true,
+  "artifactReviewPolicy": "always-proceed",
+  "colorScheme": "solarized dark",
+  "dangerously_skip_permissions": true,
+  "model": "Gemini 4 Argon (High)",
+  "notifications": true,
+  "permissions": {
+    "allow": [
+      "command(grep)",
+      "command(cat)",
+      "command(ls)",
+      "command(go build ./...)",
+      "command(dotnet)",
+      "command(lscpu)",
+      "command(git log)",
+      "command(git status)",
+      "command(git diff)",
+      "command(du)",
+      "command(echo)",
+      "command(which)"
+    ]
+  },
+  "pickerGrouping": "grouped",
+  "statusLine": {
+    "type": "",
+    "command": "",
+    "enabled": true
+  },
+  "trustedWorkspaces": [
+    "/home/ak/projects"
+  ],
+  "verbosity": "high"
+}

@@ -1,10 +1,10 @@
 # Global Rules for Editing Codebases & CADENCE SDLC Governance
 
-## 1. Worktree, Universal `.agents/` Layout & Remote PR Workflow (Mandatory for All Projects)
-1. Never commit or merge directly into local `develop` or `main` (never edit the primary checkout directly).
-2. Create a new dedicated `git worktree` (outside `.agents/` and `.gemini/`), make all changes, commit on the worktree branch, and push the branch to `origin`.
-3. Open a remote Pull Request targeting `develop` (`gh pr create --base develop`), merge the PR into `develop` on the remote (`gh pr merge`), and then pull remote `develop` into local `develop` (`git pull origin develop`).
-4. For `main`: only merge from `develop` into `main` on the remote (via remote PR) and pull `main` from remote locally.
+## 1. Worktree, Universal `.agents/` Layout & Two-Stage Remote PR Workflow (Mandatory for All Projects)
+1. **Local Worktree Only (Never Edit Primary Checkout or Protected Branches):** Never edit, commit, or merge directly in the primary checkout or on local `develop` or `main`. Always create a dedicated `git worktree` (outside `.agents/`, `.claude/`, and `.gemini/`, e.g., `../worktrees/<branch>`) branched from `origin/develop`.
+2. **Remote Push from Worktree:** Make all changes and atomic commits inside the worktree branch, then push the worktree branch to remote (`git push -u origin <branch>`). Never push directly to `origin/develop` or `origin/main`, and never bypass hooks with `--no-verify`.
+3. **Stage 1 — PR to Remote `develop` -> CI Pass -> Merge -> Fetch & Pull into Local `develop`:** Open a remote Pull Request targeting `develop` (`gh pr create --base develop --head <branch>`). Wait for all required CI checks on the PR to pass (`gh pr checks --watch`; never use `--admin` or `[skip ci]` to bypass checks), merge the PR into remote `develop` (`gh pr merge --merge --delete-branch`), then fetch and fast-forward pull remote `develop` into local `develop` (`git fetch origin && git checkout develop && git pull --ff-only origin develop`) and remove the temporary worktree.
+4. **Stage 2 — On Remote PR to `develop` CI Pass -> PR to Remote `main` -> Fetch & Pull into Local `main`:** Once the PR to remote `develop` has passed CI and merged, open a remote Pull Request from `develop` targeting `main` (`gh pr create --base main --head develop`), wait for CI checks on the `main` PR to pass (`gh pr checks --watch`), merge the PR into remote `main` (`gh pr merge --merge`), and immediately fetch and fast-forward pull remote `main` into local `main` (`git fetch origin main:main` or `git checkout main && git pull --ff-only origin main && git checkout develop`).
 5. **Universal `.agents/` Discovery & `.gemini/` Reference Implementation:** `.agents/` is the universal, CLI-neutral primary directory for agents, skills, and hooks (`AGENTS.md`), with `.gemini/` as the canonical Antigravity/Gemini reference implementation (and other CLI directories projected off `.agents/` per `~/projects/sdlc/processes/docs/policies/cli-runtime-adoption-policy.md`). Always check `.agents/`, `.gemini/`, and `~/projects/sdlc/` for workspace agents, skills, and helper scripts.
 
 ---

@@ -1,0 +1,204 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mostlygeek/llama-swap/refs/heads/main/config-schema.json
+#
+# Dual-GPU Unified AI Service configuration (RTX 5080 16GB eGPU + RTX 5070 Ti 12GB Laptop GPU + 9955HX3D CPU):
+#   - Group `always` (CPU / 0 MB VRAM, persistent, never swaps):
+#       embedding       nomic-embed-text v1.5 f16 (llama-server, CPU, preloaded at startup)
+#   - Group `gpu` (Preloads Dual-GPU 26B+Vision `inference` with ttl: 0 so BTG apps, Blitz, and all
+#     local offload / LiteRT jobs share the warm 26B model with zero loading/unloading; only swaps
+#     when an `image-*` diffusion model or specialized `coder`/`inference-12b` model is requested):
+#       inference       Gemma 4 26B A4B IT + Vision (96k ctx sweet spot, 100% in VRAM split 56/44 across 5080 + 5070 Ti; aliases include `inference-dual`, `litert`, `local-moe-hybrid`)
+#       inference-12b   Gemma 4 12B IT + Vision (32k ctx, on RTX 5080)
+#       coder           Qwen 2.5 Coder 7B Instruct Q8_0 (64k ctx, on RTX 5080)
+#       image-klein     FLUX.2 klein 4B Q8_0 (runs on headless RTX 5080 16GB)
+#       image-zimage    Z-Image 6B Q8_0 (runs on headless RTX 5080 16GB)
+#       image-klein-base FLUX.2 klein base 4B Q8_0 (runs on headless RTX 5080 16GB)
+#       image-qwen      Qwen-Image 2512 Q4_K_M (alias: `image`, split across 5080 + 5070 Ti)
+
+healthCheckTimeout: 600
+logLevel: info
+startPort: 11440
+
+macros:
+  models: ${env.LLM_MODELS_DIR}
+  sd-server: ${env.SD_SERVER_BIN}
+  image-negative: >-
+    extra hands, extra arms, extra fingers, missing fingers, fused fingers, deformed hands, merged
+    bodies, shared limbs, disconnected limbs, floating hands, distorted anatomy, text, letters,
+    watermark, logo, cartoon, illustration, 3d render, plastic skin
+
+models:
+  # ----------------------------------------------------------------------------
+  # 1. Always-On GPU Embedding Service (nomic-embed-text v1.5 on RTX 5080 eGPU)
+  # ----------------------------------------------------------------------------
+  embedding:
+    aliases: [nomic-embed-text, local-embed-cpu, openai/embedding, openai/local-embed-cpu, openai/nomic-embed-text]
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.EGPU_CUDA_DEVICE}
+    cmd: |
+      llama-server --port ${PORT}
+      --model ${models}/nomic-embed-text-v1.5.f16.gguf
+      --embedding --pooling mean --n-gpu-layers 99 --flash-attn on
+      --ctx-size 16384 --parallel 2 --batch-size 4096 --ubatch-size 4096
+      --rope-scaling yarn --rope-scale 4 --yarn-orig-ctx 2048
+      --threads 4 --threads-batch 4
+
+  # ----------------------------------------------------------------------------
+  # 2. Dual-GPU Gemma 4 26B A4B + Vision (100% in VRAM across RTX 5080 + RTX 5070 Ti)
+  #    Shared across BTG apps/API, Blitz, and all local offload / LiteRT tasks (ttl: 0, preloaded)
+  #    Sweet-spot allocation: 96K context (98,304 tokens), 56/44 split (~1.8 GB free on 5080 for mmproj/clip_encode, ~1.0 GB free on 5070 Ti)
+  # ----------------------------------------------------------------------------
+  inference:
+    aliases:
+      - inference-dual
+      - openai/inference
+      - openai/inference-dual
+      - openai/fast-cpu
+      - gemma-4-26b-dual
+      - gemma-4-26b
+      - gemma-4-26b-a4b
+      - 26b-a4b
+      - local-moe-hybrid
+      - fast-cpu
+      - local-fast-cpu
+      - gemma-4-e2b
+      - e2b
+      - local-12b-gpu
+      - gemma-4-12b
+      - 12b
+      - litert
+      - litert-gemma
+      - gemma3-1b-gpu-custom
+    ttl: 0
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.EGPU_CUDA_DEVICE},${env.IGPU_CUDA_DEVICE}
+    cmd: |
+      llama-server --port ${PORT}
+      --model ${models}/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+      --mmproj ${models}/gemma-4-26B-A4B-it-mmproj-F16.gguf
+      --n-gpu-layers 99 --split-mode layer --tensor-split 56,44
+      --ctx-size 98304 --parallel 1 --flash-attn on --cache-reuse 256
+      --cache-type-k q8_0 --cache-type-v q8_0
+      --batch-size 4096 --ubatch-size 2048
+      --image-min-tokens 1120 --image-max-tokens 1120
+      --temp 1.0 --top-k 64 --top-p 0.95 --n-predict -1
+      --reasoning off
+    capabilities:
+      in: [text, image]
+      out: [text]
+
+  # ----------------------------------------------------------------------------
+  # 3. Single-GPU RTX 5080 eGPU Models (16 GB GDDR7, Headless — Zero Desktop Impact)
+  # ----------------------------------------------------------------------------
+  inference-12b:
+    ttl: 300
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.EGPU_CUDA_DEVICE}
+    cmd: |
+      llama-server --port ${PORT}
+      --model ${models}/gemma4-12b.gguf
+      --mmproj ${models}/gemma4-12b-mmproj.gguf
+      --ctx-size 32768 --parallel 1 --flash-attn on --cache-reuse 256
+      --cache-type-k q8_0 --cache-type-v q8_0
+      --batch-size 2048 --ubatch-size 1536
+      --image-min-tokens 1120 --image-max-tokens 1120
+      --temp 1.0 --top-k 64 --top-p 0.95 --n-predict -1
+      --reasoning off
+    capabilities:
+      in: [text, image]
+      out: [text]
+
+  coder:
+    aliases: [qwen2.5-coder-7b]
+    ttl: 600
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.EGPU_CUDA_DEVICE}
+    cmd: |
+      llama-server --port ${PORT}
+      --model ${models}/qwen2.5-coder-7b-instruct-q8_0.gguf
+      --ctx-size 65536 --parallel 1 --flash-attn on --cache-reuse 256
+      --cache-type-k q8_0 --cache-type-v q8_0 --n-predict -1
+
+  image-klein:
+    checkEndpoint: /v1/models
+    ttl: 300
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.EGPU_CUDA_DEVICE}
+    cmd: |
+      ${sd-server} --listen-port ${PORT}
+      --diffusion-model ${models}/flux-2-klein-4b-Q8_0.gguf
+      --vae ${models}/flux2-vae.safetensors
+      --llm ${models}/Qwen3-4B-Q4_K_M.gguf
+      --steps 4 --cfg-scale 1.0
+      --diffusion-fa --vae-tiling
+
+  image-zimage:
+    checkEndpoint: /v1/models
+    ttl: 300
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.EGPU_CUDA_DEVICE}
+    cmd: |
+      ${sd-server} --listen-port ${PORT}
+      --diffusion-model ${models}/z-image-Q8_0.gguf
+      --vae ${models}/ae.safetensors
+      --llm ${models}/Qwen3-4B-Q4_K_M.gguf
+      --steps 40 --cfg-scale 5.0
+      --negative-prompt "${image-negative}"
+      --diffusion-fa --vae-tiling
+
+  image-klein-base:
+    checkEndpoint: /v1/models
+    ttl: 300
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.EGPU_CUDA_DEVICE}
+    cmd: |
+      ${sd-server} --listen-port ${PORT}
+      --diffusion-model ${models}/flux-2-klein-base-4b-Q8_0.gguf
+      --vae ${models}/flux2-vae.safetensors
+      --llm ${models}/Qwen3-4B-Q4_K_M.gguf
+      --steps 50 --cfg-scale 4.0
+      --negative-prompt "${image-negative}"
+      --diffusion-fa --vae-tiling
+
+  image-qwen:
+    aliases: [image]
+    checkEndpoint: /v1/models
+    ttl: 300
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.EGPU_CUDA_DEVICE},${env.IGPU_CUDA_DEVICE}
+    cmd: |
+      ${sd-server} --listen-port ${PORT}
+      --diffusion-model ${models}/qwen-image-2512-Q4_K_M.gguf
+      --vae ${models}/qwen_image_vae.safetensors
+      --llm ${models}/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf
+      --backend diffusion=CUDA0,vae=CUDA0,te=CUDA1
+      --max-vram cuda1=-2.5
+      --steps 12 --cfg-scale 3.5 --sampling-method euler --flow-shift 3
+      --negative-prompt "${image-negative}"
+      --diffusion-fa --sage-attn --vae-tiling
+
+hooks:
+  on_startup:
+    preload: [embedding, inference]
+
+routing:
+  router:
+    use: group
+    settings:
+      groups:
+        always:
+          persistent: true
+          swap: false
+          exclusive: false
+          members: [embedding]
+        gpu:
+          swap: true
+          exclusive: false
+          members: [inference, inference-12b, coder, image-klein, image-zimage, image-klein-base, image-qwen]

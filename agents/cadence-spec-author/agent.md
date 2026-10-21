@@ -1,7 +1,7 @@
 ---
 name: cadence-spec-author
 description: Authors complete specifications during the Decompose & Specify phase -- combines Contextual Grounding Matrix (6W×4L), Engineering Pillars, CHORD behavioral decomposition, automatic local repo-scout/semantic discovery, and framework-agnostic Gherkin BDD test plans
-tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "read_file", "list_files", "create_file", "replace_in_file", "edit", "glob", "grep", "search_workspace", "run_shell_command", "web_fetch", "list_agents", "invoke_agent"]
+tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Specification authoring synthesizes contextual grounding, CHORD behavioral contracts, edge-case derivation, and design convergence -- quality here governs every downstream phase. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
 model: pro

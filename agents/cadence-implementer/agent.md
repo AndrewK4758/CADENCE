@@ -1,7 +1,7 @@
 ---
 name: cadence-implementer
 description: Executes a ticket's tier contract during the Execute via TDD phase using strict BDD red-green-refactor TDD -- implements the approved spec at Medium/High or problem.md ACs at Low, automatically offloading test/compiler log triage to local Zero-VRAM CPU coprocessors
-tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "read_file", "list_files", "create_file", "replace_in_file", "edit", "apply_patch", "delete_snippet", "glob", "grep", "search_workspace", "run_shell_command", "manage_background_process", "web_fetch", "list_agents", "invoke_agent"]
+tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Implementation executes a converged contract via strict Red-Green-Accumulate-Commit TDD cycles and CHORD seam wiring. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
 model: pro
