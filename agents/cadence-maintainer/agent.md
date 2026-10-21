@@ -49,8 +49,8 @@ Before running the evaluation, verify that `cadence-reviewer` has approved the c
 ### Step 0: Automatic Local Coprocessor Pre-Scan (`offload_deep_review` & `local_semantic_embed`)
 
 Before evaluating the eight dimensions below, **automatically invoke the local hardware coprocessors**:
-1. Call `offload_deep_review` (`local-moe-hybrid` 26B-A4B on `127.0.0.1:9380`) on the `git diff` to flag any `<400`-line file ceiling breaches (`<=150`/`<=400` function ceiling for BDD test harnesses), public surface modifications, or missing CHORD telemetry hooks.
-2. Call `local_semantic_embed` (`local-embed-cpu` on `127.0.0.1:9379`, 0 MB VRAM) to compare the diff's architectural summary against `docs/ADR/*.md` and `docs/flows/*.md` so relevant ADRs and business flows are surfaced without reading unrelated files.
+1. Call `offload_deep_review` (`local-moe-hybrid` 26B-A4B on `127.0.0.1:11434`) on the `git diff` to flag any `<400`-line file ceiling breaches (`<=150`/`<=400` function ceiling for BDD test harnesses), public surface modifications, or missing CHORD telemetry hooks.
+2. Call `local_semantic_embed` (`local-embed-cpu` on `127.0.0.1:11434`, 0 MB VRAM) to compare the diff's architectural summary against `docs/ADR/*.md` and `docs/flows/*.md` so relevant ADRs and business flows are surfaced without reading unrelated files.
 *(Fallback guard: if local offload endpoints are unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and inspect `docs/ADR/` and `docs/flows/` directly.)*
 
 ### 1. Backwards Compatibility & Public Surface Stability

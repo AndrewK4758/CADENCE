@@ -356,7 +356,7 @@ at every designated human gate.
 
 ## Sample Workflow: Existing Project
 
-On an existing repository, the workflow follows the exact same five phases, except Phase 1 is grounded in concrete source-code evidence (assisted by `repo-scout` / `local_semantic_embed` on `:9379` when local hardware offload is active) rather than greenfield proposals:
+On an existing repository, the workflow follows the exact same five phases, except Phase 1 is grounded in concrete source-code evidence (assisted by `repo-scout` / `local_semantic_embed` on `:11434` when local hardware offload is active) rather than greenfield proposals:
 
 ```
 You have access to the CADENCE framework manual in specs/CADENCE.md.
@@ -468,7 +468,7 @@ Before selecting Engineering Pillars or decomposing acceptance criteria, the LLM
 
 #### For existing codebases
 
-Inspect the codebase (using `repo-scout` / `local_semantic_embed` on `:9379` when available) and produce a **Contextual Grounding Fact Sheet** (`CONTEXT_FACTS.md`) with one section per interrogative column. Every section must include:
+Inspect the codebase (using `repo-scout` / `local_semantic_embed` on `:11434` when available) and produce a **Contextual Grounding Fact Sheet** (`CONTEXT_FACTS.md`) with one section per interrogative column. Every section must include:
 - **Concrete citations** (exact file paths, line ranges, class/function names, configuration keys)
 - **Explicit counts** (number of persistent entities, endpoints, runtime services, actor roles, scheduled jobs)
 - **System boundaries** (what sits inside this repository's bounded context vs. external upstream/downstream systems)

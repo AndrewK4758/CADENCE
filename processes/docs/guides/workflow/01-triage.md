@@ -46,7 +46,7 @@ The resolved ticket ID is **authoritative** and is used verbatim for `specs/{tic
 
 Before scanning files manually, `cadence-triage-agent` automatically leverages CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`) to accelerate discovery at **0 MB GPU VRAM**:
 
-1. **Semantic Duplicate & Prior-Art Search (`local_semantic_embed` on `local-embed-cpu`):** Queries `nomic-embed-text` (running on the Ryzen 9 9955HX3D 3D V-Cache CPU server, port `9379`) across `specs/`, `archive/`, `docs/ADR/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md` to locate semantically related tickets, prior architectural rulings, and recurring failure patterns even when exact keywords differ.
+1. **Semantic Duplicate & Prior-Art Search (`local_semantic_embed` on `local-embed-cpu`):** Queries `nomic-embed-text` (running on the Ryzen 9 9955HX3D 3D V-Cache CPU server, port `11434`) across `specs/`, `archive/`, `docs/ADR/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md` to locate semantically related tickets, prior architectural rulings, and recurring failure patterns even when exact keywords differ.
 2. **Parallel Codebase & Boundary Mapping (`repo-scout` on `local-moe-hybrid`):** Invokes the read-only `repo-scout` subagent (powered by `local_semantic_embed` + `gemma-4-26b-a4b`) to map implicated domain entities, bounded contexts, registered surfaces (`surface-registry.md` / `cadence-surfaces.md`), and cross-boundary contracts without polluting the primary reasoning model's context window.
 
 All findings returned by `repo-scout` and `local_semantic_embed` are verified by the primary model before being written into `problem.md` and `metadata.yaml`.

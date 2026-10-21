@@ -20,7 +20,7 @@ Prior to invoking `cadence-maintainer`, verify both preconditions:
 
 ## Steps
 
-0. **Mandatory Automatic Mechanical Pre-Scan (`offload_deep_review`).** Once the branch reference and integration branch diff (`git diff <integration-branch>...{branch-name}`) are resolved in Steps 1–3, automatically invoke `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:9380`) on the diff **before** delegating to `cadence-maintainer`. The local coprocessor performs an advisory pre-scan verifying:
+0. **Mandatory Automatic Mechanical Pre-Scan (`offload_deep_review`).** Once the branch reference and integration branch diff (`git diff <integration-branch>...{branch-name}`) are resolved in Steps 1–3, automatically invoke `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) on the diff **before** delegating to `cadence-maintainer`. The local coprocessor performs an advisory pre-scan verifying:
    - Single-pass readability ceiling (`<400` lines per modified/added file under the Agentic Ergonomics pillar)
    - Comment and docstring preservation discipline
    - CHORD observability seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`) and public Surface Compatibility markers
@@ -87,6 +87,6 @@ Prior to invoking `cadence-maintainer`, verify both preconditions:
 ```
 
 ## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically invokes `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:9380`) to pre-scan the branch diff for `<400`-line ceiling compliance, comment discipline, and CHORD observability seams before delegating to `cadence-maintainer`.
-- Step 6b.c uses `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) / `local-moe-hybrid` when checking `specs/` and `archive/` for prior-work deduplication.
+- Step 0 automatically invokes `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) to pre-scan the branch diff for `<400`-line ceiling compliance, comment discipline, and CHORD observability seams before delegating to `cadence-maintainer`.
+- Step 6b.c uses `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) / `local-moe-hybrid` when checking `specs/` and `archive/` for prior-work deduplication.
 - Maintainer evaluation across the eight governance dimensions and human decision capture remain 100% owned by `gemini-4-argon-high`.

@@ -6,6 +6,11 @@
 fail_safe() { exit 0; }
 trap fail_safe EXIT
 
+if [ "${AGY_DISABLE_LITERT:-0}" = "1" ]; then
+  printf '{}'
+  exit 0
+fi
+
 raw=$(cat 2>/dev/null)
 [ -n "$(printf '%s' "$raw" | tr -d ' \t\r\n')" ] || exit 0
 
@@ -43,8 +48,10 @@ if [ -n "$inv_num" ] && ! printf '%s' "$raw" | grep -q '"toolCall"'; then
     fi
   fi
 
-  if [ "$inv_num" = "1" ]; then
-    msg="[MANDATORY LITERT / LOCAL-OFFLOAD PIPELINE (:11434)]: On THIS prompt (whether ad-hoc or /cadence-*), you MUST use your local-offload MCP tools (call_mcp_tool ServerName='local-offload' — read /home/ak/.gemini/antigravity-cli/mcp/local-offload/<tool>.json first if lazy-loaded) and offload subagents (repo-scout, log-triage): (1) Step 0 Discovery: call local_semantic_embed or invoke_subagent(TypeName='repo-scout') to rank candidate files before broad read_file/grep/find sweeps; (2) Log Triage: route test/build/diagnostic commands or >30-line outputs through offload_log_triage (log_text_or_command='cmd:<command>' or text/path) or log-triage (raw log saved at /tmp/agy-triage/<repo_name>/<pid>.log); (3) Pre-Commit Review: call offload_deep_review on modified files before committing or opening a PR."
+  first_file="/tmp/agy-offload-first.${safe_sid}"
+  if [ ! -f "$first_file" ]; then
+    printf '%s' "$inv_num" > "$first_file" 2>/dev/null
+    msg="[MANDATORY LITERT / LOCAL-OFFLOAD PIPELINE (:11434) — INLINE SCHEMAS READY (DO NOT read_file .json schemas)]: Call call_mcp_tool(ServerName='local-offload', ToolName=..., Arguments=...) directly on Turn 1 without reading /home/ak/.gemini/antigravity-cli/mcp/local-offload/*.json: (1) local_semantic_embed: Arguments={'texts':['<file_or_dir>',...],'query':'<search_query>','top_k':6} — returns AST-aligned Pinned Context Slices + full File Symbol Maps (sym@L<line>); answer directly from pinned slices and only read_file specific missing StartLine..EndLine ranges; (2) offload_log_triage: Arguments={'log_text_or_command':'cmd:<shell_cmd>' or '<log_path_or_text>','model':'inference'} — runs/triages tests & builds on :11434 and writes raw log to /tmp/agy-triage/<repo_name>/<pid>.log (eliminates run_command for tests); (3) offload_deep_review: Arguments={'prompt':'<task>','context_files':['<path>',...],'model':'inference'} before commit/PR. NOTE: If [LiteRT Pre-Modified Execution Pack (:11434)] is ALREADY in the prompt, do NOT re-run local_semantic_embed or offload_log_triage."
     printf '{"injectSteps":[{"ephemeralMessage":"%s"}]}' "$msg"
     exit 0
   fi

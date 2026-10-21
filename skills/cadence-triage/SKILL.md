@@ -14,7 +14,7 @@ Perform intake triage on the issue designated by `$ticket_id`. Delegate the anal
 
 ## Steps
 
-0. **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `local-moe-hybrid`).** Prior to broad repository file reads or duplicate scanning (unless `--file-only` is active, which performs no classification or duplicate search), automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) and/or the `local-moe-hybrid` discovery coprocessor (`gemma-4-26b-a4b` on `:9380`) to index and query `specs/`, `archive/`, `docs/agentic-sdlc/intent-insights.md`, `docs/agentic-sdlc/production-insights.md`, and relevant codebase symbols. Pass the resulting semantic matches and candidate file coordinates to `cadence-triage-agent` in step 3 so primary context is never polluted by brute-force directory scans.
+0. **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `local-moe-hybrid`).** Prior to broad repository file reads or duplicate scanning (unless `--file-only` is active, which performs no classification or duplicate search), automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and/or the `local-moe-hybrid` discovery coprocessor (`gemma-4-26b-a4b` on `:11434`) to index and query `specs/`, `archive/`, `docs/agentic-sdlc/intent-insights.md`, `docs/agentic-sdlc/production-insights.md`, and relevant codebase symbols. Pass the resulting semantic matches and candidate file coordinates to `cadence-triage-agent` in step 3 so primary context is never polluted by brute-force directory scans.
 
 1. **Resolve the identifier-allocation binding** from `CADENCE_ORG.md#id-allocation-binding` (§10) alongside the bound issue tracker from `#tracker-binding` (§9 — resolve **vendor-neutrally**, never hardcoding any tracker product name). The state of the §10 binding governs which origination branch executes:
 
@@ -161,5 +161,5 @@ Classifies ticket `TT-6547`. When the resulting tier is Medium or High and `prob
 Mints an identifier and triages a free-text problem statement directly. Tickets classified as Trivial or Low bypass the probe interview offer.
 
 ## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically invokes `local_semantic_embed` (`local-embed-cpu` / `nomic-embed-text` on `:9379`, 0 VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:9380`) for duplicate detection, component discovery, and insight lookups before broad file reads.
+- Step 0 automatically invokes `local_semantic_embed` (`local-embed-cpu` / `nomic-embed-text` on `:11434`, 0 VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) for duplicate detection, component discovery, and insight lookups before broad file reads.
 - Classification, scope assessment, and artifact authoring remain 100% owned by Gemini (`cadence-triage-agent` on `gemini-3.8-flash-high` / Argon).

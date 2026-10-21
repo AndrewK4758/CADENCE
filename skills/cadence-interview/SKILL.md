@@ -37,7 +37,7 @@ In **default mode**, select only rows whose value cell currently holds a placeho
 
 ### 3. Gather repository evidence via local offload and offer candidates per selected row
 
-Before formulating candidates for the selected rows, **automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) / `local-moe-hybrid` (`:9380`)** to gather concrete repository evidence (scanning CI/CD workflows, deployment manifests, VCS/remote configuration, authentication/IdP references, branch protection rules, and already-populated cells in `CADENCE_ORG.md` and `PROJECT_INTENT.md`).
+Before formulating candidates for the selected rows, **automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) / `local-moe-hybrid` (`:11434`)** to gather concrete repository evidence (scanning CI/CD workflows, deployment manifests, VCS/remote configuration, authentication/IdP references, branch protection rules, and already-populated cells in `CADENCE_ORG.md` and `PROJECT_INTENT.md`).
 
 Using that gathered evidence, derive **3** candidate answers per selected row, explicitly tagging each candidate as **Observed**, **Inferred**, or **Unknown** (following the architect evidence discipline — never invent false-confident citations). Present the following options for each selected row:
 

@@ -8,10 +8,10 @@ Slash commands in `.agents/skills/` (projected to `.gemini/skills/` or `.claude/
 
 When executing CADENCE slash commands, read-only discovery, test/build log compaction, and pre-review mechanical sweeps automatically offload to the local 2-tier hardware coprocessor pipeline (`local-offload` MCP server + `log-triage` and `repo-scout` subagents):
 
-- **Tier 1 — Always-On Zero-VRAM CPU (`127.0.0.1:9379`)**:
+- **Tier 1 — Always-On Zero-VRAM CPU (`127.0.0.1:11434`)**:
   - `local-embed-cpu` (`nomic-embed-text`, 0 MB VRAM) + `repo-scout`: Activated during `/cadence-triage` and `/cadence-spec` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, and locate codebase symbols without bloating the primary model's context window.
   - `local-fast-cpu` (`gemma-4-e2b-it`, 128MB 3D V-Cache, 0 MB VRAM) + `log-triage` (`offload_log_triage`): Activated during `/cadence-implement` TDD loops and CI verification to compact verbose test runner and compiler logs into verbatim failure lines, `file:line` coordinates, and coverage metrics while preserving the full raw log at `/tmp/agy-last-triage.log`.
-- **Tier 2 — On-Demand Hybrid MoE & GPU (`127.0.0.1:9380`)**:
+- **Tier 2 — On-Demand Hybrid MoE & GPU (`127.0.0.1:11434`)**:
   - `local-moe-hybrid` (`gemma-4-26b-a4b-it`) & `local-12b-gpu` (`gemma-4-12b-it` on RTX 5070 Ti 12GB VRAM) via `offload_deep_review`: Activated during `/cadence-review` and `/cadence-maintain` for advisory pre-review sweeps checking Pillar 3 (`<400`-line file ceiling), comment discipline, and CHORD observability seam completeness before Gemini 4 Argon (`pro`) issues gate verdicts.
 
 All local coprocessor models run with `enable_write_tools: false` and never modify repository files.
@@ -106,7 +106,7 @@ For Medium and High tier tickets, `/cadence-spec` executes an **independent desi
 
 ## `/cadence-implement [ticket-id]`
 
-Execute a ticket's approved tier contract using strict BDD red-green-refactor TDD — one Gherkin scenario per commit cycle, database migrations via expand/contract, and journey invariant tests under chaos profiles. Delegates to `cadence-implementer`, which works sequentially through the Implementation Order (from `test-plan.md` at Medium/High tier, or derived from `problem.md` acceptance criteria at Low tier) in red-green-accumulate-commit loops while using `offload_log_triage` / `log-triage` on `:9379` to compact test output.
+Execute a ticket's approved tier contract using strict BDD red-green-refactor TDD — one Gherkin scenario per commit cycle, database migrations via expand/contract, and journey invariant tests under chaos profiles. Delegates to `cadence-implementer`, which works sequentially through the Implementation Order (from `test-plan.md` at Medium/High tier, or derived from `problem.md` acceptance criteria at Low tier) in red-green-accumulate-commit loops while using `offload_log_triage` / `log-triage` on `:11434` to compact test output.
 
 ```
 /cadence-implement TT-1234
@@ -118,7 +118,7 @@ Execute a ticket's approved tier contract using strict BDD red-green-refactor TD
 
 ## `/cadence-review [MR number or branch name]`
 
-Review a submitted change proposal against its governing tier contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md` acceptance criteria at Low tier). Runs an advisory local pre-review sweep (`offload_deep_review` on `:9380`) followed by `cadence-reviewer`, verifying acceptance criteria implementation, BDD test coverage, CADENCE Engineering Pillar compliance, architecture boundaries, and security posture, and applying the two-axis adversarial review lens: *verify-the-claim* (checking every safety assumption against authoritative seed/config/code sources) and *locate-the-failure* (probing inside the diff, in consumed code, in callers, and in unchanged sibling code whose assumptions were invalidated), plus silent-failure probes (silent fallbacks, broad catch blocks, multi-writer invariant gaps, state reuse across transitions, fake blind spots, and environment asset parity).
+Review a submitted change proposal against its governing tier contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md` acceptance criteria at Low tier). Runs an advisory local pre-review sweep (`offload_deep_review` on `:11434`) followed by `cadence-reviewer`, verifying acceptance criteria implementation, BDD test coverage, CADENCE Engineering Pillar compliance, architecture boundaries, and security posture, and applying the two-axis adversarial review lens: *verify-the-claim* (checking every safety assumption against authoritative seed/config/code sources) and *locate-the-failure* (probing inside the diff, in consumed code, in callers, and in unchanged sibling code whose assumptions were invalidated), plus silent-failure probes (silent fallbacks, broad catch blocks, multi-writer invariant gaps, state reuse across transitions, fake blind spots, and environment asset parity).
 
 ```
 /cadence-review 142

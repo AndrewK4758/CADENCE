@@ -38,8 +38,8 @@ Because `read_state.py` validates both preconditions and exits non-zero with the
 
 Throughout `/cadence-prep`, enforce automatic local coprocessor offloading before broad file reads or mechanical gate loops:
 
-1. **Pre-Discovery (`local_semantic_embed` / `local-moe-hybrid`).** Prior to broad repository file reads during intake triage (Step 1 / `State: draft`), candidate probe grounding (`State: triaged` -> `/cadence-elicit`), or specification authoring (`State: triaged` -> `/cadence-spec`), automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:9380`) to search `specs/`, `archive/`, `docs/agentic-sdlc/intent-insights.md`, `docs/agentic-sdlc/production-insights.md`, and affected codebase symbols without polluting the primary context window.
-2. **Mechanical Gate Failure Compaction (`offload_log_triage`).** Whenever `/cadence-spec` runs `.agents/skills/cadence-spec/verify-spec.sh` or `.agents/skills/cadence-spec/verify-facts.sh` and receives non-zero exit output, automatically pipe that output through `offload_log_triage` (`local-fast-cpu` on `:9379`, saving the full numbered log to `/tmp/agy-last-triage.log`) to extract verbatim `FAIL` assertions and exact `file:line` coordinates.
+1. **Pre-Discovery (`local_semantic_embed` / `local-moe-hybrid`).** Prior to broad repository file reads during intake triage (Step 1 / `State: draft`), candidate probe grounding (`State: triaged` -> `/cadence-elicit`), or specification authoring (`State: triaged` -> `/cadence-spec`), automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) to search `specs/`, `archive/`, `docs/agentic-sdlc/intent-insights.md`, `docs/agentic-sdlc/production-insights.md`, and affected codebase symbols without polluting the primary context window.
+2. **Mechanical Gate Failure Compaction (`offload_log_triage`).** Whenever `/cadence-spec` runs `.agents/skills/cadence-spec/verify-spec.sh` or `.agents/skills/cadence-spec/verify-facts.sh` and receives non-zero exit output, automatically pipe that output through `offload_log_triage` (`local-fast-cpu` on `:11434`, saving the full numbered log to `/tmp/agy-last-triage.log`) to extract verbatim `FAIL` assertions and exact `file:line` coordinates.
 
 ## Step 1 — resolve the argument
 
@@ -365,5 +365,5 @@ Never guess silently on any of the following conditions:
 - Every halt message must name the state where the halt occurred and the concrete action required to unblock it.
 
 ## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically invokes `local_semantic_embed` (`local-embed-cpu` on `:9379`, 0 MB VRAM) and `local-moe-hybrid` (`local-moe-hybrid` on `:9380`) during intake triage, probe candidate grounding, and specification preparation to search codebase symbols and insights registers at zero GPU VRAM cost.
-- Step 0 automatically routes any `verify-spec.sh` or `verify-facts.sh` failure output through `offload_log_triage` (`local-fast-cpu` on `:9379`, saving raw numbered output to `/tmp/agy-last-triage.log`).
+- Step 0 automatically invokes `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) during intake triage, probe candidate grounding, and specification preparation to search codebase symbols and insights registers at zero GPU VRAM cost.
+- Step 0 automatically routes any `verify-spec.sh` or `verify-facts.sh` failure output through `offload_log_triage` (`local-fast-cpu` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`).

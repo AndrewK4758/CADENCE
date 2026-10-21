@@ -136,7 +136,7 @@ The derived label never blocks progression — it provides an objective audit tr
 
 #### What the AI already did
 
-Prior to your review, the local pre-review sweep (`offload_deep_review` on `:9380`) and the `cadence-reviewer` agent have already:
+Prior to your review, the local pre-review sweep (`offload_deep_review` on `:11434`) and the `cadence-reviewer` agent have already:
 - Verified every acceptance criterion against its production code implementation
 - Checked automated test coverage against every Gherkin scenario in `test-plan.md` (or against `problem.md` acceptance criteria at Low tier, per `docs/policies/change-tiers.md`)
 - Audited adherence to Contextual Grounding constraints and CADENCE Engineering Pillars (`<400`-line file ceiling, comment discipline, structured logging, audit trail coverage, CHORD observability seams)

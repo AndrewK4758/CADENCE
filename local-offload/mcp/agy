@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Global Antigravity (agy) launcher wrapper.
+# Guarantees ~/.gemini/config/hooks.json and ~/.agents/hooks.json are always installed
+# globally with "global-litert-offload-enforcer" before launching /usr/bin/agy.
+set -euo pipefail
+
+GLOBAL_HOOKS="/home/ak/.gemini/config/hooks.json"
+PRIMARY_HOOKS="/home/ak/.agents/hooks.json"
+
+if [[ -f "$PRIMARY_HOOKS" && ! -f "$GLOBAL_HOOKS" ]]; then
+  mkdir -p "$(dirname "$GLOBAL_HOOKS")"
+  cp "$PRIMARY_HOOKS" "$GLOBAL_HOOKS"
+fi
+
+exec /usr/bin/agy "$@"
