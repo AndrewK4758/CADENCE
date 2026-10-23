@@ -90,7 +90,17 @@ fi
 remind_file="/tmp/agy-offload-remind.${safe_sid}"
 
 case "$cmd_str" in
-  *"dotnet test"*|*"dotnet build"*|*"dotnet ef"*|*"pytest"*|*"npm test"*|*"pnpm test"*|*"cargo test"*|*"cargo check"*|*"go test"*|*"verify-spec.sh"*|*"verify-facts.sh"*|*"authored-doc-gate.sh"*|*"dead-citation-gate.sh"*)
+  # Test / build / compiler / lint gates (substring matches on the raw command line).
+  # Groups, in order: .NET | Python | JS/TS | Rust/Go | JVM/C/Make | CADENCE gates.
+  *"dotnet test"*|*"dotnet build"*|*"dotnet ef"*|\
+  *"pytest"*|*"unittest"*|*"tox "*|*"nox "*|*"ruff check"*|*"mypy "*|*"pyright"*|\
+  *"npm test"*|*"npm run build"*|*"npm run test"*|*"npm run lint"*|*"pnpm test"*|*"pnpm build"*|*"pnpm run "*|\
+  *"yarn test"*|*"yarn build"*|*"bun test"*|*"bun run "*|*"deno test"*|*"vitest"*|*" jest"*|"jest"*|*"playwright test"*|\
+  *"eslint"*|*" tsc"*|"tsc"*|*"vite build"*|*"next build"*|*"turbo run"*|*"nx run"*|*"nx test"*|*"nx build"*|\
+  *"cargo test"*|*"cargo check"*|*"cargo build"*|*"cargo clippy"*|*"go test"*|*"go build"*|*"go vet"*|\
+  *"mvn test"*|*"mvn verify"*|*"mvn package"*|*"gradle test"*|*"gradle build"*|*"gradlew test"*|*"gradlew build"*|\
+  *"make test"*|*"make check"*|*"make build"*|*"make all"*|*"ctest"*|*"cmake --build"*|*" ninja"*|"ninja"*|\
+  *"verify-spec.sh"*|*"verify-facts.sh"*|*"authored-doc-gate.sh"*|*"dead-citation-gate.sh"*)
     msg="CADENCE Automatic Local Offload (:11434): Route any test/build/compiler/gate output exceeding 30 lines or exiting non-zero through call_mcp_tool(ServerName='local-offload', ToolName='offload_log_triage', Arguments={'log_text_or_command': ...}) or invoke_subagent(TypeName='log-triage') (raw log saved at /tmp/agy-triage/<repo_name>/<pid>.log)."
     if [ "$is_agy" -eq 1 ]; then
       printf '%s' "$msg" > "$remind_file" 2>/dev/null
