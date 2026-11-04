@@ -1,26 +1,4 @@
 {
-  "global-litert-offload-enforcer": {
-    "enabled": true,
-    "PreInvocation": [
-      {
-        "type": "command",
-        "command": "/home/ak/.local/bin/antigravity-local-offload-hook",
-        "timeout": 10
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "run_command|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/ak/.local/bin/antigravity-local-offload-hook",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  },
   "cadence-local-offload-enforcer": {
     "enabled": true,
     "PreInvocation": [
