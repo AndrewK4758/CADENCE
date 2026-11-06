@@ -4,10 +4,6 @@ description: Preserves completed or closed-out ticket records during the Enshrin
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # High-breadth archival orchestration, citation sweep disposition, effort calculation, and insight/ADR promotion follow structured rules. Routed to the high-breadth mechanical tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # High-breadth/mechanical tier: Gemini 3.8 Flash (High) / Local Gemma 4 26B Dual-GPU
-model: flash
-subagent: true
-enable_mcp_tools: true
-inheritMcp: true
 default_model: openai/inference-dual
 permission_mode: accept-edits
 effort: medium

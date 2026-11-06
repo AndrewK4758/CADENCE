@@ -60,9 +60,8 @@ Every modern agentic CLI tool supports or can project from `.agents/`. To elimin
 The `.gemini/` adapter (`ci-templates/scripts/adapters/gemini-agy.sh` and `import/link-sdlc.sh`) is the benchmark against which all other CLI adapters are modeled:
 
 1. **Frontmatter Contract (`agent.md`)**:
-   - `model:` uses validated tier aliases (`pro` for Gemini 4 Argon deep reasoning; `flash` for Gemini 3.8 Flash high-breadth mechanical work) with `# Tier:` comments documenting the exact model mapping from `CADENCE_ORG.md#model-tier-mapping`.
-   - `subagent: true`, `enable_mcp_tools: true`, and `inheritMcp: true` are set so every CADENCE subagent automatically inherits the `local-offload` MCP server (`offload_log_triage`, `local_semantic_embed`, `offload_deep_review`) and bound tracker MCP servers (`youtrack` / `jira`).
-   - Read-only roles (`cadence-architect`, `cadence-reviewer`, `log-triage`, `repo-scout`) enforce `enable_write_tools: false`.
+   - Uses strict Blitz/cross-runtime YAML frontmatter keys (`name`, `description`, `tools`, `default_model`, `permission_mode`, `effort`) with `# Tier:` comments documenting the exact model mapping from `CADENCE_ORG.md#model-tier-mapping`.
+   - Read-only roles (`cadence-architect`, `cadence-reviewer`, `log-triage`, `repo-scout`) omit file-write tools from `tools:` (`permission_mode: plan` or `default`) and enforce read-only guardrails in their system prompt.
    - System prompt bodies begin immediately with an `# H1` heading after the closing `---` YAML frontmatter delimiter.
 2. **Hook Projection (`hooks.json`)**:
    - Links `.gemini/hooks.json` (or global `~/.gemini/config/hooks.json`) to `.agents/hooks/hooks.json`.

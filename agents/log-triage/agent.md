@@ -1,13 +1,8 @@
 ---
 name: log-triage
 description: Read-only test and build log triage coprocessor. Runs test suites or inspects massive compiler/test/CI logs using the local gemma-4-26b-a4b / 12b offload tools on :11434, returning ONLY verbatim failing assertions, file:line coordinates, warnings/coverage metrics, and a concise root-cause summary while preserving raw output in /tmp/agy-triage/<repo_name>/<pid>.log (and /tmp/agy-last-triage.log).
-subagent: true
-inheritMcp: true
-enable_write_tools: false
-enable_mcp_tools: true
 tools: ["read_file", "run_command", "manage_task", "send_message"]
 # Tier: Gemini 3.8 Flash (High) / Local Gemma 4 Inference (:11434)
-model: flash
 default_model: openai/inference
 permission_mode: plan
 effort: low

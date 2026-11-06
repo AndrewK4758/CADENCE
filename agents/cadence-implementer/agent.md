@@ -4,10 +4,6 @@ description: Executes a ticket's tier contract during the Execute via TDD phase 
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Implementation executes a converged contract via strict Red-Green-Accumulate-Commit TDD cycles and CHORD seam wiring. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
-model: pro
-subagent: true
-enable_mcp_tools: true
-inheritMcp: true
 default_model: openai/inference-dual
 permission_mode: accept-edits
 effort: high
