@@ -7,60 +7,108 @@
 # ///
 """Enterprise Antigravity Local AI Offload MCP Server (:11434).
 
-Delivers token-minimal, zero-context-loss execution briefs to frontier (Argon)
-and local (`inference`) models via:
+Delivers token-minimal, inline-bounded (<3.9 KB) execution briefs to frontier (Argon)
+and local (`inference`) models without triggering Antigravity MCP file-spill traps:
 1. Boundary-aware AST/section semantic chunking + symbol maps (`local_semantic_embed`).
-2. Deduplicated, width-bounded log triage with fast-path bypass (`offload_log_triage`).
+2. Deduplicated, context-preserving log triage with 55-line fast-path (`offload_log_triage`).
 3. Semantically focused, delta-only CADENCE pillar pre-review (`offload_deep_review`).
 """
 
 from __future__ import annotations
-import glob as glob_mod, json, math, os, pathlib, re, subprocess, time, urllib.request
+import glob as glob_mod, http.client, json, math, os, pathlib, re, subprocess, threading, time
 from typing import Any
+from urllib.parse import urlsplit
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("local-offload")
 HOME_STR = str(pathlib.Path.home())
 os.environ["PATH"] = f"{HOME_STR}/.local/bin:{HOME_STR}/.asdf/shims:{HOME_STR}/.asdf/bin:{os.environ.get('PATH', '')}"
 LLAMA_SWAP_URL = os.environ.get("LLAMA_SWAP_URL", "http://127.0.0.1:11434/v1")
+LAN_EMBED_URL = os.environ.get("LIVING_ROOM_EMBED_URL", "http://192.168.50.254:11434/v1")
 TIER1_CPU_URL = os.environ.get("LOCAL_AI_TIER1_URL", LLAMA_SWAP_URL)
 TIER2_GPU_URL = os.environ.get("LOCAL_AI_TIER2_URL", LLAMA_SWAP_URL)
+MAX_INLINE_CHARS = 3850
+_POOL_LOCK = threading.Lock()
+_CONN_POOL: dict[str, http.client.HTTPConnection] = {}
+_LAN_DOWN_UNTIL: float = 0.0
 RAW_TRIAGE_LOG_PATH = pathlib.Path("/tmp/agy-last-triage.log")
 RAW_TRIAGE_DIR = pathlib.Path("/tmp/agy-triage")
 REPO_PATH_RE = re.compile(rf"(?:{re.escape(HOME_STR)}/projects/|~/projects/|-C\s+|cd\s+)([A-Za-z0-9_./~-]+)")
-TIER2_MODELS = {
-    "inference", "inference-dual", "openai/inference", "openai/inference-dual", "openai/fast-cpu",
-    "gemma-4-26b-dual", "local-moe-hybrid", "gemma-4-26b-a4b", "26b-a4b", "gemma-4-26b", "local-12b-gpu",
-    "gemma-4-12b", "12b", "local-fast-cpu", "fast-cpu", "gemma-4-e2b", "e2b", "litert", "litert-gemma",
-}
+TIER2_MODELS = {"inference", "inference-dual", "openai/inference", "openai/inference-dual", "openai/fast-cpu", "gemma-4-26b-dual", "local-moe-hybrid", "gemma-4-26b-a4b", "26b-a4b", "gemma-4-26b", "local-12b-gpu", "gemma-4-12b", "12b", "local-fast-cpu", "fast-cpu", "gemma-4-e2b", "e2b", "litert", "litert-gemma"}
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "bin", "obj", "dist", "build", "__pycache__", ".next", "target"}
 TEXT_EXTS = {".py", ".sh", ".zsh", ".bash", ".md", ".json", ".yaml", ".yml", ".toml", ".ini", ".ts", ".tsx", ".js", ".jsx", ".cs", ".rs", ".go", ".c", ".cpp", ".h", ".sql", ".service"}
-VERBATIM_SIGNAL_RE = re.compile(
-    r"(?i)(\b(?:error|warning|warn|fail(?:ed|ure)?|exception|traceback|assert(?:ion)?|panic|fatal|coverage|passed|skipped)\b"
-    r"|[A-Za-z0-9_./-]+\.[A-Za-z0-9_]+:\d+(?::\d+)?)"
-)
-SYMBOL_RE = re.compile(
-    r"^\s*(?:async\s+def|def|class|function|export\s+(?:async\s+)?function|export\s+(?:class|interface|type|const)|"
-    r"interface|struct|enum|pub\s+(?:async\s+)?fn|fn|impl|func\s+(?:\([^)]*\)\s*)?|type\s+|#{1,3})\s*([A-Za-z0-9_./:-]+)"
-    r"|^([A-Za-z0-9_-]+)\s*\(\)\s*\{|^([A-Za-z0-9_.-]+):\s*$"
-)
+FAIL_SIGNAL_RE = re.compile(r"(?i)(\b(?:error|warning|warn|fail(?:ed|ure)?|exception|traceback|assert(?:ion)?|panic|fatal|expected|received)\b|[A-Za-z0-9_./-]+\.[A-Za-z0-9_]+:\d+(?::\d+)?)")
+VERBATIM_SIGNAL_RE = re.compile(r"(?i)(\b(?:error|warning|warn|fail(?:ed|ure)?|exception|traceback|assert(?:ion)?|panic|fatal|expected|received|coverage|passed|skipped)\b|[A-Za-z0-9_./-]+\.[A-Za-z0-9_]+:\d+(?::\d+)?)")
+SYMBOL_RE = re.compile(r"^\s*(?:async\s+def|def|class|function|export\s+(?:async\s+)?function|export\s+(?:class|interface|type|const)|interface|struct|enum|pub\s+(?:async\s+)?fn|fn|impl|func\s+(?:\([^)]*\)\s*)?|type\s+|#{1,3})\s*([A-Za-z0-9_./:-]+)|^([A-Za-z0-9_-]+)\s*\(\)\s*\{|^([A-Za-z0-9_.-]+):\s*$")
 CHORD_SEAMS = ("UNSOUND_CONDITION", "RULE_DIVERGENCE", "BOUNDARY_FAULT", "DELTA_AUDIT_GAP")
 NORM_DUP_RE = re.compile(r"^\s*\d+\s*\|\s*(?:[A-Z][a-z]{2}\s+\d+\s+\d+:\d+:\d+\s+\S+\s+\S+?\[\d+\]:\s*)?")
 
 
+def _fit_inline(body: str, footer: str = "", limit: int = MAX_INLINE_CHARS) -> str:
+    full = f"{body}\n{footer}".strip() + "\n" if footer else body.strip() + "\n"
+    if len(full.encode("utf-8")) <= limit:
+        return full
+    sfx = f"\n...\n{footer.strip()}\n" if footer else "\n...(inline-bounded)\n"
+    budget = max(400, limit - len(sfx.encode("utf-8")) - 32)
+    clipped = body.encode("utf-8")[:budget].decode("utf-8", errors="ignore").rsplit("\n", 1)[0]
+    if clipped.count("```") % 2 == 1:
+        clipped += "\n```"
+    return clipped + sfx
+
+
 def _resolve_base_url(model: str) -> str:
-    return TIER2_GPU_URL if model in TIER2_MODELS else TIER1_CPU_URL
+    global _LAN_DOWN_UNTIL
+    if model in TIER2_MODELS:
+        return TIER2_GPU_URL
+    if time.monotonic() >= _LAN_DOWN_UNTIL:
+        netloc = urlsplit(LAN_EMBED_URL).netloc
+        with _POOL_LOCK:
+            if netloc in _CONN_POOL and _CONN_POOL[netloc].sock is not None:
+                return LAN_EMBED_URL
+            host, _, port_s = netloc.partition(":")
+            try:
+                conn = http.client.HTTPConnection(host, int(port_s or 11434), timeout=0.05)
+                conn.connect()
+                conn.timeout = 60.0
+                _CONN_POOL[netloc] = conn
+                return LAN_EMBED_URL
+            except OSError:
+                _LAN_DOWN_UNTIL = time.monotonic() + 30.0
+    return TIER1_CPU_URL
+
 
 def _post_json(url: str, payload: dict[str, Any], timeout: float = 180.0) -> dict[str, Any]:
-    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    global _LAN_DOWN_UNTIL
+    body = json.dumps(payload).encode("utf-8")
+    for attempt in range(2):
+        sp = urlsplit(url)
+        with _POOL_LOCK:
+            conn = _CONN_POOL.get(sp.netloc) or http.client.HTTPConnection(sp.netloc, timeout=timeout)
+            _CONN_POOL[sp.netloc] = conn
+            conn.timeout = timeout
+            try:
+                conn.request("POST", sp.path or "/", body=body, headers={"Content-Type": "application/json", "Connection": "keep-alive"})
+                resp = conn.getresponse()
+                raw = resp.read()
+                if resp.status >= 400:
+                    raise RuntimeError(f"HTTP {resp.status}: {raw[:200]!r}")
+                return json.loads(raw.decode("utf-8"))
+            except (OSError, http.client.HTTPException):
+                conn.close()
+                _CONN_POOL.pop(sp.netloc, None)
+                if attempt == 0 and url.startswith(LAN_EMBED_URL):
+                    _LAN_DOWN_UNTIL = time.monotonic() + 30.0
+                    url = TIER1_CPU_URL + url[len(LAN_EMBED_URL):]
+                    continue
+                if attempt == 1:
+                    raise
+    raise RuntimeError(f"POST failed: {url}")
+
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b))
     na, nb = math.sqrt(sum(x * x for x in a)), math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
-
 
 def _detect_repo_name(hint: str) -> str:
     cands = [os.path.expanduser(m.group(1)) for m in REPO_PATH_RE.finditer(hint)] + [os.getcwd()]
@@ -75,36 +123,43 @@ def _detect_repo_name(hint: str) -> str:
             return m.group(1)
     return re.sub(r"[^A-Za-z0-9._-]", "_", pathlib.Path.cwd().name or "global")
 
-
-def _clip_line(nline: str, log_path: pathlib.Path = RAW_TRIAGE_LOG_PATH, limit: int = 320) -> str:
+def _clip_line(nline: str, log_path: pathlib.Path = RAW_TRIAGE_LOG_PATH, limit: int = 260) -> str:
     if len(nline) <= limit:
         return nline
     m = VERBATIM_SIGNAL_RE.search(nline)
     if not m or m.start() < limit // 2:
-        return f"{nline[:limit]} ...[+{len(nline) - limit} chars in {log_path}]"
-    start = max(10, m.start() - 80)
+        return f"{nline[:limit]} ...[+{len(nline) - limit}c in {log_path.name}]"
+    start = max(10, m.start() - 60)
     end = min(len(nline), start + limit - 20)
-    return f"{nline[:10]}...{nline[start:end]}...[+{len(nline) - end} chars in {log_path}]"
+    return f"{nline[:10]}...{nline[start:end]}...[+{len(nline) - end}c in {log_path.name}]"
 
-
-def _compact_signals(numbered_lines: list[str], log_path: pathlib.Path = RAW_TRIAGE_LOG_PATH) -> tuple[list[str], set[int]]:
-    groups: dict[str, dict[str, Any]] = {}
+def _compact_signals(numbered_lines: list[str], log_path: pathlib.Path = RAW_TRIAGE_LOG_PATH) -> tuple[list[str], set[int], bool]:
+    fail_groups: dict[str, dict[str, Any]] = {}
+    info_groups: dict[str, dict[str, Any]] = {}
     matched: set[int] = set()
+    total = len(numbered_lines)
     for idx, nline in enumerate(numbered_lines, start=1):
-        if not VERBATIM_SIGNAL_RE.search(nline):
+        is_fail = bool(FAIL_SIGNAL_RE.search(nline))
+        if not is_fail and not VERBATIM_SIGNAL_RE.search(nline):
             continue
         matched.add(idx)
-        key = NORM_DUP_RE.sub("", nline)[:200]
-        if key not in groups:
-            groups[key] = {"line": _clip_line(nline, log_path), "count": 1, "first": idx, "last": idx}
+        target = fail_groups if is_fail else info_groups
+        key = NORM_DUP_RE.sub("", nline)[:180]
+        if key not in target:
+            ctx = [_clip_line(nline, log_path)]
+            if is_fail:
+                for cidx in range(idx + 1, min(total + 1, idx + 3)):
+                    cline = numbered_lines[cidx - 1]
+                    if not FAIL_SIGNAL_RE.search(cline) and cline.split("|", 1)[-1].strip():
+                        ctx.append(_clip_line(cline, log_path))
+                        matched.add(cidx)
+            target[key] = {"line": "\n".join(ctx), "count": 1, "first": idx, "last": idx}
         else:
-            groups[key]["count"] += 1
-            groups[key]["last"] = idx
-    out = [
-        f"{g['line']}  [x{g['count']} occurrences, lines {g['first']}..{g['last']}]" if g["count"] > 1 else g["line"]
-        for g in groups.values()
-    ]
-    return out, matched
+            target[key]["count"] += 1
+            target[key]["last"] = idx
+    fmt = lambda g: f"{g['line']}  [x{g['count']}, L{g['first']}..L{g['last']}]" if g["count"] > 1 else g["line"]
+    out = [fmt(g) for g in fail_groups.values()] + [fmt(g) for g in info_groups.values()]
+    return out, matched, bool(fail_groups)
 
 
 def _write_numbered_raw_log(raw_text: str, source_header: str, repo_name: str, pid: str | int) -> tuple[int, list[str], pathlib.Path]:
@@ -113,11 +168,7 @@ def _write_numbered_raw_log(raw_text: str, source_header: str, repo_name: str, p
     repo_dir = RAW_TRIAGE_DIR / repo_name
     repo_dir.mkdir(parents=True, exist_ok=True)
     log_path = repo_dir / f"{pid}.log"
-    header = (
-        f"# {log_path} — Full Unedited Output (CADENCE SDLC Ephemeral Session Escape Hatch)\n"
-        f"# Repo: {repo_name} | PID: {pid} | Source: {source_header} | Total Lines: {len(lines)}\n"
-        f"# ------------------------------------------------------------------------------\n"
-    )
+    header = f"# {log_path} — Full Unedited Output (CADENCE SDLC Ephemeral Session Escape Hatch)\n# Repo: {repo_name} | PID: {pid} | Source: {source_header} | Total Lines: {len(lines)}\n# ------------------------------------------------------------------------------\n"
     payload = header + "\n".join(numbered) + "\n"
     log_path.write_text(payload, encoding="utf-8")
     log_path.chmod(0o600)
@@ -136,7 +187,7 @@ def _write_numbered_raw_log(raw_text: str, source_header: str, repo_name: str, p
     return len(lines), numbered, log_path
 
 
-def _extract_file_chunks(p: pathlib.Path, chunk_lines: int = 58, overlap: int = 4) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _extract_file_chunks(p: pathlib.Path, chunk_lines: int = 28, overlap: int = 3) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     text = p.read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
     total = len(lines)
@@ -147,12 +198,7 @@ def _extract_file_chunks(p: pathlib.Path, chunk_lines: int = 58, overlap: int = 
             sym = next((g for g in m.groups() if g), "").strip()
             if sym and len(sym) <= 64:
                 symbols.append((idx, sym))
-    meta = {
-        "path": str(p), "name": p.name, "lines": total,
-        "ergonomics": "OK (<400)" if total < 400 else f"EXCEEDS_400 ({total})",
-        "symbols": [f"{s}@L{ln}" for ln, s in symbols[:48]],
-        "seams": [s for s in CHORD_SEAMS if s in text],
-    }
+    meta = {"path": str(p), "name": p.name, "lines": total, "ergonomics": "OK (<400)" if total < 400 else f"EXCEEDS_400 ({total})", "symbols": [f"{s}@L{ln}" for ln, s in symbols[:24]], "seams": [s for s in CHORD_SEAMS if s in text]}
     if total == 0:
         return meta, []
     bounds = [ln for ln, _ in symbols if ln > 1]
@@ -161,18 +207,14 @@ def _extract_file_chunks(p: pathlib.Path, chunk_lines: int = 58, overlap: int = 
     while start <= total:
         end = min(total, start + chunk_lines - 1)
         for b in bounds:
-            if start + 36 <= b <= end + 6:
+            if start + 16 <= b <= end + 4:
                 end = max(start, b - 1)
                 break
         slice_lines = lines[start - 1 : end]
         c_syms = [f"{s}@L{ln}" for ln, s in symbols if start <= ln <= end]
-        numbered = "\n".join(f"{i:4d} | {l[:160]}" for i, l in enumerate(slice_lines, start=start))
-        embed_body = "\n".join(l[:240] for l in slice_lines)[:4500]
-        chunks.append({
-            "label": f"{p}#L{start}-L{end}", "path": str(p), "name": p.name,
-            "start": start, "end": end, "symbols": c_syms, "numbered": numbered,
-            "embed_text": f"search_document: {p.name} L{start}-L{end} symbols={','.join(c_syms)}\n{embed_body}",
-        })
+        numbered = "\n".join(f"{i:4d} | {l[:140]}" for i, l in enumerate(slice_lines, start=start))
+        embed_body = "\n".join(l[:240] for l in slice_lines)[:4000]
+        chunks.append({"label": f"{p}#L{start}-L{end}", "path": str(p), "name": p.name, "start": start, "end": end, "symbols": c_syms, "numbered": numbered, "embed_text": f"search_document: {p.name} L{start}-L{end} symbols={','.join(c_syms)}\n{embed_body}"})
         if end >= total:
             break
         start = max(start + 1, end + 1 - overlap)
@@ -214,12 +256,7 @@ def _expand_targets(texts: list[str], max_files: int = 40) -> tuple[dict[str, di
                     _add(pathlib.Path(mp))
                 continue
         lines = s.splitlines()
-        chunks.append({
-            "label": f"snippet[{idx}]", "path": f"snippet[{idx}]", "name": f"snippet[{idx}]",
-            "start": 1, "end": max(1, len(lines)), "symbols": [],
-            "numbered": "\n".join(f"{i:4d} | {l[:220]}" for i, l in enumerate(lines[:40], start=1)),
-            "embed_text": f"search_document: snippet[{idx}]\n{s[:4500]}",
-        })
+        chunks.append({"label": f"snippet[{idx}]", "path": f"snippet[{idx}]", "name": f"snippet[{idx}]", "start": 1, "end": max(1, len(lines)), "symbols": [], "numbered": "\n".join(f"{i:4d} | {l[:160]}" for i, l in enumerate(lines[:28], start=1)), "embed_text": f"search_document: snippet[{idx}]\n{s[:4000]}"})
     return file_metas, chunks
 
 
@@ -230,7 +267,6 @@ def _embed_batch(inputs: list[str], batch_size: int = 48) -> list[list[float]]:
         resp = _post_json(f"{base_url}/embeddings", {"model": "embedding", "input": inputs[i : i + batch_size]}, timeout=60.0)
         vecs.extend(r["embedding"] for r in sorted(resp["data"], key=lambda r: r["index"]))
     return vecs
-
 
 @mcp.tool()
 def offload_log_triage(log_text_or_command: str, model: str = "inference") -> str:
@@ -252,35 +288,25 @@ def offload_log_triage(log_text_or_command: str, model: str = "inference") -> st
 
     repo_name = _detect_repo_name(stripped)
     total_lines, numbered_lines, log_path = _write_numbered_raw_log(raw_text, source_desc, repo_name, pid)
-    compacted_signals, matched_indices = _compact_signals(numbered_lines, log_path)
+    compacted_signals, matched_indices, has_fail = _compact_signals(numbered_lines, log_path)
 
-    if exit_code_info in {"0", "file", "N/A"} and total_lines <= 30 and not compacted_signals:
+    if total_lines <= 55 or (exit_code_info in {"0", "file", "N/A"} and total_lines <= 85 and not has_fail):
         preview = "\n".join(_clip_line(l, log_path) for l in numbered_lines) if numbered_lines else "(empty output)"
-        return (
-            f"### Local Offload Log Triage (fast-path, 0 ms LLM overhead)\n"
-            f"- **Source**: {source_desc} | **Exit**: `{exit_code_info}` | **Raw**: `{log_path}` (`{total_lines}` lines)\n"
-            f"```text\n{preview}\n```\n"
-        )
+        hdr = f"### Local Offload Log Triage (fast-path, 0 ms LLM overhead)\n- **Source**: {source_desc} | **Exit**: `{exit_code_info}` | **Raw**: `{log_path}` (`{total_lines}` lines)\n```text\n{preview}\n```"
+        return _fit_inline(hdr)
 
-    signal_block = "\n".join(compacted_signals[:60]) if compacted_signals else "(No error/warning patterns matched)"
-    unmatched_tail = [_clip_line(numbered_lines[i - 1], log_path) for i in range(max(1, total_lines - 35), total_lines + 1) if i not in matched_indices]
-    tail_block = "\n".join(unmatched_tail[-25:]) if unmatched_tail else "(All tail lines included in signals above)"
-
+    signal_block = "\n".join(compacted_signals[:45]) if compacted_signals else "(No error/warning patterns matched)"
+    unmatched_tail = [_clip_line(numbered_lines[i - 1], log_path) for i in range(max(1, total_lines - 30), total_lines + 1) if i not in matched_indices]
+    tail_block = "\n".join(unmatched_tail[-20:]) if unmatched_tail else "(All tail lines included in signals above)"
     t0 = time.perf_counter()
-    sys_msg = (
-        "You are a token-minimal CADENCE Log Triage Coprocessor. Do NOT repeat raw log lines. "
-        "Output ONLY 3 concise bullet lines: (1) Status & Metrics, (2) Root Cause, (3) Action Targets (`file:line`)."
-    )
+    sys_msg = "You are a token-minimal CADENCE Log Triage Coprocessor. Do NOT repeat raw log lines. Output ONLY 3 concise bullet lines: (1) Status & Metrics, (2) Exact Root Cause (ignore non-blocking warnings if tests/build succeeded), (3) Action Targets (`file:line`)."
     usr_msg = f"Source: {source_desc} | Exit: {exit_code_info} | Lines: {total_lines}\n=== SIGNALS ===\n{signal_block}\n=== TAIL ===\n{tail_block}"
-    resp = _post_json(
-        f"{_resolve_base_url(model)}/chat/completions",
-        {"model": model, "messages": [{"role": "system", "content": sys_msg}, {"role": "user", "content": usr_msg}], "max_tokens": 320, "temperature": 0.0, "chat_template_kwargs": {"enable_thinking": False}},
-        timeout=90.0,
-    )
+    resp = _post_json(f"{_resolve_base_url(model)}/chat/completions", {"model": model, "messages": [{"role": "system", "content": sys_msg}, {"role": "user", "content": usr_msg}], "max_tokens": 280, "temperature": 0.0, "chat_template_kwargs": {"enable_thinking": False}}, timeout=90.0)
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     summary = resp["choices"][0]["message"].get("content", "").strip()
-    sig_out = "\n".join(compacted_signals[:30]) if compacted_signals else "\n".join(unmatched_tail[-15:])
-    return f"### Local Offload Log Triage (`{model}`, {elapsed_ms:.0f} ms)\n- **Source**: {source_desc} | **Exit**: `{exit_code_info}` | **Raw**: `{log_path}` (`{total_lines}` lines)\n```text\n{sig_out}\n```\n{summary}\n"
+    sig_out = "\n".join(compacted_signals[:24]) if compacted_signals else "\n".join(unmatched_tail[-15:])
+    body = f"### Local Offload Log Triage (`{model}`, {elapsed_ms:.0f} ms)\n- **Source**: {source_desc} | **Exit**: `{exit_code_info}` | **Raw**: `{log_path}` (`{total_lines}` lines)\n```text\n{sig_out}\n```"
+    return _fit_inline(body, footer=summary)
 
 
 @mcp.tool()
@@ -292,8 +318,8 @@ def offload_deep_review(prompt: str, context_files: list[str] | None = None, mod
         if not p.is_file():
             static_rows.append(f"- `{fpath}`: NOT_FOUND")
             continue
-        meta, fchunks = _extract_file_chunks(p, chunk_lines=55, overlap=5)
-        seams_str, syms_str = (",".join(meta["seams"]) or "none"), (", ".join(meta["symbols"][:12]) or "none")
+        meta, fchunks = _extract_file_chunks(p, chunk_lines=50, overlap=4)
+        seams_str, syms_str = (",".join(meta["seams"]) or "none"), (", ".join(meta["symbols"][:10]) or "none")
         static_rows.append(f"- [{meta['name']}](file://{meta['path']}): `{meta['lines']}` lines (`{meta['ergonomics']}`) | CHORD: `{seams_str}` | Symbols: `{syms_str}`")
         if meta["lines"] <= 160 or len(fchunks) <= 3:
             lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -305,26 +331,17 @@ def offload_deep_review(prompt: str, context_files: list[str] | None = None, mod
             ranked = sorted(zip(fchunks, cvecs), key=lambda x: _cosine_similarity(qvec, x[1]), reverse=True)[:3]
             ranked.sort(key=lambda x: x[0]["start"])
             file_blocks.append(f"--- {meta['path']} ({meta['lines']}L; top-3 semantic slices; symbols: {syms_str}) ---\n" + "\n...\n".join(c["numbered"] for c, _ in ranked))
-
     static_summary = "\n".join(static_rows) if static_rows else "- (No context files provided)"
     context_blob = "\n\n".join(file_blocks) if file_blocks else "(No context files)"
     t0 = time.perf_counter()
-    sys_msg = (
-        "You are a token-minimal CADENCE Pre-Review Coprocessor for Gemini 4 Argon. Output ONLY:\n"
-        "1. Actionable findings: `- **[Pillar]** `file:line` — defect/risk -> minimal fix`.\n"
-        "2. One compact line summarizing passing pillars (Data/Audit, Security, Surface, Simplicity/Resilience, Ergonomics <400L)."
-    )
-    resp = _post_json(
-        f"{_resolve_base_url(model)}/chat/completions",
-        {"model": model, "messages": [{"role": "system", "content": sys_msg}, {"role": "user", "content": f"### Task\n{prompt}\n\n### Static Telemetry\n{static_summary}\n\n### Focused Code\n{context_blob}"}], "max_tokens": 640, "temperature": 0.1, "chat_template_kwargs": {"enable_thinking": False}},
-        timeout=180.0,
-    )
+    sys_msg = "You are a token-minimal CADENCE Pre-Review Coprocessor for Gemini 4 Argon. Output ONLY:\n1. Actionable findings: `- **[Pillar]** `file:line` — defect/risk -> minimal fix`.\n2. One compact line summarizing passing pillars (Data/Audit, Security, Surface, Simplicity/Resilience, Ergonomics <400L)."
+    resp = _post_json(f"{_resolve_base_url(model)}/chat/completions", {"model": model, "messages": [{"role": "system", "content": sys_msg}, {"role": "user", "content": f"### Task\n{prompt}\n\n### Static Telemetry\n{static_summary}\n\n### Focused Code\n{context_blob}"}], "max_tokens": 520, "temperature": 0.1, "chat_template_kwargs": {"enable_thinking": False}}, timeout=180.0)
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
-    return f"### Local Deep Review (`{model}`, {elapsed_ms:.0f} ms)\n{static_summary}\n\n{resp['choices'][0]['message'].get('content', '').strip()}\n"
+    return _fit_inline(f"### Local Deep Review (`{model}`, {elapsed_ms:.0f} ms)\n{static_summary}\n\n{resp['choices'][0]['message'].get('content', '').strip()}")
 
 
 @mcp.tool()
-def local_semantic_embed(texts: list[str], query: str, top_k: int = 6) -> str:
+def local_semantic_embed(texts: list[str], query: str, top_k: int = 4) -> str:
     """Compute zero-VRAM AST/section-chunked semantic search on `nomic-embed-text` (:11434, 8192-ctx)."""
     if not texts:
         return "No texts, files, or directories provided to `local_semantic_embed`."
@@ -332,7 +349,6 @@ def local_semantic_embed(texts: list[str], query: str, top_k: int = 6) -> str:
     file_metas, chunks = _expand_targets(texts)
     if not chunks:
         return "No indexable text chunks found in provided targets."
-
     vecs = _embed_batch([f"search_query: {query}"] + [c["embed_text"] for c in chunks])
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     qvec, cvecs, qlow = vecs[0], vecs[1:], query.lower()
@@ -344,44 +360,39 @@ def local_semantic_embed(texts: list[str], query: str, top_k: int = 6) -> str:
         if sname.lower() in qlow:
             return 0.10
         parts = [w.lower() for w in re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?=[A-Z]|$)", sname) if len(w) >= 4]
-        hits = sum(1 for p in parts if p[:5] in qlow)
-        return 0.08 if hits >= 2 else 0.0
+        return 0.08 if sum(1 for p in parts if p[:5] in qlow) >= 2 else 0.0
 
     def _score(c: dict[str, Any], vec: list[float]) -> float:
         is_test = "_test." in c["name"] or ".test." in c["name"]
         s_boost = 0.0 if is_test else max((_sym_match(s) for s in c["symbols"]), default=0.0)
-        p_boost = -0.08 if is_test else 0.04
-        return _cosine_similarity(qvec, vec) + s_boost + p_boost
+        return _cosine_similarity(qvec, vec) + s_boost + (-0.08 if is_test else 0.04)
 
     scored = sorted(((_score(c, vec), c) for c, vec in zip(chunks, cvecs)), key=lambda x: x[0], reverse=True)
-    top = scored[: max(1, top_k)]
-
+    top = scored[: min(max(1, top_k), 4)]
     out = [
-        f"### LiteRT Semantic Execution Pack (`nomic-embed-text`, {elapsed_ms:.1f} ms, 0 MB VRAM, `{len(chunks)}` chunks across `{len(file_metas) or len(texts)}` targets)",
+        f"### LiteRT Semantic Execution Pack (`nomic-embed-text`, {elapsed_ms:.1f} ms, `{len(chunks)}` chunks across `{len(file_metas) or len(texts)}` targets)",
         f"- **Query**: `{query}`\n",
-        "| Rank | Score | Target Coordinate | File Ergonomics | Chunk Symbols |",
+        "| Rank | Score | Target Coordinate | Ergonomics | Symbols |",
         "| :--- | :--- | :--- | :--- | :--- |",
     ]
     for rank, (score, c) in enumerate(top, start=1):
         fmeta = file_metas.get(c["path"])
         ergo = fmeta["ergonomics"] if fmeta else f"{c['end']}L"
-        csyms = ", ".join(c["symbols"][:4]) if c["symbols"] else "(body)"
+        csyms = ", ".join(c["symbols"][:3]) if c["symbols"] else "(body)"
         link = f"[{c['name']}#L{c['start']}-L{c['end']}](file://{c['path']}#L{c['start']}-L{c['end']})" if fmeta else f"`{c['label']}`"
         out.append(f"| {rank} | `{score:.4f}` | {link} | `{ergo}` | `{csyms}` |")
-
-    out.append("\n#### Pinned Context Slices & File Structural Maps (Immediate Execution Ready)")
+    out.append("\n#### Pinned Context Slices & File Maps (Inline Execution Ready)")
     seen_meta: set[str] = set()
     for rank, (score, c) in enumerate(top, start=1):
         fmeta = file_metas.get(c["path"])
         hdr = f"**[{rank}] [{c['name']}#L{c['start']}-L{c['end']}](file://{c['path']}#L{c['start']}-L{c['end']})** (`score={score:.4f}`)"
         if fmeta and c["path"] not in seen_meta:
             seen_meta.add(c["path"])
-            all_syms = ", ".join(fmeta["symbols"]) if fmeta["symbols"] else "none"
+            all_syms = ", ".join(fmeta["symbols"][:14]) if fmeta["symbols"] else "none"
             seams = ", ".join(fmeta["seams"]) if fmeta["seams"] else "none"
-            hdr += f"\n- *File Map (`{fmeta['lines']}` lines, `{fmeta['ergonomics']}`, CHORD seams: `{seams}`)*: `{all_syms}`"
+            hdr += f"\n- *Map (`{fmeta['lines']}L`, `{fmeta['ergonomics']}`, seams: `{seams}`)*: `{all_syms}`"
         out.append(f"{hdr}\n```text\n{c['numbered']}\n```")
-    return "\n".join(out) + "\n"
-
+    return _fit_inline("\n".join(out))
 
 if __name__ == "__main__":
     mcp.run()

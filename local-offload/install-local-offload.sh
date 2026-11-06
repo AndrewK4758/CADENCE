@@ -33,14 +33,19 @@ mkdir -p \
   "$HOME/.config/systemd/user" \
   "$HOME/.litert-lm" \
   "$HOME/.gemini/config" \
-  "$HOME/.gemini/antigravity-cli/mcp/local-offload"
+  "$HOME/.gemini/antigravity-cli/mcp/local-offload" \
+  "$HOME/.gemini/antigravity/mcp/local-offload"
 
-# 1. Install FastMCP server, lifecycle hook, and agy wrapper to ~/.local/bin (normalizing /home/ak -> $HOME)
+# 1. Install FastMCP server, lifecycle hook, global hooks.json, and agy wrapper (normalizing /home/ak -> $HOME)
 sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/mcp/antigravity-local-offload-mcp" > "$HOME/.local/bin/antigravity-local-offload-mcp"
 chmod +x "$HOME/.local/bin/antigravity-local-offload-mcp"
 
 sed "s|/home/ak|$HOME|g" "$REPO_ROOT/hooks/antigravity-local-offload-hook" > "$HOME/.local/bin/antigravity-local-offload-hook"
 chmod +x "$HOME/.local/bin/antigravity-local-offload-hook"
+
+if [[ -f "$REPO_ROOT/hooks/hooks.global.json" ]]; then
+  sed "s|/home/ak|$HOME|g" "$REPO_ROOT/hooks/hooks.global.json" > "$HOME/.gemini/config/hooks.json"
+fi
 
 if [[ -f "$SCRIPT_DIR/mcp/agy" && -x /usr/bin/agy ]]; then
   sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/mcp/agy" > "$HOME/.local/bin/agy"
@@ -55,16 +60,21 @@ sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/llama-swap/local-ai-offload-serve" > "$HOM
 chmod +x "$HOME/.local/bin/local-ai-offload-serve"
 
 cp "$SCRIPT_DIR/llama-swap/llamaswap-server.plugin.zsh" "$HOME/.config/llama-swap/llamaswap-server.plugin.zsh"
-cp "$SCRIPT_DIR/llama-swap/llama-swap.egpu.yaml" "$HOME/.config/llama-swap/llama-swap.egpu.yaml"
-cp "$SCRIPT_DIR/llama-swap/llama-swap.single.yaml" "$HOME/.config/llama-swap/llama-swap.single.yaml"
+if [[ ! -f "$HOME/.config/llama-swap/llama-swap.egpu.yaml" ]]; then
+  cp "$SCRIPT_DIR/llama-swap/llama-swap.egpu.yaml" "$HOME/.config/llama-swap/llama-swap.egpu.yaml"
+fi
+if [[ ! -f "$HOME/.config/llama-swap/llama-swap.single.yaml" ]]; then
+  cp "$SCRIPT_DIR/llama-swap/llama-swap.single.yaml" "$HOME/.config/llama-swap/llama-swap.single.yaml"
+fi
 
 # 3. Install LiteRT-LM config if not already present
 if [[ ! -f "$HOME/.litert-lm/config.json" ]]; then
   cp "$SCRIPT_DIR/litert-lm/config.json" "$HOME/.litert-lm/config.json"
 fi
 
-# 4. Install lazy-loaded MCP tool schemas for Antigravity CLI
+# 4. Install lazy-loaded MCP tool schemas for Antigravity CLI and GUI
 cp "$SCRIPT_DIR/mcp/schemas/"*.json "$HOME/.gemini/antigravity-cli/mcp/local-offload/"
+cp "$SCRIPT_DIR/mcp/schemas/"*.json "$HOME/.gemini/antigravity/mcp/local-offload/"
 
 # 5. Ensure local-offload MCP server is registered in ~/.gemini/config/mcp_config.json
 if [[ ! -f "$HOME/.gemini/config/mcp_config.json" ]]; then
