@@ -4,10 +4,6 @@ description: Authors EF Core database migrations during the Execute via TDD phas
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Database schema migration safety (zero-downtime rolling compatibility, idempotency, reversibility, DDL/DML separation) is high-stakes and irreversible in production. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
-model: pro
-subagent: true
-enable_mcp_tools: true
-inheritMcp: true
 default_model: openai/inference-dual
 permission_mode: accept-edits
 effort: high

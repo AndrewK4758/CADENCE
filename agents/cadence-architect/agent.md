@@ -4,11 +4,6 @@ description: Senior architecture specialist for pre-flight boundary analysis dur
 tools: ["read_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Cross-boundary contract analysis, strict Observed/Inferred/Unknown epistemic separation, and refusal to hallucinate Gherkin specs demand deep reasoning. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
-model: pro
-subagent: true
-enable_mcp_tools: true
-inheritMcp: true
-enable_write_tools: false
 default_model: openai/inference-dual
 permission_mode: plan
 effort: high

@@ -4,10 +4,6 @@ description: Evaluates code-reviewed change proposals during the Navigate Gates 
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Cross-artifact synthesis across ADRs, surface registries, project intent, and eight system-level evaluation dimensions is the final AI gate prior to merge. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
-model: pro
-subagent: true
-enable_mcp_tools: true
-inheritMcp: true
 default_model: openai/inference-dual
 permission_mode: default
 effort: high
