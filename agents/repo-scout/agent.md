@@ -1,13 +1,8 @@
 ---
 name: repo-scout
 description: Read-only parallel repository exploration and architecture mapping subagent. Uses local nomic-embed-text (local-embed-cpu) semantic search and gemma-4-26b-a4b (local-moe-hybrid) synthesis to locate symbols, cross-boundary contracts, CHORD seams, and prior insights without polluting Argon's context window.
-subagent: true
-inheritMcp: true
-enable_write_tools: false
-enable_mcp_tools: true
 tools: ["read_file", "search_web", "send_message"]
 # Tier: Gemini 3.8 Flash (High) / Local Gemma 4 26B Dual-GPU (:11434)
-model: flash
 default_model: openai/inference
 permission_mode: plan
 effort: medium
