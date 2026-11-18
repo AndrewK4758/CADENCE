@@ -72,8 +72,10 @@ kind=installed path=.cadence-version
 kind=framework_dev path=.agents
 kind=framework_dev path=.gemini
 kind=framework_dev path=AGENTS.md
+kind=framework_dev path=CHANGELOG.md
 kind=framework_dev path=README.md
 kind=framework_dev path=agents
+kind=framework_dev path=docs
 kind=framework_dev path=hooks
 kind=framework_dev path=import
 kind=framework_dev path=local-offload
