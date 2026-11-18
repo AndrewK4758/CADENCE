@@ -155,7 +155,7 @@ At Low tier, `cadence-implementer` constructs its TDD scenario sequence directly
 
 2. **Transition status to `in-progress` and project to tracker (skill-owned transition).** Update `specs/$ticket_id/metadata.yaml` by setting `status: in-progress` and `implementation_started_at` to the **exact** current UTC timestamp from `date -u +%Y-%m-%dT%H:%M:%SZ` (full second precision `YYYY-MM-DDTHH:MM:SSZ`, never date-only, midnight, or rounded), then invoke the repository's designated tracker sync skill (resolved from `CADENCE_ORG.md` §9, Tracker Binding) for `$ticket_id`. Perform this transition **prior to** delegating to `cadence-implementer`: because subagents cannot execute tracker sync skills, the top-level skill turn owns both the `in-progress` and `in-review` transitions and their outbound tracker projections (`CADENCE_ORG.md` §9, *Projection triggers & sync discipline*).
 
-3. **Delegate implementation to `cadence-implementer` (`Model="pro"` default; `Model="flash"` optional for simple Low-tier tickets; with mandatory `offload_log_triage`).** The subagent will:
+3. **Delegate implementation to `cadence-implementer` (`Deep-reasoning` tier, `xhigh` effort across all implementation tiers; with mandatory `offload_log_triage`).** The subagent will:
    - Cut or check out the feature branch (following `CADENCE_ORG.md#branch-strategy-binding`) and inspect the project's test runner conventions (`PROJECT_INTENT.md`)
    - Execute each scenario in the Implementation Order using strict **RED -> GREEN -> ACCUMULATE -> COMMIT** TDD cycles (one scenario per commit)
    - **Mandatory Automatic Log Offload (`offload_log_triage`).** On **every** RED, GREEN, ACCUMULATE, build, linter, or migration verification command whose combined stdout/stderr exceeds 30 lines, automatically route the output through `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:11434`, 0 MB VRAM) or the `log-triage` subagent. `offload_log_triage` writes the complete numbered raw output to `/tmp/agy-last-triage.log` and returns verbatim compiler/test assertions, `file:line` coordinates, and test runner summary lines so primary context is never flooded by verbose stack traces
@@ -194,7 +194,7 @@ At Low tier, `cadence-implementer` constructs its TDD scenario sequence directly
 /cadence-implement TT-6547
 ```
 
-## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 3 automatically pipes every test, build, linter, or migration verification output exceeding 30 lines through `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:11434`, 0 MB VRAM) or `log-triage`, preserving the full numbered raw output at `/tmp/agy-last-triage.log` while returning verbatim error assertions and `file:line` coordinates.
-- Step 4 automatically executes `offload_deep_review` (`local-moe-hybrid` on `:11434`) as a pre-review mechanical scan (<400-line ceiling, comment discipline, CHORD seams) before transitioning to `in-review`.
-- Local models NEVER edit or format files (`enable_write_tools: false`). All production and test code edits are authored by `gemini-4-argon-high`.
+## Local Model Offload Integration (:11434)
+- Step 3 automatically pipes every test, build, linter, or migration verification output exceeding 30 lines through `offload_log_triage` (`inference` on `:11434`) or `log-triage`, preserving the full numbered raw output at `/tmp/agy-last-triage.log` while returning verbatim error assertions and `file:line` coordinates.
+- Step 4 automatically executes `offload_deep_review` (`inference` on `:11434`) as a pre-review mechanical scan (<400-line ceiling, comment discipline, CHORD seams) before transitioning to `in-review`.
+- Local models NEVER edit or format files (`enable_write_tools: false`). All production and test code edits are authored by the `Deep-reasoning` tier (`effort: xhigh`, routed by `CADENCE_ORG.md#model-tier-mapping`).

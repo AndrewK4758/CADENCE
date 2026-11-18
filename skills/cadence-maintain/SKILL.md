@@ -24,7 +24,7 @@ Prior to invoking `cadence-maintainer`, verify both preconditions:
    - Single-pass readability ceiling (`<400` lines per modified/added file under the Agentic Ergonomics pillar)
    - Comment and docstring preservation discipline
    - CHORD observability seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`) and public Surface Compatibility markers
-   Forward the pre-scan output to `cadence-maintainer` in Step 4 so `gemini-4-argon-high` verifies any mechanical flags alongside the eight maintainer dimensions.
+   Forward the pre-scan output to `cadence-maintainer` in Step 4 so the `Deep-reasoning` tier (`effort: xhigh`) verifies any mechanical flags alongside the eight maintainer dimensions.
 
 1. **Resolve the change-proposal reference:**
    - When `$mr_ref` is an integer, treat it as the forge thread number (GitLab MR IID, GitHub PR number, or SourceHut patchset ID). Resolve it locally to its branch and ticket ID by reading `merge_request:` in `specs/{ticket-id}/metadata.yaml` or `Thread URL` under `## Forge metadata` in `specs/{ticket-id}/submission.md`. If local metadata cannot map the number, ask the operator for the branch name (no forge API call is required).
@@ -41,7 +41,7 @@ Prior to invoking `cadence-maintainer`, verify both preconditions:
    ```
    Run Step 0's automatic `offload_deep_review` pre-scan on this diff prior to Step 4.
 
-4. **Delegate to `cadence-maintainer` (`Model="pro"`).** Pass the diff, the spec/decision artifacts, and Step 0's `offload_deep_review(diff_range="<integration-branch>...{branch-name}", cwd="<repo-root>")` pre-scan so the subagent evaluates all eight maintainer dimensions:
+4. **Delegate to `cadence-maintainer` (`Deep-reasoning` tier, `xhigh` effort).** Pass the diff, the spec/decision artifacts, and Step 0's `offload_deep_review(diff_range="<integration-branch>...{branch-name}", cwd="<repo-root>")` pre-scan so the subagent evaluates all eight maintainer dimensions:
    - Surface Compatibility and backwards-compatible API stability
    - Architectural alignment with ratified ADRs and repository conventions
    - Mission alignment against `PROJECT_INTENT.md` (fitness vs. scope creep)
@@ -80,7 +80,7 @@ Prior to invoking `cadence-maintainer`, verify both preconditions:
 /cadence-maintain feature/26.5.TT/TT-6547
 ```
 
-## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically invokes `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) to pre-scan the branch diff for `<400`-line ceiling compliance, comment discipline, and CHORD observability seams before delegating to `cadence-maintainer`.
-- Step 6b.c uses `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) / `local-moe-hybrid` when checking `specs/` and `archive/` for prior-work deduplication.
-- Maintainer evaluation across the eight governance dimensions and human decision capture remain 100% owned by `gemini-4-argon-high`.
+## Local Model Offload Integration (:11434)
+- Step 0 automatically invokes `offload_deep_review` (`inference` on `:11434`) to pre-scan the branch diff for `<400`-line ceiling compliance, comment discipline, and CHORD observability seams before delegating to `cadence-maintainer`.
+- Step 6b.c uses `local_semantic_embed` (`embedding` on `:11434`) / `repo-scout` when checking `specs/` and `archive/` for prior-work deduplication.
+- Maintainer evaluation across the eight governance dimensions and human decision capture remain 100% owned by the `Deep-reasoning` tier (`effort: xhigh`, routed by `CADENCE_ORG.md#model-tier-mapping`).

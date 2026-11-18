@@ -73,7 +73,7 @@ Perform intake triage on the issue designated by `$ticket_id`. Delegate the anal
 
    **(BTG-327):** On that later step-1a pass, "do not overwrite `problem.md`" means never re-seeding from the external tracker -- the triage-agent still drafts or flags the stub's `## Acceptance Criteria` section as part of normal classification.
 
-3. **Delegate to `cadence-triage-agent` (`Model="flash"`).** Supply the issue description, provenance context, and the semantic search findings from Step 0 (`local_semantic_embed` / `repo-scout`) so the subagent can:
+3. **Delegate to `cadence-triage-agent` (`Fast-mechanical` tier, `high` effort).** Supply the issue description, provenance context, and the semantic search findings from Step 0 (`local_semantic_embed` / `repo-scout`) so the subagent can:
    - Inspect the targeted codebase modules for affected components
    - Cross-check `specs/` and `archive/` for duplicate or related prior tickets
    - Assign classification metadata (type, priority, scope, domain, observability, and tier)
@@ -160,6 +160,6 @@ Classifies ticket `TT-6547`. When the resulting tier is Medium or High and `prob
 
 Mints an identifier and triages a free-text problem statement directly. Tickets classified as Trivial or Low bypass the probe interview offer.
 
-## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically invokes `local_semantic_embed` (`local-embed-cpu` / `nomic-embed-text` on `:11434`, 0 VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) for duplicate detection, component discovery, and insight lookups before broad file reads.
-- Classification, scope assessment, and artifact authoring remain 100% owned by Gemini (`cadence-triage-agent` on `gemini-3.8-flash-high` / Argon).
+## Local Model Offload Integration (:11434)
+- Step 0 automatically invokes `local_semantic_embed` (`embedding` / `embeddinggemma-2` on `:11434`) and/or `offload_deep_review` (`inference` on `:11434`) for duplicate detection, component discovery, and insight lookups before broad file reads.
+- Classification, scope assessment, and artifact authoring remain 100% owned by the triage agent (`cadence-triage-agent` on the `Fast-mechanical` tier at `high` effort, routed by `CADENCE_ORG.md#model-tier-mapping`).

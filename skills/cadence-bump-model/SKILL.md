@@ -70,30 +70,32 @@ Summarize updated file paths (`adapter(s)`, `CADENCE_ORG.md`, `agent.md`), confi
 
 ---
 
-## Worked Example (Gemini / Antigravity & Claude Runtimes)
+## Worked Example (Provider-Neutral Adapters)
 
-In a repository configured for Gemini (`gemini-4-argon-high` for `Deep-reasoning`, `gemini-3.8-flash-high` for `Fast-mechanical`) or Claude (`claude-opus-N-M` for `Deep-reasoning`, `claude-sonnet-N-M` for `Fast-mechanical`), `CADENCE_ORG.md#model-tier-mapping` binds each tier to its family convention.
+In a repository configured via `CADENCE_ORG.md#model-tier-mapping` and runtime adapters (`adapters/*.sh`), each tier binds cleanly to that provider's concrete model IDs:
+- Gemini / Antigravity example: `gemini-4-hydrogen` (`xhigh` effort) for `Deep-reasoning`, and a smaller high-breadth model for `Fast-mechanical` (`high` effort).
+- Claude Code / OpenCode example: `claude-opus-5-5` (`xhigh` effort) for `Deep-reasoning`, and `claude-sonnet-5` (`high` effort) for `Fast-mechanical`.
 
-### Cross-family refusal (runtime-specific instance of the cross-tier rule)
+### Cross-family refusal (in-tier guarantee)
 
-If `$from_model` belongs to one capability family (e.g., `gemini-*-argon-*` or `claude-opus-*`) and `$to_model` belongs to another (e.g., `gemini-*-flash-*` or `claude-sonnet-*`), the skill refuses the operation — because model families map 1:1 to capability tiers (`Deep-reasoning` vs. `Fast-mechanical`), a cross-family replacement is a cross-tier change rather than a version bump.
+If `$from_model` belongs to the `Deep-reasoning` family and `$to_model` belongs to the `Fast-mechanical` family (or vice versa), the skill refuses the operation — moving an agent between capability tiers (for example downgrading code planning, execution, or review from `Deep-reasoning` to `Fast-mechanical`) requires an architectural specification rather than a model bump.
 
 ### Invocations
 
-```
-/cadence-bump-model gemini-4-argon-preview gemini-4-argon-high
-```
-
-Updates the `Deep-reasoning` tier's concrete model identifier (and recompiles every `Deep-reasoning` agent to `gemini-4-argon-high`), leaving the `Fast-mechanical` tier untouched.
-
-```
-/cadence-bump-model gemini-3.7-flash-high gemini-3.8-flash-high
+```text
+/cadence-bump-model gemini-4-argon gemini-4-hydrogen
 ```
 
-Updates the `Fast-mechanical` tier's concrete model identifier (and recompiles every `Fast-mechanical` agent to `gemini-3.8-flash-high`).
+Updates the `Deep-reasoning` tier's concrete model identifier across matching adapter arms, `CADENCE_ORG.md#model-tier-mapping`, and `agent.md` `default_model:` entries, leaving the `Fast-mechanical` tier untouched.
 
-```
-/cadence-bump-model gemini-4-argon-high gemini-3.8-flash-high
+```text
+/cadence-bump-model claude-opus-5-0 claude-opus-5-5
 ```
 
-**Refused.** Moving from Argon (`Deep-reasoning`) to Flash (`Fast-mechanical`) crosses capability tiers. The skill halts and instructs the operator to open an intent ticket if a tier reassignment is desired.
+Updates the `Deep-reasoning` tier on Claude Code / OpenCode adapters without altering `Fast-mechanical`.
+
+```text
+/cadence-bump-model gemini-4-hydrogen gemini-3.8-flash  # refused — cross-tier substitution
+```
+
+**Refused.** Moving between `Deep-reasoning` and `Fast-mechanical` crosses capability tiers. The skill halts and instructs the operator to open an intent ticket if a tier reassignment is desired.

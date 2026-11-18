@@ -27,7 +27,7 @@ Never parse `metadata.yaml` by hand (`read_state.py` joins wrapped scalars and h
 
 ## Step 0 — Automatic Local Offload (`local_semantic_embed` & `offload_log_triage`)
 
-1. **Pre-Discovery (`local_semantic_embed` / `repo-scout`):** Before broad reads during intake triage (`draft`), probe grounding (`triaged` -> `/cadence-elicit`), or specification authoring (`triaged` -> `/cadence-spec`), run `local_semantic_embed` (`:11434`, 0 MB VRAM) or `repo-scout` (`Model="flash"`) over `specs/`, `archive/`, `docs/agentic-sdlc/*-insights.md`, and candidate symbols.
+1. **Pre-Discovery (`local_semantic_embed` / `repo-scout`):** Before broad reads during intake triage (`draft`), probe grounding (`triaged` -> `/cadence-elicit`), or specification authoring (`triaged` -> `/cadence-spec`), run `local_semantic_embed` (`:11434`, 0 MB VRAM) or `repo-scout` (`local-coprocessor` tier) over `specs/`, `archive/`, `docs/agentic-sdlc/*-insights.md`, and candidate symbols.
 2. **Gate Failure Compaction (`offload_log_triage`):** Route non-zero output (>30 lines) from `verify-spec.sh` or `verify-facts.sh` through `offload_log_triage` (`:11434`, raw log saved to `/tmp/agy-last-triage.log`).
 
 ## Step 1 — Resolve the Argument

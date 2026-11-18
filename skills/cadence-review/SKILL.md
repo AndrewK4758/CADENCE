@@ -12,7 +12,7 @@ Audit the change proposal `$mr_ref` (whether a GitLab MR, GitHub PR, or SourceHu
 
 ## Steps
 
-0. **Mandatory Automatic Mechanical Pre-Scan (`offload_deep_review`).** Once the target branch and integration branch diff are resolved in Steps 1–3, automatically invoke `offload_deep_review(prompt=..., diff_range="<integration-branch>...{branch-name}", cwd="<repo-root>", context_files=[...])` **before** delegating to `cadence-reviewer`. The coprocessor inspects the actual unified diff hunks plus deterministic metrics (`<400`-line ceiling, comment discipline, CHORD seams, security boundary patterns). Pass this report to `cadence-reviewer` (`Model="pro"`) in Step 4; `/cadence-review` (not the read-only subagent) persists the final review report into `specs/{ticket-id}/submission.md` in Step 5.
+0. **Mandatory Automatic Mechanical Pre-Scan (`offload_deep_review`).** Once the target branch and integration branch diff are resolved in Steps 1–3, automatically invoke `offload_deep_review(prompt=..., diff_range="<integration-branch>...{branch-name}", cwd="<repo-root>", context_files=[...])` **before** delegating to `cadence-reviewer`. The coprocessor inspects the actual unified diff hunks plus deterministic metrics (`<400`-line ceiling, comment discipline, CHORD seams, security boundary patterns). Pass this report to `cadence-reviewer` (`Deep-reasoning` tier, `xhigh` effort) in Step 4; `/cadence-review` (not the read-only subagent) persists the final review report into `specs/{ticket-id}/submission.md` in Step 5.
 
 1. **Resolve the change-proposal reference:**
    - When `$mr_ref` is an integer, treat it as the forge thread identifier (GitLab MR IID, GitHub PR number, or SourceHut patchset ID). Map it locally to its branch and ticket ID by inspecting `merge_request:` in `specs/{ticket-id}/metadata.yaml` or `Thread URL` under `## Forge metadata` in `specs/{ticket-id}/submission.md`. If local metadata cannot resolve the number, prompt the operator for the branch name (no forge network call is required to resolve the local system of record).
@@ -28,7 +28,7 @@ Audit the change proposal `$mr_ref` (whether a GitLab MR, GitHub PR, or SourceHu
 3. **Run diff pre-scan and compute the branch diff** against the repository's integration branch (resolving `<integration-branch>` dynamically from `CADENCE_ORG.md#branch-strategy-binding` per `ADR_CADENCE-0020`; never hardcode a branch name):
    - Call `offload_deep_review` with `diff_range="<integration-branch>...{branch-name}"`, `cwd="<repo-root>"`, and `context_files` pointing to touched specs/files before Step 4.
 
-4. **Delegate to `cadence-reviewer` (`Model="pro"`).** Supply the diff, the tier contract artifacts, and Step 0/3's `offload_deep_review` pre-scan so the strictly read-only subagent executes Pass 1 (Contract, Independent Test/Gate Execution via `offload_log_triage`, Boundaries, Pillars, Migrations) and Pass 2 (Section 10 Adversarial Falsification across Positions 1–4):
+4. **Delegate to `cadence-reviewer` (`Deep-reasoning` tier, `xhigh` effort).** Supply the diff, the tier contract artifacts, and Step 0/3's `offload_deep_review` pre-scan so the strictly read-only subagent executes Pass 1 (Contract, Independent Test/Gate Execution via `offload_log_triage`, Boundaries, Pillars, Migrations) and Pass 2 (Section 10 Adversarial Falsification across Positions 1–4):
    - Verify every acceptance criterion against the concrete implementation
    - Audit test coverage and scenario fidelity against `test-plan.md` (or `problem.md` at Low tier)
    - Verify architectural boundaries (Clean Architecture layer direction, service contracts, CHORD seams)
@@ -63,7 +63,7 @@ Audit the change proposal `$mr_ref` (whether a GitLab MR, GitHub PR, or SourceHu
    Execute **Steps a–e** defined in [followup-disposition.md](references/followup-disposition.md) with `<gate>` = `/cadence-review`:
    - **(a) Enumerate & verify classes:** halt on any unlabelled undispositioned non-blocking item (`finding.class.unlabelled`); gather undispositioned `out-of-scope-defect` entries (`nit`, `hygiene`, `observation`, `adr-owed` stay in `## Discussion`; if 0 candidates remain, write `none owed` + per-class tally).
    - **(b) Capability floor:** require command composition + interactive confirmation, else take degraded deferral writing drafts to disk and emitting `followup.filing.composition_unavailable` or `followup.filing.confirmation_channel_unavailable`.
-   - **(c) Dedupe & confirm:** search `specs/` and `archive/` via `local_semantic_embed` / `repo-scout` (`Model="flash"`) for `new`, `duplicate of <id>`, or `fold into <id>` (halt on unreadable root with `followup.dedupe.check_unavailable`); `cadence-reviewer` only labels findings — this step asks the human.
+   - **(c) Dedupe & confirm:** search `specs/` and `archive/` via `local_semantic_embed` / `repo-scout` (`local-coprocessor` tier) for `new`, `duplicate of <id>`, or `fold into <id>` (halt on unreadable root with `followup.dedupe.check_unavailable`); `cadence-reviewer` only labels findings — this step asks the human.
    - **(d) File/fold confirmed candidates:** run `/cadence-triage --file-only <draft-path>` (never call `mint-id.sh` directly or directory-scan; emit `followup.filing.draft_cleanup_failed` only on cleanup failure); verify `<id>` is `draft` or `triaged` before folding into `## Notes`.
    - **(e) Record dispositions:** update `## Resolution` -> `Follow-ups created` using canonical forms (`filed`, `duplicate`, `folded`, `none owed`, `declined`, `deferred`) + per-class tally.
 
@@ -82,7 +82,7 @@ Audit the change proposal `$mr_ref` (whether a GitLab MR, GitHub PR, or SourceHu
 /cadence-review impl/feature/ORD-40
 ```
 
-## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically invokes `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) to execute an advisory mechanical pre-scan over the branch diff (verifying the `<400`-line Agentic Ergonomics ceiling, comment preservation discipline, CHORD observability seams, and security boundary patterns).
-- Step 6c uses `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) / `local-moe-hybrid` when checking `specs/` and `archive/` for prior-work deduplication.
-- `gemini-4-argon-high` independently verifies all mechanical flags and conducts the four-position adversarial review against the approved tier contract (`spec.md` or `problem.md`) before issuing the verdict.
+## Local Model Offload Integration (:11434)
+- Step 0 automatically invokes `offload_deep_review` (`inference` on `:11434`) to execute an advisory mechanical pre-scan over the branch diff (verifying the `<400`-line Agentic Ergonomics ceiling, comment preservation discipline, CHORD observability seams, and security boundary patterns).
+- Step 6c uses `local_semantic_embed` (`embedding` on `:11434`) / `repo-scout` when checking `specs/` and `archive/` for prior-work deduplication.
+- The `Deep-reasoning` tier (`effort: xhigh`, routed by `CADENCE_ORG.md#model-tier-mapping`) independently verifies all mechanical flags and conducts the four-position adversarial review against the approved tier contract (`spec.md` or `problem.md`) before issuing the verdict.

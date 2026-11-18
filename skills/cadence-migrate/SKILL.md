@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Glob Grep Bash
 
 ## Task
 
-Author reversible database schema migrations for `$ticket_id` adhering to the expand/contract pattern. Delegate stack/topology discovery, migration generation, and apply/rollback/reapply verification to the `cadence-migration-author` subagent (`Model="pro"` on Deep-reasoning tier), with automatic `offload_log_triage` compaction on build/migration logs and diff-aware `offload_deep_review` pre-scanning prior to MR creation.
+Author reversible database schema migrations for `$ticket_id` adhering to the expand/contract pattern. Delegate stack/topology discovery, migration generation, and apply/rollback/reapply verification to the `cadence-migration-author` subagent (`Deep-reasoning` tier, `xhigh` effort), with automatic `offload_log_triage` compaction on build/migration logs and diff-aware `offload_deep_review` pre-scanning prior to MR creation.
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ When neither a specification nor schema diffs exist, prompt the operator to desc
 2. **Detect stack and verify tooling environment:**
    - Identify which database migration stack applies and verify its CLI/test harness responds cleanly before scaffolding.
 
-3. **Delegate to `cadence-migration-author` (`Model="pro"`, with `offload_log_triage`).** Supply ticket ID `$ticket_id` and mode `expand` or `contract`. The subagent discovers project topology, derives schema deltas, generates stack-idiomatic expand/contract migrations (DDL separate from DML, complete rollback path, idempotency guards), runs the apply -> rollback -> reapply cycle (compacting `>30`-line or failing outputs via `offload_log_triage`), and records deferred `--contract` entries in `specs/$ticket_id/decisions.md`.
+3. **Delegate to `cadence-migration-author` (`Deep-reasoning` tier, `xhigh` effort, with `offload_log_triage`).** Supply ticket ID `$ticket_id` and mode `expand` or `contract`. The subagent discovers project topology, derives schema deltas, generates stack-idiomatic expand/contract migrations (DDL separate from DML, complete rollback path, idempotency guards), runs the apply -> rollback -> reapply cycle (compacting `>30`-line or failing outputs via `offload_log_triage`), and records deferred `--contract` entries in `specs/$ticket_id/decisions.md`.
 
 4. **Verify migration outputs and run automatic pre-MR scan (`offload_deep_review`):**
    - Confirm generated migration/snapshot artifacts exist and clean build + tests pass (compacting logs `>30` lines via `offload_log_triage`).
@@ -49,7 +49,7 @@ When neither a specification nor schema diffs exist, prompt the operator to desc
 /cadence-migrate TT-6547 --contract   # Author contraction migrations as follow-up
 ```
 
-## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 3 and Step 4 automatically pipe any `dotnet build` or `dotnet ef` verification output exceeding 30 lines through `offload_log_triage` (`local-fast-cpu` on `:11434`, 0 MB VRAM), saving raw numbered logs to `/tmp/agy-last-triage.log`.
-- Step 4 automatically runs `offload_deep_review` (`local-moe-hybrid` on `:11434`) on the generated migration diff before MR creation/update.
-- All migration authoring and schema verification decisions remain 100% owned by `gemini-4-argon-high`.
+## Local Model Offload Integration (:11434)
+- Step 3 and Step 4 automatically pipe any build or migration verification output exceeding 30 lines through `offload_log_triage` (`inference` on `:11434`), saving raw numbered logs to `/tmp/agy-last-triage.log`.
+- Step 4 automatically runs `offload_deep_review` (`inference` on `:11434`) on the generated migration diff before MR creation/update.
+- All migration authoring and schema verification decisions remain 100% owned by the `Deep-reasoning` tier (`effort: xhigh`, routed by `CADENCE_ORG.md#model-tier-mapping`).

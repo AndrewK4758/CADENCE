@@ -55,7 +55,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
    - When zero `[adr-owed]` items exist, proceed directly to Step 2.
    Any `[adr-owed]` item that reaches Step 3's exit check neither promoted into a concrete `docs/ADR/` file nor dispositioned under `Follow-ups created` fails archival verification with `archive.adr_owed.undispositioned`.
 
-2. **Delegate to `cadence-archivist` (`Model="flash"`).** Supply the ticket artifacts, Step 1's `local_semantic_embed` flow matches, and Step 1b's promoted `adr-owed` rulings so the subagent will:
+2. **Delegate to `cadence-archivist` (`Fast-mechanical` tier, `high` effort).** Supply the ticket artifacts, Step 1's `local_semantic_embed` flow matches, and Step 1b's promoted `adr-owed` rulings so the subagent will:
    - Finalize `submission.md` (recording final status, discussion, and merge commit resolution on entry path (a))
    - Relocate `specs/$ticket_id/` to `archive/$ticket_id/`
    - Author `archive/$ticket_id/summary.md` incorporating git history metrics
@@ -231,7 +231,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
     Execute **Steps a–e** of [followup-disposition.md](../cadence-review/references/followup-disposition.md) with `<gate>` = `/cadence-archive`:
     - **(a) Enumerate & gather candidates:** halt unlabelled items with `finding.class.unlabelled` (any newly labelled `adr-owed` entry here is recorded `Deferred` and added to candidates alongside Step 1b's deferred `adr-owed` and un-dispositioned `out-of-scope-defect` items; zero candidates -> `none owed` + tally).
     - **(b) Capability floor:** take degraded deferral (`followup.filing.composition_unavailable` / `followup.filing.confirmation_channel_unavailable`) if composition or confirmation is absent.
-    - **(c) Semantic dedupe & confirm:** search `specs/` and `archive/` via `local_semantic_embed` / `repo-scout` (`Model="flash"`; halt with `followup.dedupe.check_unavailable` on unreadable root; archived-only matches stay `new`).
+    - **(c) Semantic dedupe & confirm:** search `specs/` and `archive/` via `local_semantic_embed` / `repo-scout` (`local-coprocessor` tier; halt with `followup.dedupe.check_unavailable` on unreadable root; archived-only matches stay `new`).
     - **(d) File/fold confirmed candidates:** invoke `/cadence-triage --file-only <draft-path>` (`followup.filing.draft_cleanup_failed` on cleanup miss; note new live `specs/<new-id>/` tickets are not dead citations); verify `<id>` is `draft` or `triaged` before folding into `problem.md` `## Notes`.
     - **(e) Record dispositions:** write canonical `Follow-ups created` forms (`filed`, `duplicate`, `folded`, `none owed`, `declined`, `deferred`) + per-class tally.
 
@@ -262,7 +262,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
 /cadence-archive TT-6547
 ```
 
-## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 1 and Step 2e.c automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) to match archived ticket changes against `docs/flows/*.md` and deduplicate follow-up candidates against `specs/` and `archive/`.
-- Steps 2b, 2c, and 2d automatically pipe `dead-citation-gate.sh` and `authored-doc-gate.sh` output exceeding 30 lines through `offload_log_triage` (`local-fast-cpu` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`).
-- Archival summary authoring, ADR/insight promotion, and citation disposition decisions remain 100% owned by Gemini (`cadence-archivist` / Argon).
+## Local Model Offload Integration (:11434)
+- Step 1 and Step 2e.c automatically invoke `local_semantic_embed` (`embedding` on `:11434`) to match archived ticket changes against `docs/flows/*.md` and deduplicate follow-up candidates against `specs/` and `archive/`.
+- Steps 2b, 2c, and 2d automatically pipe `dead-citation-gate.sh` and `authored-doc-gate.sh` output exceeding 30 lines through `offload_log_triage` (`inference` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`).
+- Archival summary authoring, ADR/insight promotion, and citation disposition decisions remain 100% owned by `cadence-archivist` (`Fast-mechanical` tier at `high` effort, routed by `CADENCE_ORG.md#model-tier-mapping`).
