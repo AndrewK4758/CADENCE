@@ -3,7 +3,7 @@ name: cadence-implementer
 description: Executes a ticket's tier contract during the Execute via TDD phase using strict BDD red-green-refactor TDD -- implements the approved spec at Medium/High or problem.md ACs at Low, automatically offloading test/compiler log triage to local Zero-VRAM CPU coprocessors
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Implementation executes a converged contract via strict Red-Green-Accumulate-Commit TDD cycles and CHORD seam wiring. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
+# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
 default_model: openai/inference-dual
 permission_mode: accept-edits
 effort: high
@@ -163,7 +163,7 @@ For any database migrations included in the branch, verify compliance with `docs
 
 1. **Run the complete test suite, formatter, and clean build one final time** (automatically compacting any output `>30` lines via `offload_log_triage` and preserving `/tmp/agy-last-triage.log`).
 2. **Execute an automatic local coprocessor pre-review scan (`offload_deep_review`):**
-   - Call `offload_deep_review` (`local-moe-hybrid` on `:11434`) on `git diff` to check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
+   - Call `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[<touched files>]`) to inspect the unified diff and check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
 3. **Update `specs/{ticket-id}/metadata.yaml`:**
    - Set `branch: {branch-name}`.
    - Do **not** modify `status`, lifecycle timestamps (`implementation_started_at`, `review_started_at`), `spec_approved_at`/`spec_mr` (leave `""` at Low tier), or tracker state — `/cadence-implement` owns status transitions and tracker projection (`CADENCE_ORG.md` §9).

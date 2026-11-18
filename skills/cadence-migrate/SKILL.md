@@ -1,6 +1,6 @@
 ---
 name: cadence-migrate
-description: Author EF Core database schema migrations using the expand/contract pattern with automatic log triage and pre-review diff verification
+description: Author reversible database schema and data migrations using the expand/contract pattern (EF Core, Alembic, Prisma/Drizzle, Room, or SQL scripts) with automatic log triage and pre-review diff verification
 argument-hint: "[ticket-id] [--contract]"
 arguments: [ticket_id, flags]
 allowed-tools: Read Write Edit Glob Grep Bash
@@ -8,17 +8,17 @@ allowed-tools: Read Write Edit Glob Grep Bash
 
 ## Task
 
-Author reversible database schema migrations for `$ticket_id` adhering to the expand/contract pattern. Delegate project discovery, migration generation, and apply/rollback/reapply verification to the `cadence-migration-author` subagent, with mandatory automatic `offload_log_triage` compaction on build/migration logs and `offload_deep_review` pre-scanning prior to MR creation.
+Author reversible database schema migrations for `$ticket_id` adhering to the expand/contract pattern. Delegate stack/topology discovery, migration generation, and apply/rollback/reapply verification to the `cadence-migration-author` subagent (`Model="pro"` on Deep-reasoning tier), with automatic `offload_log_triage` compaction on build/migration logs and diff-aware `offload_deep_review` pre-scanning prior to MR creation.
 
 ## Prerequisites
 
 Confirm all three preconditions before starting:
 
-1. Either `specs/$ticket_id/spec.md` exists and specifies schema changes, OR entity model classes on the active branch differ from the integration branch
-2. At least one .NET project in the solution defines an EF Core `DbContext`
-3. The `dotnet ef` CLI tool is installed and operational (`dotnet ef --version` exits 0)
+1. Either `specs/$ticket_id/spec.md` exists and specifies schema changes, OR entity/schema model files on the active branch differ from the integration branch
+2. A persistence migration stack is identifiable in the repository (`*.sln`/EF Core, `alembic.ini`, `prisma/schema.prisma`/`drizzle.config.*`, Android Room `@Database`, or SQL migration scripts)
+3. The stack's migration/test tooling is executable in the workspace environment
 
-When neither a specification nor entity model diffs exist, prompt the operator to describe the required schema changes before proceeding.
+When neither a specification nor schema diffs exist, prompt the operator to describe the required schema changes before proceeding.
 
 ## Steps
 
@@ -26,27 +26,14 @@ When neither a specification nor entity model diffs exist, prompt the operator t
    - Extract `ticket_id` (mandatory)
    - Check for the `--contract` flag — when `--contract` is supplied, set migration mode to `contract`; otherwise default to `expand` mode
 
-2. **Verify tooling environment:**
-   - Execute `dotnet ef --version` to verify that EF Core CLI tooling is available
-   - If unavailable, instruct the operator to install it via: `dotnet tool install --global dotnet-ef`
+2. **Detect stack and verify tooling environment:**
+   - Identify which database migration stack applies and verify its CLI/test harness responds cleanly before scaffolding.
 
-3. **Delegate to `cadence-migration-author` (with mandatory `offload_log_triage`).** Supply:
-   - Ticket ID: `$ticket_id`
-   - Mode: `expand` or `contract`
-   - The subagent will:
-     - Locate the solution's `DbContext`, migrations folder, startup project, and configured database provider
-     - Derive the required schema delta from `specs/$ticket_id/spec.md`, entity class diffs, or operator input
-     - Generate EF Core migration files adhering strictly to the expand/contract pattern
-     - Verify Surface Compatibility and backwards compatibility (in `expand` mode, existing running application code must continue operating cleanly against the expanded schema)
-     - Execute the full apply -> rollback -> reapply verification cycle against the target database
-     - **Mandatory Automatic Log Offload (`offload_log_triage`).** Whenever `dotnet build`, `dotnet ef migrations add`, or `dotnet ef database update` output exceeds 30 lines, automatically route the command output through `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:11434`, 0 MB VRAM, writing the full numbered raw output to `/tmp/agy-last-triage.log`) so verbatim compiler/SQL errors and `file:line` coordinates are extracted cleanly
-     - Record any deferred contraction follow-up work in `specs/$ticket_id/decisions.md` when running in `expand` mode
+3. **Delegate to `cadence-migration-author` (`Model="pro"`, with `offload_log_triage`).** Supply ticket ID `$ticket_id` and mode `expand` or `contract`. The subagent discovers project topology, derives schema deltas, generates stack-idiomatic expand/contract migrations (DDL separate from DML, complete rollback path, idempotency guards), runs the apply -> rollback -> reapply cycle (compacting `>30`-line or failing outputs via `offload_log_triage`), and records deferred `--contract` entries in `specs/$ticket_id/decisions.md`.
 
 4. **Verify migration outputs and run automatic pre-MR scan (`offload_deep_review`):**
-   - Confirm the generated migration and designer/snapshot files exist in the target migrations directory
-   - Confirm the solution builds cleanly (`dotnet build`), routing any output >30 lines through `offload_log_triage` (`/tmp/agy-last-triage.log`)
-   - Confirm the apply/rollback/reapply verification cycle succeeded
-   - **Mandatory Automatic Pre-Review Diff Scan (`offload_deep_review`).** Before recommending or opening/updating an MR, automatically run `offload_deep_review` (`local-moe-hybrid` on `:11434`) on the migration diff to verify expand/contract safety, absence of destructive unguarded DDL in expand mode, `<400`-line ceiling compliance on hand-authored files, and CHORD seam annotations (`BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
+   - Confirm generated migration/snapshot artifacts exist and clean build + tests pass (compacting logs `>30` lines via `offload_log_triage`).
+   - Run `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[...]`) to verify expand/contract safety, absence of unguarded destructive DDL in expand mode, `<400`-line ceiling compliance, and CHORD seams (`BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
 
 5. **Report to the operator:**
    - Generated migration file paths and a summary of schema operations

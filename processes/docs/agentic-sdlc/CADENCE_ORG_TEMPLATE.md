@@ -455,11 +455,11 @@ This section declares the capability tiers and concrete model identifiers used b
 
 | Tier | Agents |
 |---|---|
-| Deep-reasoning | cadence-architect, cadence-explorer, cadence-spec-author, cadence-reviewer, cadence-migration-author, cadence-maintainer |
-| Fast-mechanical | cadence-triage-agent, cadence-archivist, cadence-implementer |
+| Deep-reasoning | cadence-architect, cadence-explorer, cadence-spec-author, cadence-implementer (default; flash optional for simple Low-tier work), cadence-reviewer, cadence-migration-author, cadence-maintainer |
+| Fast-mechanical | cadence-triage-agent, cadence-archivist |
 | Local-coprocessor (Read-Only Subagents & MCP Tools) | `log-triage` (`offload_log_triage`), `repo-scout` (`local_semantic_embed`), `offload_deep_review` |
 
-> **Why `cadence-implementer` and `cadence-reviewer` sit on distinct capability tiers.** `cadence-implementer` executes on Fast-mechanical (or Deep-reasoning when overridden for complex multi-context TDD) while `cadence-reviewer` runs on Deep-reasoning. More importantly, review-gate independence from the implementer is **structural** — `cadence-reviewer` runs in an isolated context window, re-derives expected behavior directly from `spec.md` and `test-plan.md` (assisted by `offload_deep_review` mechanical pre-scans on `:11434`), and never inherits the implementer's session reasoning. See [ADR_CADENCE-0007](../ADR/0007-review-gate-independence-is-structural.md).
+> **Why `cadence-implementer` and `cadence-reviewer` maintain independent gates:** Even when both run on Deep-reasoning, review-gate independence from the implementer is **structural** — `cadence-reviewer` runs in an isolated context window, re-executes tests and gates itself, re-derives expected behavior directly from `spec.md` and `test-plan.md` (assisted by diff-aware `offload_deep_review` pre-scans on `:11434`), and never inherits the implementer's session reasoning. See [ADR_CADENCE-0007](../ADR/0007-review-gate-independence-is-structural.md).
 
 ### Automatic 2-Tier Local Hardware Coprocessor Offload Rules
 

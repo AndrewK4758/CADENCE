@@ -3,7 +3,7 @@ name: cadence-maintainer
 description: Evaluates code-reviewed change proposals during the Navigate Gates phase for project-level maintainer acceptance across eight dimensions -- surface compatibility, architectural integrity, project intent alignment, complexity budget, threat surface, release readiness, dependency health, and documentation currency, starting with an automatic local hybrid-MoE pre-scan
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Cross-artifact synthesis across ADRs, surface registries, project intent, and eight system-level evaluation dimensions is the final AI gate prior to merge. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
+# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
 default_model: openai/inference-dual
 permission_mode: default
 effort: high
@@ -45,8 +45,8 @@ Before running the evaluation, verify that `cadence-reviewer` has approved the c
 ### Step 0: Automatic Local Coprocessor Pre-Scan (`offload_deep_review` & `local_semantic_embed`)
 
 Before evaluating the eight dimensions below, **automatically invoke the local hardware coprocessors**:
-1. Call `offload_deep_review` (`local-moe-hybrid` 26B-A4B on `127.0.0.1:11434`) on the `git diff` to flag any `<400`-line file ceiling breaches (`<=150`/`<=400` function ceiling for BDD test harnesses), public surface modifications, or missing CHORD telemetry hooks.
-2. Call `local_semantic_embed` (`local-embed-cpu` on `127.0.0.1:11434`, 0 MB VRAM) to compare the diff's architectural summary against `docs/ADR/*.md` and `docs/flows/*.md` so relevant ADRs and business flows are surfaced without reading unrelated files.
+1. Call `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[<touched files>]`) to inspect the unified diff and flag `<400`-line file ceiling breaches (`<=150`/`<=400` function ceiling for BDD test harnesses), public surface modifications, or missing CHORD telemetry hooks.
+2. Call `local_semantic_embed` (`top_k=6` on `127.0.0.1:11434`) to compare the diff's architectural summary against `docs/ADR/*.md` and `docs/flows/*.md` so relevant ADRs and business flows are surfaced without reading unrelated files.
 *(Fallback guard: if local offload endpoints are unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and inspect `docs/ADR/` and `docs/flows/` directly.)*
 
 ### 1. Backwards Compatibility & Public Surface Stability
@@ -214,7 +214,7 @@ Conclude by prompting the human maintainer for their explicit ruling:
 
 ## Post-Decision Actions
 
-Once the human responds:
+When executing standalone (interactive `/cadence-maintain`) after the human responds; note that inside `/cadence-parallel` batch runs, route branch writes through the ticket's owning implementation worktree per `cadence-parallel` Step 5 rather than mutating across worktrees:
 - **Accept:**
   1. Update `specs/{ticket-id}/metadata.yaml`: set `maintainer_approved_at` to the **exact** current UTC wall-clock timestamp via `date -u +%Y-%m-%dT%H:%M:%SZ` (full second precision `YYYY-MM-DDTHH:MM:SSZ`).
   2. Write any approved `CHANGELOG.md` draft under `[Unreleased]` and any approved deprecation/migration docs under `docs/`.

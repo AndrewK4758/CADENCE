@@ -3,7 +3,7 @@ name: cadence-triage-agent
 description: Evaluates incoming work items during the Classify phase -- determines issue category, scope, impact, and change tier, runs automatic local semantic duplicate/codebase discovery, and initializes specification stubs
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # High-volume intake classification, local semantic search orchestration, intent alignment checks, and CHORD dimension mapping prioritize rapid turnaround. Routed to the high-breadth mechanical tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# High-breadth/mechanical tier: Gemini 3.8 Flash (High) / Local Gemma 4 26B Dual-GPU
+# High-breadth/mechanical tier: Gemini 3.8 Flash (Model="flash" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
 default_model: openai/inference-dual
 permission_mode: accept-edits
 effort: medium
@@ -49,7 +49,7 @@ Whenever the ID-allocation binding (`CADENCE_ORG.md#id-allocation-binding`, §10
 
 3. **Execute automatic local semantic discovery for related code, prior specs, and duplicates (Zero-VRAM Offload — Automatic).**
    Before running manual broad file reads across the repository, **automatically invoke the local hardware coprocessor** so discovery runs at 0 MB GPU VRAM without polluting the primary context window:
-   - Call `local_semantic_embed` (on the `local-offload` MCP server, backed by `local-embed-cpu` / `nomic-embed-text` at `127.0.0.1:11434`) and/or delegate to the `repo-scout` subagent with the problem statement as the query and candidate summaries drawn from `specs/`, `archive/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md`.
+   - Call `local_semantic_embed` (on the `local-offload` MCP server at `127.0.0.1:11434`, `top_k=6`) and/or delegate to the `repo-scout` subagent with the problem statement as the query and candidate summaries drawn from `specs/`, `archive/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md`.
    - Use the top-ranked semantic matches alongside targeted `Grep` and `Glob` lookups to locate:
      - Affected domain entities and models
      - Application service implementations

@@ -3,7 +3,7 @@ name: cadence-explorer
 description: Divergent architectural exploration specialist for the Architect & Explore phase -- uses automatic local repo-scout discovery and independently constructs 2-3 structurally distinct, steelmanned design options with zero ranking before specification authoring converges
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Constructing genuinely orthogonal architectural options and steelmanning each on its own merits requires deep analytical reasoning. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
+# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
 default_model: openai/inference-dual
 permission_mode: accept-edits
 effort: high
