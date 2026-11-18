@@ -432,32 +432,34 @@ Production → Seam fires with structured signal → Next issue triaged with ful
 
 This section declares the capability tiers and concrete model identifiers used by CADENCE agents in this repository's runtime, alongside the **2-Tier Local Hardware Coprocessor Offload** pipeline. Capability tier names are stable and form part of the Surface Compatibility contract (see the Configuration Contracts entry for `CADENCE_ORG.md#model-tier-mapping` in [`docs/policies/cadence-surfaces.md`](../policies/cadence-surfaces.md) -- that row is **core-owned** and is not duplicated in the adopter-owned [`docs/policies/surface-registry.md`](../policies/surface-registry.md)). Concrete cloud model identifiers are runtime-specific and may be updated within a tier via `/cadence-bump-model`.
 
-**This repo's primary runtime:** Google Antigravity / Gemini CLI (`.agents/` canonical source with `.gemini/` reference runtime projection; see `docs/policies/cli-runtime-adoption-policy.md`).
+**This template is provider-neutral:** bind concrete model identifiers in the table below and in your active runtime adapters (`docs/policies/cli-runtime-adoption-policy.md`, e.g., Google Antigravity / Gemini CLI, Claude Code, Codex, OpenCode, or Blitz).
 
 ### Capability Tiers
 
-| Tier | Purpose |
-|---|---|
-| Deep-reasoning | Cross-artifact architectural synthesis, design exploration, CHORD behavioral decomposition, security boundary analysis, and gate evaluations. Governs the Spec Review gate, Code Review gate, and Maintainer Acceptance gate. |
-| Fast-mechanical | Deterministic execution against an established contract — intake classification, artifact archival, template population, tracker synchronization, and red-green-refactor TDD execution of an approved specification. Bounded by decisions already ratified upstream. |
-| Local-coprocessor (Tier 1 & Tier 2) | Read-only local hardware offload (`enable_write_tools: false`) for zero-VRAM semantic retrieval, noisy test/compiler log compaction, and pre-review mechanical sweeps (`<400`-line file ceiling, comment discipline, CHORD seam presence). |
+| Tier | Reasoning Effort | Purpose |
+|---|---|---|
+| `Deep-reasoning` | `xhigh` | Anything involving code planning, architecture, design exploration, CHORD specification authoring, red-green-refactor TDD execution across all change tiers, database migrations, security boundary analysis, adversarial code review, and maintainer gate evaluations. |
+| `Fast-mechanical` | `high` | High-breadth, structured or deterministic execution with clear instructions — intake classification, archival & citation sweeps, wide variable/argument refactors under explicit invariants, template population, and tracker synchronization. |
+| `Local-coprocessor` (Tier 1 & Tier 2) | `:11434` (`medium`) | Read-only local hardware offload (`enable_write_tools: false`) for semantic retrieval, noisy test/compiler log compaction, and pre-review mechanical sweeps (`<400`-line file ceiling, comment discipline, CHORD seam presence). |
 
 ### Tier → Concrete Model
 
-| Tier | Concrete Model (Gemini / Antigravity) |
-|---|---|
-| Deep-reasoning | gemini-4-argon (`pro`) |
-| Fast-mechanical | gemini-3.8-flash (`flash`) |
-| Local-coprocessor Tier 1 (Always-On CPU `:11434`) | `local-fast-cpu` (`gemma-4-e2b-it`, 128MB 3D V-Cache, 0 VRAM) + `local-embed-cpu` (`nomic-embed-text`, 0 VRAM) |
-| Local-coprocessor Tier 2 (On-Demand Hybrid/GPU `:11434`) | `local-moe-hybrid` (`gemma-4-26b-a4b-it`) + `local-12b-gpu` (`gemma-4-12b-it`, RTX 5070 Ti 12GB VRAM) |
+| Tier | Minimum Effort | Concrete Model (`<your configured runtime>`) |
+|---|---|---|
+| `Deep-reasoning` | `xhigh` | `<frontier-reasoning-model>` |
+| `Fast-mechanical` | `high` | `<high-breadth-capable-model>` |
+| `Local-coprocessor` Tier 1 (Always-On `:11434`) | `medium` | `embedding` (`embeddinggemma-2`) + `inference` |
+| `Local-coprocessor` Tier 2 (On-Demand `:11434`) | `medium` | `inference` (`gemma-4-26b-a4b` / `gemma-4-12b` fallback) |
+
+*Example runtime bindings (defined per-adapter, never hardcoded in core agent definitions):* Gemini (`gemini-4-hydrogen` at `xhigh` / smaller high-breadth Gemini model at `high`), Claude (`claude-opus-5-5` at `xhigh` / `claude-sonnet-5` at `high`), or local dual-GPU inference.
 
 ### Tier → Agents
 
-| Tier | Agents |
-|---|---|
-| Deep-reasoning | cadence-architect, cadence-explorer, cadence-spec-author, cadence-implementer (default; flash optional for simple Low-tier work), cadence-reviewer, cadence-migration-author, cadence-maintainer |
-| Fast-mechanical | cadence-triage-agent, cadence-archivist |
-| Local-coprocessor (Read-Only Subagents & MCP Tools) | `log-triage` (`offload_log_triage`), `repo-scout` (`local_semantic_embed`), `offload_deep_review` |
+| Tier | Reasoning Effort | Agents |
+|---|---|---|
+| `Deep-reasoning` | `xhigh` | `cadence-architect`, `cadence-explorer`, `cadence-spec-author`, `cadence-implementer` (all tiers, including Low), `cadence-reviewer`, `cadence-migration-author`, `cadence-maintainer` |
+| `Fast-mechanical` | `high` | `cadence-triage-agent`, `cadence-archivist` |
+| `Local-coprocessor` (Read-Only Subagents & MCP Tools) | `medium` | `log-triage` (`offload_log_triage`), `repo-scout` (`local_semantic_embed`), `offload_deep_review` |
 
 > **Why `cadence-implementer` and `cadence-reviewer` maintain independent gates:** Even when both run on Deep-reasoning, review-gate independence from the implementer is **structural** — `cadence-reviewer` runs in an isolated context window, re-executes tests and gates itself, re-derives expected behavior directly from `spec.md` and `test-plan.md` (assisted by diff-aware `offload_deep_review` pre-scans on `:11434`), and never inherits the implementer's session reasoning. See [ADR_CADENCE-0007](../ADR/0007-review-gate-independence-is-structural.md).
 

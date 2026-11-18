@@ -73,19 +73,19 @@ Organization configuration: `docs/agentic-sdlc/CADENCE_ORG.md`
 
 Agents are specialized subagents stored directly under `.agents/agents/<role>/agent.md` (with `.gemini/` serving as the Antigravity/Gemini reference runtime and `.claude/`, `.opencode/`, or `.blitz/` projected off `.agents/` per `docs/policies/cli-runtime-adoption-policy.md`). Each agent operates under a constrained role, tool allowlist, and capability tier.
 
-> **Source of record:** `.agents/agents/<role>/agent.md` (in `sdlc`, symlinked to `agents/<role>/agent.md`) is the canonical source of record. Never fork changes inside `.gemini/` or `.claude/`. Note: Antigravity callers pass `Model="pro"` (Deep-reasoning) or `Model="flash"` (Fast-mechanical) on `invoke_subagent`; `default_model` in `agent.md` provides Blitz fallback compatibility.
+> **Source of record:** `.agents/agents/<role>/agent.md` (in `sdlc`, symlinked to `agents/<role>/agent.md`) is the canonical source of record. Never fork changes inside `.gemini/` or `.claude/`. Each agent declares a provider-neutral capability tier and reasoning effort (`Deep-reasoning` with `effort: xhigh`, or `Fast-mechanical` with `effort: high`), while concrete model IDs resolve via `docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping` and `ci-templates/scripts/adapters/`. `default_model` in `agent.md` provides Blitz local fallback compatibility.
 
-| Agent | Purpose | Phase | Primary Model Tier |
+| Agent | Purpose | Phase | Capability Tier & Effort |
 |---|---|---|---|
-| `cadence-triage-agent` | Classify incoming issue, assess scope, scan duplicates, create spec stub | Classify (Triage) | Fast-mechanical (`gemini-3.8-flash` / `flash`) |
-| `cadence-architect` | High-tier pre-flight (opt-in at Medium): surface implicit cross-boundary contracts and draft Gherkin specs before spec authoring | Architect & Explore | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-explorer` | Independently produce 2-3 structurally distinct, steelmanned design options — without ranking | Architect & Explore | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-spec-author` | Ground solution via Contextual Grounding Matrix + CHORD, author spec and test plan | Decompose & Specify | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-implementer` | Execute the ticket's tier contract (spec at Medium/High, `problem.md` ACs at Low) via strict BDD red-green-refactor TDD | Execute via TDD | Deep-reasoning (`gemini-4-argon` / `pro`; `flash` optional for simple Low tier) |
-| `cadence-migration-author` | Author reversible, idempotent schema/data migrations across stacks using the expand/contract pattern | Execute via TDD (Migration) | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-reviewer` | Review MR against its tier contract (spec at Medium/High, `problem.md` ACs at Low) — independent test verification + Section 10 adversarial falsification | Navigate Gates (Code Review) | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-maintainer` | Evaluate MR for project-level acceptance — compatibility, architecture, charter alignment | Navigate Gates (Maintainer Review) | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-archivist` | Enshrine completed work in `archive/`, update CHANGELOG, sync the repo's bound tracker | Consolidate & Enshrine (Archive) | Fast-mechanical (`gemini-3.8-flash` / `flash`) |
+| `cadence-triage-agent` | Classify incoming issue, assess scope, scan duplicates, create spec stub | Classify (Triage) | `Fast-mechanical` (`effort: high`) |
+| `cadence-architect` | High-tier pre-flight (opt-in at Medium): surface implicit cross-boundary contracts and draft Gherkin specs before spec authoring | Architect & Explore | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-explorer` | Independently produce 2-3 structurally distinct, steelmanned design options — without ranking | Architect & Explore | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-spec-author` | Ground solution via Contextual Grounding Matrix + CHORD, author spec and test plan | Decompose & Specify | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-implementer` | Execute the ticket's tier contract (spec at Medium/High, `problem.md` ACs at Low) via strict BDD red-green-refactor TDD | Execute via TDD | `Deep-reasoning` (`effort: xhigh`, all tiers) |
+| `cadence-migration-author` | Author reversible, idempotent schema/data migrations across stacks using the expand/contract pattern | Execute via TDD (Migration) | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-reviewer` | Review MR against its tier contract (spec at Medium/High, `problem.md` ACs at Low) — independent test verification + Section 10 adversarial falsification | Navigate Gates (Code Review) | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-maintainer` | Evaluate MR for project-level acceptance — compatibility, architecture, charter alignment | Navigate Gates (Maintainer Review) | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-archivist` | Enshrine completed work in `archive/`, update CHANGELOG, sync the repo's bound tracker | Consolidate & Enshrine (Archive) | `Fast-mechanical` (`effort: high`) |
 
 Key constraints:
 - Read-only agents (`cadence-architect`, `cadence-reviewer`, `log-triage`, `repo-scout`) cannot write or modify repository files
@@ -94,7 +94,7 @@ Key constraints:
 
 ### Automatic 2-Tier Local Hardware Coprocessor Offload (`127.0.0.1:11434`)
 
-Alongside the cloud reasoning tiers (`gemini-4-argon` / `pro` and `gemini-3.8-flash` / `flash`), CADENCE integrates an automatic **Local Hardware Coprocessor Offload** pipeline served by the unified `llama-swap` gateway (`local-ai-offload.service` on `127.0.0.1:11434`) via the `local-offload` MCP server (`offload_log_triage`, `offload_deep_review`, `local_semantic_embed`) and read-only helper subagents (`log-triage`, `repo-scout`):
+Alongside the primary capability tiers (`Deep-reasoning` at `xhigh` effort and `Fast-mechanical` at `high` effort), CADENCE integrates an automatic **Local Hardware Coprocessor Offload** pipeline served by the unified `llama-swap` gateway (`local-ai-offload.service` on `127.0.0.1:11434`) via the `local-offload` MCP server (`offload_log_triage`, `offload_deep_review`, `local_semantic_embed`) and read-only helper subagents (`log-triage`, `repo-scout`):
 
 - **Semantic Discovery (`embedding` on `:11434`, `top_k=6`, ~36-line AST/section slices):** Handles Step 0 file, symbol (`sym@L<line>`), insight, and duplicate discovery before broad file reads; reports a warning if `max_files` caps a directory walk.
 - **Inference Triage & Diff Pre-Review (`inference` on `:11434`):** Compacts noisy test/build/compiler/gate logs `>30` lines or failing (`offload_log_triage` with explicit `cwd` and `/tmp/agy-triage/<repo_name>/<pid>.log` raw escape hatch) and runs diff-aware mechanical pre-scans (`offload_deep_review` with `diff_range` + `cwd`, `<400`-line check, comment discipline, and CHORD seams).

@@ -94,7 +94,7 @@ CADENCE/
 │       ├── build-llama.sh           # CUDA build script for llama.cpp (Blackwell / native)
 │       ├── download-gemma.sh        # GGUF model download helper
 │       ├── setup-egpu.sh            # Optional Linux USB4/TB5 eGPU PCIe & udev setup
-│       ├── stress-test-litert.sh    # 4-suite LiteRT (:11434) + Gemini 4 Argon A/B/C stress benchmark
+│       ├── stress-test-litert.sh    # 4-suite LiteRT (:11434) + frontier A/B/C stress benchmark
 │       └── nvidia-powerd-egpu-fix.c # LD_PRELOAD shim for nvidia-powerd with eGPU attached
 └── processes/                       # Portable CADENCE templates, CI gate scripts, policies & docs
     ├── artifacts/
@@ -109,7 +109,7 @@ CADENCE/
 
 ```mermaid
 flowchart LR
-    subgraph Frontier["Frontier Planner (Gemini 4 Argon / Claude)"]
+    subgraph Frontier["Frontier Deep-Reasoning Agent (xhigh effort)"]
         A["Primary Agent"]
         H["PreInvocation + PostToolUse Hooks\n(antigravity-local-offload-hook)"]
     end
@@ -139,8 +139,8 @@ Per [`processes/docs/policies/cli-runtime-adoption-policy.md`](processes/docs/po
 - **`.claude/`**, **`.opencode/`**, and **`.blitz/`** project their runtime directories off `.agents/` via `import/link-sdlc.sh`.
 
 ### Automatic Local Hardware Coprocessor Offload
-Every prompt (both ad-hoc requests and `/cadence-*` workflows) automatically routes mechanical work to local models on `127.0.0.1:11434` while **Gemini 4 Argon** retains 100% ownership of planning, reasoning, code authoring, and gate verdicts:
-1. **Turn 0/1 Inline Schema Injection (`antigravity-local-offload-hook`)**: Injects `[MANDATORY LITERT / LOCAL-OFFLOAD PIPELINE (:11434) — INLINE SCHEMAS READY]` on the first turn of every session (with cross-hook deduplication across `global-litert-offload-enforcer` and `cadence-local-offload-enforcer`, plus `AGY_DISABLE_LITERT=1` benchmark bypass), allowing Argon to call `call_mcp_tool` immediately without reading `.json` schema files.
+Every prompt (both ad-hoc requests and `/cadence-*` workflows) automatically routes mechanical work to local models on `127.0.0.1:11434` while the configured **Frontier Deep-Reasoning tier (`effort: xhigh`)** retains 100% ownership of planning, reasoning, code authoring, and gate verdicts:
+1. **Turn 0/1 Inline Schema Injection (`antigravity-local-offload-hook`)**: Injects `[MANDATORY LITERT / LOCAL-OFFLOAD PIPELINE (:11434) — INLINE SCHEMAS READY]` on the first turn of every session (with cross-hook deduplication across `global-litert-offload-enforcer` and `cadence-local-offload-enforcer`, plus `AGY_DISABLE_LITERT=1` benchmark bypass), allowing the primary agent to call `call_mcp_tool` immediately without reading `.json` schema files.
 2. **Step 0 — Universal Discovery (`local_semantic_embed` / `repo-scout`)**: Boundary-aware AST/section chunking (`top_k=6` default, ~36-line Pinned Context Slices, File Symbol Maps `sym@L<line>`, truncation warnings past `max_files=80`, CamelCase symbol boost, and test-file demotion) on `:11434` (`embedding` / `embeddinggemma-2-BF16.gguf`) before broad file reads or repeated `grep`/`find` sweeps.
 3. **Command, Build & Test Triage (`offload_log_triage` / `log-triage`)**: Deduplicated signal compaction for any command output `>30` lines or non-zero exit code via `inference`, while saving the full numbered raw output per repo and child PID to `/tmp/agy-triage/<repo_name>/<pid>.log` (symlinked at `/tmp/agy-triage/<repo_name>/latest.log` and mirrored to `/tmp/agy-last-triage.log`).
 4. **Pre-Commit & Gate Deep Review (`offload_deep_review`)**: Diff-aware (`diff_range`) and deterministic mechanical pre-review against CADENCE Engineering Pillars (`<400`-line ceiling, `C1`–`C8` comment discipline, CHORD observability seams: `UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).

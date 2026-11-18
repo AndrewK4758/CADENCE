@@ -62,11 +62,31 @@ for p in root.rglob("*"):
         json.loads(text)
 
 allowed_fm = {"name", "description", "tools", "default_model", "permission_mode", "effort"}
+expected_effort = {
+    "cadence-architect": "xhigh",
+    "cadence-explorer": "xhigh",
+    "cadence-spec-author": "xhigh",
+    "cadence-implementer": "xhigh",
+    "cadence-migration-author": "xhigh",
+    "cadence-reviewer": "xhigh",
+    "cadence-maintainer": "xhigh",
+    "cadence-triage-agent": "high",
+    "cadence-archivist": "high",
+    "log-triage": "medium",
+    "repo-scout": "medium",
+}
+provider_leak = re.compile(r'Model="(?:pro|flash)"|Gemini 4 Argon|flash optional', re.I)
 for am in sorted((root / "agents").glob("*/agent.md")):
-    data = yaml.safe_load(am.read_text(encoding="utf-8").split("---\n", 2)[1])
+    txt = am.read_text(encoding="utf-8")
+    data = yaml.safe_load(txt.split("---\n", 2)[1])
     extra = set(data.keys()) - allowed_fm
     if extra:
         errs.append(f"disallowed frontmatter keys {sorted(extra)} in {am.relative_to(root)}")
+    aname = am.parent.name
+    if data.get("effort") != expected_effort.get(aname):
+        errs.append(f"unexpected effort {data.get('effort')!r} in {am.relative_to(root)} (expected {expected_effort.get(aname)!r})")
+    if m := provider_leak.search(txt):
+        errs.append(f"provider-specific routing {m.group(0)!r} in {am.relative_to(root)}")
 
 for sm in sorted((root / "skills").glob("*/SKILL.md")):
     txt = sm.read_text(encoding="utf-8")
@@ -76,6 +96,8 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
     for bad in ("/cadence-run", "/cadence-finish"):
         if bad in txt:
             errs.append(f"dangling command {bad} in {sm.relative_to(root)}")
+    if m := provider_leak.search(txt):
+        errs.append(f"provider-specific routing {m.group(0)!r} in {sm.relative_to(root)}")
 
 for a, b in [
     ("hooks/antigravity-local-offload-hook", "hooks/local-offload-enforcer.sh"),

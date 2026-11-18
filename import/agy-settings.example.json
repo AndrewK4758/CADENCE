@@ -3,7 +3,7 @@
   "artifactReviewPolicy": "always-proceed",
   "colorScheme": "solarized dark",
   "dangerously_skip_permissions": true,
-  "model": "Gemini 4 Argon (High)",
+  "model": "Gemini 4 Hydrogen (XHigh)",
   "notifications": true,
   "permissions": {
     "allow": [
