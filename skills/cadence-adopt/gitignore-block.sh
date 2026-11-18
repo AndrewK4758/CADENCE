@@ -80,9 +80,17 @@ write_gitignore_block() {
   # and FOOTPRINT are the inputs load_descriptor / resolve_tree_root read; REPO_ROOT
   # is the adopter tree ($dst) whose on-disk hooks presence the BTG-016a hooks-root
   # backfill probes (load_descriptor calls it; unbound REPO_ROOT would abort under set -u).
+  local eject_fp=""
+  for c in "$src/processes/ci-templates/scripts/eject-footprint.sh" "$src/ci-templates/scripts/eject-footprint.sh"; do
+    [[ -f "$c" ]] && { eject_fp="$c"; break; }
+  done
+  [[ -n "$eject_fp" ]] || {
+    echo "ERROR: eject-footprint.sh not found in source ($src)." >&2
+    return 1
+  }
   # shellcheck source=/dev/null
-  SELF_DIR="$src/ci-templates/scripts" FOOTPRINT="$footprint" REPO_ROOT="$dst" . "$src/ci-templates/scripts/eject-footprint.sh"
-  SELF_DIR="$src/ci-templates/scripts" FOOTPRINT="$footprint" REPO_ROOT="$dst" load_descriptor || {
+  SELF_DIR="$(dirname "$eject_fp")" FOOTPRINT="$footprint" REPO_ROOT="$dst" . "$eject_fp"
+  SELF_DIR="$(dirname "$eject_fp")" FOOTPRINT="$footprint" REPO_ROOT="$dst" load_descriptor || {
     echo >&2
     echo "ERROR: could not load the footprint descriptor to derive .gitignore paths ($footprint)." >&2
     echo "Adoption aborted -- refusing to report success without the requested .gitignore machinery block (II-014)." >&2
@@ -108,7 +116,7 @@ write_gitignore_block() {
   local lines=() i p s
   for i in "${!STRIP_PATHS[@]}"; do
     p="${STRIP_PATHS[$i]}"; s="${STRIP_SOURCE[$i]}"
-    [[ "$p" == "CLAUDE.md" || "$p" == "CADENCE_DIRECTIVES.md" ]] && continue  # filter 1: context-wiring carve-out
+    [[ "$p" == "AGENTS.md" || "$p" == "CLAUDE.md" || "$p" == "CADENCE_DIRECTIVES.md" ]] && continue  # filter 1: context-wiring carve-out
     [[ "$s" == *'(root)' ]] && continue        # filter 2: bare parent-dir entry
     lines+=("$p")
   done

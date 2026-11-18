@@ -1,10 +1,9 @@
 ---
 name: cadence-sync-youtrack
 description: Project specification metadata and lifecycle status to a self-hosted YouTrack Server instance via direct REST -- a lightweight orchestrator sequencing co-located single-operation shell scripts, authenticated with a permanent token held strictly in the operator environment.
-argument-hint: 
+argument-hint: "[ticket-id]"
 arguments: [target]
 allowed-tools: Read Glob Grep Bash
-model: gemini-3.8-flash-high
 ---
 
 

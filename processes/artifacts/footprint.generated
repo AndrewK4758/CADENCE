@@ -1,32 +1,38 @@
-# DERIVED -- do not hand-edit. The ADOPTER CADENCE-footprint descriptor: the
-# boundary between the installed CADENCE surface and the adopter team's own
-# project code, consumed by cadence-eject.sh. Generated at adoption time.
+# DERIVED -- do not hand-edit. The authoritative CADENCE-footprint descriptor:
+# the single boundary between framework material and project-owned code, shared
+# with Workstream A (update/override) and consumed by cadence-eject.sh.
 #
-# Categories 1+2 ONLY -- precise enumeration of the INSTALLED framework surface.
-# There is NO deny-by-default sweep here: an adopter's arbitrary project code is
-# NEVER stripped (the framework_dev category is for ejecting a framework-dev repo
-# only). PI-017 / DEC-003 / DEC-011.
+# Composed (in order) from three canonical-identity sources -- regenerate with
+#   bash ci-templates/scripts/cadence-eject.sh --derive-footprint
+# and verify with
+#   bash ci-templates/scripts/cadence-eject.sh --check-footprint
+# (mirrors cadence-compile.sh --check-manifest). PI-017 / DEC-003 (Option B).
 #
 #   (1) tree_root  -- the compiled .claude/ tree roots, resolved via the runtime
 #                     binding (RC-6); NEVER a hardcoded .claude/... literal here.
-#   (2) installed  -- the installed framework surface = adopt-cadence.sh COPY_PATHS.
+#   (2) installed  -- the installed framework surface = adopt-cadence.sh
+#                     COPY_PATHS (the inverse of the strip boundary).
+#   (3) framework_dev -- DENY-BY-DEFAULT (DEC-011): EVERY top-level repo entry,
+#                     EXCEPT .git and the reviewed non-CADENCE exceptions
+#                     (ci-templates/scripts/eject-exceptions.conf). Complete by
+#                     construction -- a new top-level CADENCE entry is covered
+#                     automatically; an independent completeness gate is the
+#                     backstop. (Was a hand-maintained list that failed open.)
 #   (seed) -- adopter-owned documents seeded at adopt time, stripped at eject, and
 #            EXCLUDED from the upgrade merge (never merged or created -- BTG-015).
 #
-# Row grammar: kind=<tree_root|installed|seed> (identity=<id> binding_hook=<hook> | path=<repo-relative-path>)
+# Row grammar: kind=<tree_root|installed|seed|framework_dev> (identity=<id> binding_hook=<hook> | path=<repo-relative-path>)
 kind=tree_root identity=roles binding_hook=artifact_root:roles
 kind=tree_root identity=commands binding_hook=artifact_root:commands
 kind=tree_root identity=hooks binding_hook=artifact_root:hooks
 kind=installed path=CADENCE_DIRECTIVES.md
 kind=installed path=specs/CADENCE.md
 kind=installed path=specs/TEMPLATE
-kind=seed path=docs/SYSTEM_OVERVIEW.md
 kind=installed path=docs/ADR/TEMPLATE.md
 kind=installed path=docs/flows/TEMPLATE.md
 kind=installed path=docs/agentic-sdlc/CADENCE_ORG_TEMPLATE.md
 kind=installed path=docs/agentic-sdlc/PROJECT_INTENT_TEMPLATE.md
 kind=installed path=docs/agentic-sdlc/chord-reference.md
-kind=seed path=docs/agentic-sdlc/production-insights.md
 kind=installed path=docs/agentic-sdlc/human-gates.md
 kind=installed path=docs/agentic-sdlc/migration-workflow.md
 kind=installed path=docs/agentic-sdlc/slash-commands.md
@@ -35,8 +41,8 @@ kind=installed path=docs/policies/branch-strategy/long-lived-feature-release.md
 kind=installed path=docs/policies/branch-strategy/trunk-based.md
 kind=installed path=docs/policies/version-scheme/semver.md
 kind=installed path=docs/policies/version-scheme/calver-yyyy-ww.md
-kind=installed path=docs/migrations/version-scheme-binding.md
-kind=seed path=docs/policies/surface-registry.md
+kind=installed path=docs/policies/cli-runtime-adoption-policy.md
+kind=installed path=docs/policies/conflict-resolution.md
 kind=installed path=docs/policies/cadence-surfaces.md
 kind=installed path=docs/policies/deprecation-policy.md
 kind=installed path=docs/policies/doc-maintenance-policy.md
@@ -53,43 +59,24 @@ kind=installed path=docs/guides/submitting-changes.md
 kind=installed path=docs/guides/contributor_experience_guide.md
 kind=installed path=docs/guides/ef-migration-examples.md
 kind=installed path=docs/guides/process-metrics.md
-kind=installed path=ci-templates/scripts/cadence-eject.sh
-kind=installed path=ci-templates/scripts/eject-footprint.sh
-kind=installed path=ci-templates/scripts/eject-footprint-headers.sh
-kind=installed path=ci-templates/scripts/eject-transform.sh
-kind=installed path=ci-templates/scripts/eject-exceptions.conf
-kind=installed path=ci-templates/scripts/adapters
-kind=installed path=ci-templates/scripts/dead-citation-gate.sh
-kind=installed path=ci-templates/scripts/dead-citation-ledgers.sh
-kind=installed path=ci-templates/scripts/dead-citation-exemptions.txt
-kind=installed path=ci-templates/scripts/chaos-citation-gate.sh
-kind=installed path=ci-templates/scripts/authored-doc-gate.sh
-kind=installed path=ci-templates/scripts/authored-doc-predicates.sh
-kind=installed path=ci-templates/scripts/authored-doc-orgtoken.sh
-kind=installed path=ci-templates/scripts/authored-doc-ledgers.sh
-kind=installed path=ci-templates/scripts/authored-doc-report.sh
-kind=installed path=ci-templates/scripts/core-prefix-seed-gate.sh
-kind=installed path=ci-templates/scripts/stage-effort.sh
-kind=installed path=ci-templates/scripts/org-binding-resolve.sh
-kind=installed path=ci-templates/scripts/org-binding-parse.sh
-kind=installed path=ci-templates/scripts/org-binding-modes.sh
-kind=installed path=ci-templates/scripts/org-binding-crossref.sh
+kind=installed path=docs/guides/workflow
 kind=seed path=docs/agentic-sdlc/intent-insights.md
-kind=seed path=CLAUDE.md
+kind=seed path=docs/agentic-sdlc/production-insights.md
+kind=seed path=docs/policies/surface-registry.md
+kind=seed path=AGENTS.md
+kind=installed path=ci-templates/scripts/authored-doc-exemptions.txt
+kind=installed path=ci-templates/scripts/dead-citation-baseline.txt
+kind=installed path=.agents/hooks.json
+kind=installed path=.gemini
 kind=installed path=.cadence-version
-kind=installed path=overlay
-kind=installed path=artifacts/footprint.generated
-kind=framework_dev path=.claude
-kind=framework_dev path=.gitattributes
-kind=framework_dev path=.github
-kind=framework_dev path=CHANGELOG.md
-kind=framework_dev path=CADENCE_DIRECTIVES.md
-kind=framework_dev path=CLAUDE.md
-kind=framework_dev path=PROJECT_INTENT.md
+kind=framework_dev path=.agents
+kind=framework_dev path=.gemini
+kind=framework_dev path=AGENTS.md
 kind=framework_dev path=README.md
-kind=framework_dev path=archive
-kind=framework_dev path=artifacts
-kind=framework_dev path=ci-templates
-kind=framework_dev path=docs
-kind=framework_dev path=scripts
-kind=framework_dev path=specs
+kind=framework_dev path=agents
+kind=framework_dev path=hooks
+kind=framework_dev path=import
+kind=framework_dev path=local-offload
+kind=framework_dev path=processes
+kind=framework_dev path=skills
+kind=framework_dev path=tests

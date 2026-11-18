@@ -117,7 +117,7 @@ Update `archive/{ticket-id}/metadata.yaml`:
 - Set `archived_at` to the **exact** current UTC wall-clock timestamp via `date -u +%Y-%m-%dT%H:%M:%SZ` (second precision).
 - **Compute and append the `archive` stage effort (`CADENCE_ORG.md` §12 *Actual Effort Accumulation*):** run:
   ```bash
-  ci-templates/scripts/stage-effort.sh --stage archive --observed <minutes>
+  ([ -x ci-templates/scripts/stage-effort.sh ] && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage archive --observed <minutes>
   ```
   Verify the printed duration is `0m` or a whole multiple of `15m` (if not, emit a diagnostic and recompute without halting), append the `{stage: archive, effort: <val>, at: <UTC-timestamp>}` entry to `stage_effort`, and add that increment to `actual_effort`.
 - Leave `released_at` and `deployed_at` untouched. Leave external tracker projection to `/cadence-archive` after this subagent returns.

@@ -1,6 +1,6 @@
 {
   "skill_name": "cadence-prep",
-  "notes": "Evals run read-only against a throwaway CADENCE-shaped fixture repo built by ../../cadence-prep-workspace/build_fixture.sh, which extends /cadence-run's fixture (ACME-101..104) with the tickets that sit on prep's admission edges (ACME-105..108). The fixture's integration branch is `trunk`, not `main`, so any answer naming `main` has hardcoded it. LIMIT — the fixture has no git remote and no forge, so no eval here can create or inspect a real PR: evals grade the DECISION (admit / decline / record / open / stop) and the stated sequence, not a PR actually being opened or published. ready_mr.sh's own behaviour is covered by a shim-based script test rather than by these evals, because a read-only harness cannot distinguish publishing an MR from describing it. ACME-105 is the sharp one: spec_mr is empty AND spec.md is already committed, so a run that reads the empty field as 'never proposed' opens a second spec MR with an empty diff -- the field is not evidence. ACME-103 is the discriminator against /cadence-run: that skill would just fix the link, whereas prep must stop at Trivial because its deliverable is a spec MR and no spec exists at that tier. ACME-103 and ACME-109 exercise OPPOSITE arms of the Low/Trivial hand-off: ACME-103's triage artifacts are committed on trunk (nothing to capture -- a capture MR there would carry an empty diff), while ACME-109 is left deliberately UNTRACKED (the capture offer is real). The hand-off name also differs by tier: /cadence-implement accepts Low and refuses Trivial outright. ITERATION 2: assertions were EXPANDED to probe four fixes (unreachable-forge vs denied-MR, the agent-mode/delegate contradiction, the §9 tracker pre-check, and the capture branch's phase name). Evals 0, 2, 8 and 9 changed; 1, 3, 4, 5, 6 and 7 are unchanged. The iteration-2 baseline arm is `old_skill` -- the iteration-1 skill's own outputs, re-graded against the expanded set -- not a no-skill run, because the question this iteration answers is whether the fixes worked. Iteration 1's no-skill baseline (74.5%) stands as the standing reference and was not re-run.",
+  "notes": "Evals run read-only against a throwaway CADENCE-shaped fixture repo built by tests/fixtures/build_cadence_fixture.sh (ACME-101..121). The fixture's integration branch is `trunk`, not `main`, so any answer naming `main` has hardcoded it. LIMIT — the fixture has no git remote and no forge, so evals grade the DECISION (admit / decline / record / open / stop) and stated sequence. ACME-105 has `spec_mr` empty AND `spec.md` committed on `trunk` (reconcile URL rather than opening a duplicate MR). ACME-103 (Trivial, committed) and ACME-109 (Low, untracked) exercise opposite arms of the capture hand-off.",
   "evals": [
     {
       "id": 0,
@@ -19,8 +19,9 @@
         "Records the MR URL in `spec_mr` in metadata.yaml",
         "Marks the MR ready for review as the final act",
         "States that the run stops there and does NOT monitor or wait for the merge",
+        "Prefers this over /cadence-cycle when the goal ends at spec approval",
         "Does NOT propose invoking /cadence-implement, /cadence-review, /cadence-maintain, or /cadence-archive",
-        "Does NOT report the agent-mode/worktree rule as an unresolved contradiction or ambiguity needing the user to arbitrate"
+        "Does NOT report worktree/session topology as an unresolved contradiction needing the user to arbitrate"
       ]
     },
     {
@@ -52,7 +53,7 @@
         "Frames that as a normal successful outcome rather than an error or failure",
         "Does NOT open another spec MR",
         "Does NOT invoke /cadence-spec, /cadence-triage, or /cadence-implement",
-        "Names what carries the ticket from here (e.g. /cadence-run or the next phase)",
+        "Names what carries the ticket from here (e.g. /cadence-cycle or the next phase)",
         "Does NOT halt solely because the forge could not be reached",
         "Falls back to local evidence (metadata plus whether the spec is on the integration branch) to reach a verdict",
         "Names explicitly which part it could not verify and what would settle it"
@@ -70,14 +71,14 @@
         "Frames the decline as a normal successful outcome rather than an error",
         "Does NOT invoke /cadence-maintain",
         "Does NOT re-open, re-write, or re-propose the spec",
-        "Names /cadence-run or the appropriate phase skill as what owns it now"
+        "Names /cadence-cycle, /cadence-maintain, or the appropriate downstream phase skill as what owns it now"
       ]
     },
     {
       "id": 4,
       "name": "trivial-stops-at-triage",
       "prompt": "acme-103 is that broken runbook link in CONTRIBUTING.md. can you prep it?",
-      "expected_output": "Identifies tier Trivial. No spec is produced at this tier, so there is no spec to groom and no spec MR to prepare -- prep's remaining work is already done. Must NOT make the fix itself (that is /cadence-run's Trivial ad-hoc path) and must NOT write a spec anyway. Before ending, puts the hand-off decision to the operator: implement it now, or land a capture MR so the triage is durable. Here ACME-103's artifacts are ALREADY committed on trunk, so there is nothing to capture and offering a capture MR would propose an empty diff. At Trivial the implementation hand-off is /cadence-run or a direct ad-hoc edit -- NOT /cadence-implement, which refuses the tier.",
+      "expected_output": "Identifies tier Trivial. No spec is produced at this tier, so there is no spec to groom and no spec MR to prepare -- prep's remaining work is already done. Must NOT make the fix itself (that belongs to /cadence-cycle's Trivial ad-hoc path) and must NOT write a spec anyway. Before ending, puts the hand-off decision to the operator: implement it now, or land a capture MR so the triage is durable. Here ACME-103's artifacts are ALREADY committed on trunk, so there is nothing to capture and offering a capture MR would propose an empty diff. At Trivial the implementation hand-off is /cadence-cycle or a direct ad-hoc edit -- NOT /cadence-implement, which refuses the tier.",
       "files": [],
       "assertions": [
         "Identifies the tier as Trivial",
@@ -121,7 +122,7 @@
         "Mentions that the publish is confirmed by re-reading the MR rather than trusting the command's exit code",
         "Points to the ready_mr: summary line as the evidence for the claim",
         "Does NOT describe the ticket as approved or merged at that point",
-        "Names /cadence-run (or the human merge gate) as what happens next"
+        "Names /cadence-cycle (or the human merge gate) as what happens next"
       ]
     },
     {

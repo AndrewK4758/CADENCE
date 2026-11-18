@@ -17,10 +17,10 @@ mkdir -p "$GEMINI_DIR"
 
 ln -sfn "../.agents/agents" "$GEMINI_DIR/agents"
 ln -sfn "../.agents/skills" "$GEMINI_DIR/skills"
-if [[ -f "$AGENTS_DIR/hooks/hooks.json" ]]; then
-  ln -sfn "../.agents/hooks/hooks.json" "$GEMINI_DIR/hooks.json"
-elif [[ -f "$AGENTS_DIR/hooks.json" ]]; then
+if [[ -f "$AGENTS_DIR/hooks.json" ]]; then
   ln -sfn "../.agents/hooks.json" "$GEMINI_DIR/hooks.json"
+elif [[ -f "$AGENTS_DIR/hooks/hooks.json" ]]; then
+  ln -sfn "../.agents/hooks/hooks.json" "$GEMINI_DIR/hooks.json"
 fi
 
 if [[ ! -f "$GEMINI_DIR/GEMINI.md" ]]; then

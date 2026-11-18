@@ -231,35 +231,21 @@ upgrade_repair() {
   # adopter exceptions -- no-data-loss). NEVER mutate the committed
   # artifacts/footprint.generated (ADR_CADENCE-0009). Counts as work only when a script
   # actually changed (so a clean repo still reports "nothing").
-  local es dst
-  for es in "$CORE"/ci-templates/scripts/*eject*.sh; do
-    [[ -f "$es" ]] || continue
-    dst="$TARGET/ci-templates/scripts/$(basename "$es")"
-    if [[ ! -f "$dst" ]] || ! cmp -s "$es" "$dst"; then
-      mkdir -p "$TARGET/ci-templates/scripts" && cp "$es" "$dst" && did_work=1 \
-        && echo "upgrade-cadence --repair: refreshed $(basename "$es") from core (footprint untouched)."
-    fi
+  local es dst search_dirs=()
+  [[ -d "$CORE/ci-templates/scripts" ]] && search_dirs+=("$CORE/ci-templates/scripts")
+  [[ -d "$CORE/processes/ci-templates/scripts" ]] && search_dirs+=("$CORE/processes/ci-templates/scripts")
+  for _sd in "${search_dirs[@]:-}"; do
+    for es in "$_sd"/*eject*.sh; do
+      [[ -f "$es" ]] || continue
+      dst="$TARGET/ci-templates/scripts/$(basename "$es")"
+      if [[ ! -f "$dst" ]] || ! cmp -s "$es" "$dst"; then
+        mkdir -p "$TARGET/ci-templates/scripts" && cp "$es" "$dst" && did_work=1 \
+          && echo "upgrade-cadence --repair: refreshed $(basename "$es") from core (footprint untouched)."
+      fi
+    done
   done
 
-  # --- Concern 5: context wiring (BTG-198 / DEC-010) ------------------------
-  # Ordered AFTER Concern 1 deliberately, and the ordering IS the behaviour:
-  # CLAUDE.md is a SEED, so Concern 1 restores it from its pre-upgrade git blob
-  # -- a blob that predates the managed block and therefore REMOVES it. Running
-  # the context concern first would leave the repair worse than it found the
-  # adopter. Running it here re-establishes the wiring in the SAME run (R-2,
-  # asserted by scenario S-9.4). Idempotent and silent when nothing needs
-  # repairing; a named failure is non-fatal to the other concerns, exactly as the
-  # seed and hook concerns are.
-  #
-  # SCOPED, and the scope is named rather than assumed: the concern runs only for
-  # a repo that IS context-wired -- one carrying CLAUDE.md or the sidecar -- which
-  # is the SAME either-path predicate the absent-stamp surface check uses
-  # (upgrade-bootstrap.sh, BTG-198 AC-7). A repo with NEITHER has no wiring to
-  # repair and no surface to repair it against, and treating that as a repair
-  # failure would make --repair non-zero on repos this concern has nothing to say
-  # about. The signal is not lost: such a repo is reported by
-  # context_detect_and_report on its next upgrade.
-  if [[ -f "$TARGET/CLAUDE.md" || -f "$TARGET/CADENCE_DIRECTIVES.md" ]] \
+  if [[ -f "$TARGET/AGENTS.md" || -f "$TARGET/CLAUDE.md" || -f "$TARGET/CADENCE_DIRECTIVES.md" ]] \
      && [[ "$(context_wiring_state "$TARGET")" != "healthy" ]]; then
     if context_repair "$TARGET"; then
       [[ "$CONTEXT_REPAIR_DID" -eq 1 ]] && did_work=1

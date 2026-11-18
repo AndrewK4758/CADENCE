@@ -1,6 +1,6 @@
 {
   "skill_name": "cadence-cycle",
-  "notes": "Evals run against a throwaway CADENCE-shaped fixture built by ../../cadence-cycle-workspace/build_fixture.sh, which extends /cadence-prep's fixture (ACME-101..109) with the implement-window tickets ACME-110..113. Integration branch is `trunk`, not `main`. LIMIT — the fixture has no git remote and no forge, so no eval can open or publish a real MR, and /cadence-implement and /cadence-review are not invocable by a subagent: these evals grade the DECISION (admit / refuse / count / ask / stop) and the stated sequence, not cycles actually executed. ready_mr.sh is covered by a shim-based script test instead. The sharp cases: ACME-110 carries THREE ledger markers while stage_effort records only ONE code-review, so a run that counts effort entries reads 1 completed cycle and would grant three more against a cap of four; ACME-111 is already at the cap with blockers open, where the correct move is to ASK rather than run a fifth or halt silently; ACME-113 is spec-approved at High with spec.md deliberately UNTRACKED, so the spec never landed and implementing would cut a branch missing its own contract — the mirror of ACME-105, whose spec IS on trunk. ACME-113 is 'not yet' and ACME-112 is 'already past', and the skill must distinguish them. NOTE on Trivial: /cadence-review does NOT run at this tier and there are no cycles or ledger entries -- MR approval is the review. Only the implementation is ad-hoc, because /cadence-implement refuses the tier. This matches /cadence-run exactly; the two skills do not diverge on Trivial.",
+  "notes": "Evals run against a throwaway CADENCE-shaped fixture built by tests/fixtures/build_cadence_fixture.sh (ACME-101..121). Integration branch is `trunk`, not `main`. LIMIT — the fixture has no git remote and no forge, so evals grade the DECISION (admit / refuse / count / ask / stop) and stated sequence; ready_mr.sh is covered by a mock-gh test in tests/run-cadence-tests.sh. ACME-110 carries THREE ledger markers while stage_effort records fewer code-review entries; ACME-111 is at the cap of 4 with open blockers; ACME-113 has untracked spec.md; Trivial runs zero /cadence-review cycles.",
   "evals": [
     {
       "id": 0,
@@ -25,14 +25,14 @@
       "id": 1,
       "name": "spec-not-landed-refused",
       "prompt": "acme-113 is ready to build — spec's approved. go ahead and implement it",
-      "expected_output": "Identifies status `spec-approved` at tier High, but the spec is NOT on the integration branch (specs/ACME-113/ is untracked), so the spec never landed. Not admitted. This is 'not yet' rather than 'already past'. Names /cadence-prep (to propose the spec MR) or /cadence-run (to wait on it) and stops, explaining that an implementation branch cut now would not contain the contract it is reviewed against.",
+      "expected_output": "Identifies status `spec-approved` at tier High, but the spec is NOT on the integration branch (specs/ACME-113/ is untracked), so the spec never landed. Not admitted. This is 'not yet' rather than 'already past'. Names /cadence-prep (to propose/merge the spec MR) and stops, explaining that an implementation branch cut now would not contain the contract it is reviewed against.",
       "files": [],
       "assertions": [
         "Checks whether the spec is present on the integration branch",
         "Determines that the spec has NOT landed on the integration branch",
         "Declines to run /cadence-implement",
         "Frames this as 'not yet' — the spec phase is incomplete — rather than as the ticket being past this skill's window",
-        "Names /cadence-prep or /cadence-run as what carries it from here",
+        "Names /cadence-prep as what carries it from here",
         "Explains that implementing now would base the branch on a tree missing the spec",
         "Does NOT treat `status: spec-approved` as proof the spec merged"
       ]
@@ -72,7 +72,7 @@
       "id": 4,
       "name": "window-closed-mr-ready",
       "prompt": "can you run the implementation on acme-112",
-      "expected_output": "Identifies status `in-review`, tier Medium, 0 blocking on the last review, with the implementation MR recorded in merge_request and already ready for review. The window is closed — there is nothing for this skill to do. Names /cadence-maintain (or /cadence-run) as what owns it now, and frames the decline as a normal outcome.",
+      "expected_output": "Identifies status `in-review`, tier Medium, 0 blocking on the last review, with the implementation MR recorded in merge_request and already ready for review. The window is closed — there is nothing for this skill to do. Names /cadence-maintain as what owns it now, and frames the decline as a normal outcome.",
       "files": [],
       "assertions": [
         "Identifies the ticket's current status as `in-review`",
@@ -80,7 +80,7 @@
         "Determines the implementation MR is already recorded and reviewable",
         "Concludes there is nothing for this skill to do",
         "Frames that as a normal successful outcome rather than an error",
-        "Names /cadence-maintain or /cadence-run as what owns the ticket now",
+        "Names /cadence-maintain as what owns the ticket now",
         "Does NOT start another implement/review cycle",
         "Does NOT run /cadence-maintain itself"
       ]
@@ -151,8 +151,8 @@
     {
       "id": 9,
       "name": "ledger-marker-interop",
-      "prompt": "quick question before i kick anything off — if i start acme-110 with you and then later hand it to /cadence-run, does it know how many review rounds have already happened? read-only",
-      "expected_output": "Yes, because the cycle ledger marker is shared: this skill writes `cadence-run:cycle` markers, the same string /cadence-run and /cadence-prep's state readers grep for. A skill-specific marker name would make the cycles invisible and restart a capped review at one. The same holds for the metadata fields — merge_request is the implementation MR and is not repurposed.",
+      "prompt": "quick question before i kick anything off — if i start acme-110 with /cadence-cycle and then inspect state with /cadence-prep or resume later, does it know how many review rounds have already happened? read-only",
+      "expected_output": "Yes, because the cycle ledger marker prefix is shared (`cadence-run:cycle`): this skill writes `cadence-run:cycle` markers, the exact string read_state.py greps for in both /cadence-prep and /cadence-cycle. A skill-specific marker name would make the cycles invisible and restart a capped review at one. The same holds for metadata fields — merge_request is the implementation MR and is not repurposed.",
       "files": [],
       "assertions": [
         "States that the cycle ledger marker is written as `cadence-run:cycle`",

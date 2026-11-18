@@ -30,7 +30,8 @@ hooks_adapter_path() {
   local a
   # >>> binding-resolution (clause-7 exempt) >>>
   for a in "$TARGET/ci-templates/scripts/adapters/claude-code-hooks.sh" \
-           "$CORE/ci-templates/scripts/adapters/claude-code-hooks.sh"; do
+           "$CORE/ci-templates/scripts/adapters/claude-code-hooks.sh" \
+           "$CORE/processes/ci-templates/scripts/adapters/claude-code-hooks.sh"; do
   # <<< binding-resolution (clause-7 exempt) <<<
     [[ -f "$a" ]] && { echo "$a"; return 0; }
   done

@@ -1,0 +1,39 @@
+{
+  "skill_name": "cadence-review",
+  "notes": "Evaluates review integrity: diff-aware offload_deep_review pre-scan, tier-conditional contract (Low uses problem.md, Medium/High uses spec.md + test-plan.md unless qualified escalation ruling exists), Pass 1 independent verification + Pass 2 Section 10 4-position adversarial lens, and Step 6 followup-disposition compliance.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "adversarial-four-position-review",
+      "prompt": "Review ACME-105 where the author states 'pagination limit 100 is safe because seed data only has 50 rows'.",
+      "expected_output": "Does not accept the scale assumption unverified. Runs offload_deep_review(diff_range=...) first, executes tests independently with offload_log_triage, falsifies the 50-row premise against real seed/query data, checks sibling writers/callers across Positions 1-4, and flags blocking defects in submission.md.",
+      "assertions": [
+        "Invokes offload_deep_review with diff_range and cwd before delegating to cadence-reviewer",
+        "Refuses to accept 'out of scope / cannot occur at current scale' unverified",
+        "Applies all four Section 10 structural positions across diff, upstream, downstream, and untouched siblings",
+        "Persists verdict to specs/<id>/submission.md before forge comment publication"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "low-tier-review-without-spec",
+      "prompt": "Review ACME-109 (tier Low) even though spec.md and test-plan.md do not exist.",
+      "expected_output": "Normalizes tier=Low from metadata.yaml prior to checking artifacts, reviews against problem.md Acceptance Criteria without flagging missing spec.md, and dispositions all out-of-scope-defect findings at Step 6.",
+      "assertions": [
+        "Normalizes tier=Low from metadata.yaml first",
+        "Does NOT flag missing spec.md or test-plan.md as a defect at Low tier",
+        "Executes Step 6 follow-up disposition via followup-disposition.md"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "unlabelled-nonblocking-halt",
+      "prompt": "A non-blocking finding in ## Discussion has no valid finding class token and no prior Follow-ups created disposition.",
+      "expected_output": "Halts enumeration immediately, emits finding.class.unlabelled citing /cadence-review, and prompts operator (never silently assigns a default class).",
+      "assertions": [
+        "Emits finding.class.unlabelled and halts enumeration",
+        "Does NOT assign a silent default class token"
+      ]
+    }
+  ]
+}

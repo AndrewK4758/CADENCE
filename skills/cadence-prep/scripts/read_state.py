@@ -2,9 +2,9 @@
 """Resolve a CADENCE ticket's machine-readable state in one shot.
 
 SHARED FILE -- byte-identical copies of this script live in the scripts/ dir of
-every cadence-* skill that reads ticket state. They are copies rather than one
-shared import because the skills are distributed separately and each has to
-stand alone.
+every cadence-* skill that reads ticket state (/cadence-prep and /cadence-cycle).
+They are copies rather than one shared import because the skills are distributed
+separately and each has to stand alone.
 
 Keeping them identical is deliberate and cheap to enforce: this file contains NO
 per-skill text. The skill's own name is derived at runtime from the path it sits
@@ -12,18 +12,15 @@ in (SKILL_NAME below), so the halt prefix and the not-a-CADENCE-repo message
 come out right in every copy without any copy differing. That turns "have these
 drifted?" into a checksum comparison rather than a careful diff:
 
-    md5sum ~/.agents/skills/cadence-*/scripts/read_state.py \
+    md5sum .agents/skills/cadence-*/scripts/read_state.py \
       | awk '{print $1}' | sort -u | wc -l     # must print 1
 
 Fix any copy, then propagate it to the others verbatim. Do not hand-edit one.
 
 What must NEVER be renamed to match a skill: the cycle-ledger marker below reads
-`cadence-run:cycle` in every copy. It is the SHARED marker name each skill
-writes and reads, which is what lets a ticket started by one be continued by
-another. The implement-phase skill caps its review cycles on those counts, so
-a renamed
-marker would read every ticket as zero completed cycles and restart a capped
-review at one.
+`cadence-run:cycle` in every copy. It is the SHARED historical marker prefix
+/cadence-cycle writes and /cadence-prep reads, which preserves compatibility with
+prior ticket histories and keeps cycle counting consistent across skills.
 
 The calling skill re-reads ticket state on every loop iteration. Doing that by hand
 costs a Read of metadata.yaml plus a grep of CADENCE_ORG.md plus a scan of
@@ -81,9 +78,9 @@ STAGES = ("triage", "spec", "implementation", "code-review", "maintainer", "arch
 
 ORG_REL = os.path.join("docs", "agentic-sdlc", "CADENCE_ORG.md")
 
-# The cycle ledger /cadence-run appends to submission.md. Kept as an HTML
-# comment so it is invisible in rendered markdown, greppable, and consistent
-# with how CADENCE_ORG.md carries its own machine-readable bindings.
+# The cycle ledger written to submission.md (kept as cadence-run:cycle for
+# backwards compatibility). Kept as an HTML comment so it is invisible in rendered
+# markdown, greppable, and consistent with CADENCE_ORG.md machine-readable markers.
 LEDGER_RE = re.compile(
     r"<!--\s*cadence-run:cycle\s+n=(?P<n>\d+)\s+phase=(?P<phase>[a-z-]+)\s+"
     r"blocking=(?P<blocking>\d+)\s+nonblocking=(?P<nonblocking>\d+)"
@@ -215,7 +212,7 @@ def count_stages(path):
 
 
 def read_ledger(spec_dir):
-    """Parse /cadence-run's own cycle markers from submission.md."""
+    """Parse cycle markers (`cadence-run:cycle`) from submission.md."""
     path = os.path.join(spec_dir, "submission.md")
     if not os.path.isfile(path):
         return []

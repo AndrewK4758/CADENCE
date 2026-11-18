@@ -24,7 +24,7 @@ Before running the engine, verify:
 The `.agents/skills/cadence-upgrade/upgrade-cadence.sh` script path exists in the adopter repository only **after** adoption. A pre-PI-021, compiled-only adopter does not yet have an installed `.agents/skills/cadence-upgrade/` directory to invoke locally. For those repositories, execute the engine directly from a **local core checkout** of CADENCE (a local `git clone` of the framework repository carrying the target release), targeting the adopter repository via the `UPGRADE_TARGET` environment seam:
 
 ```bash
-UPGRADE_TARGET=<adopter-repo> bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh <ver>
+UPGRADE_TARGET=<adopter-repo> bash <core>/skills/cadence-upgrade/upgrade-cadence.sh <ver>
 ```
 
 - **When required:** the adopter lacks an installed `.agents/skills` tree (pre-adoption / pre-PI-021). Once the upgrade installs the skill tree (and projects runtime directories per `docs/policies/cli-runtime-adoption-policy.md`), subsequent upgrades use the standard `.agents/skills/cadence-upgrade/upgrade-cadence.sh` path.
@@ -42,7 +42,7 @@ When the footprint descriptor is absent, offer to **auto-generate** it from the 
 
 ```bash
 AUTOGEN_CONFIRM=1 UPGRADE_TARGET=<adopter-repo> UPGRADE_CORE=<core> \
-  bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh --autogen-footprint
+  bash <core>/skills/cadence-upgrade/upgrade-cadence.sh --autogen-footprint
 ```
 
 This operation is idempotent: re-deriving against an unchanged core commit produces a byte-identical descriptor. If derivation fails (for instance, `<core>` is unreachable or the deriver script is missing), the engine emits `DELTA_AUDIT_GAP upgrade.footprint.derive_failed`, leaves the destination untouched, and prints an actionable error — halt and repair the core checkout before continuing. Once the footprint descriptor is in place, proceed to Step 1.

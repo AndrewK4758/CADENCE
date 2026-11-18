@@ -7,8 +7,9 @@ set -u
 check_chord_tables_and_data_integrity() {
   local spec="$1" is_archive="$2"
   local di_dormant=0
-  if awk '/^### (Pillar|Facet) [0-9]+:.*Data/{f=1; next} /^### /{f=0} f' "$spec" \
-       | grep -qiE 'not triggered|dormant'; then
+  if awk '/^### (Pillar|Facet) [0-9]+:.*Data/{f=1; next} /^#{1,3} /{f=0} f' "$spec" \
+       | grep -qiE 'not triggered|dormant' \
+     || grep -qiE '^[-*][[:space:]]*Data.*(not triggered|dormant)' "$spec"; then
     di_dormant=1
   fi
 

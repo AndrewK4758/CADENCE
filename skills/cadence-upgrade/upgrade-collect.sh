@@ -314,39 +314,23 @@ collect_in_scope() {
     while IFS= read -r rel; do
       [[ -n "$rel" ]] && SEENMAP["$rel"]=1
     done < <(git -C "$CORE" ls-tree -r --name-only "$ours_commit" -- "$r" 2>/dev/null)
+    case "$r" in
+      .agents/agents)
+        while IFS= read -r rel; do [[ -n "$rel" ]] && SEENMAP[".agents/$rel"]=1; done \
+          < <(git -C "$CORE" ls-tree -r --name-only "$ours_commit" -- "agents" 2>/dev/null) ;;
+      .agents/skills)
+        while IFS= read -r rel; do [[ -n "$rel" ]] && SEENMAP[".agents/$rel"]=1; done \
+          < <(git -C "$CORE" ls-tree -r --name-only "$ours_commit" -- "skills" 2>/dev/null) ;;
+      .agents/hooks)
+        while IFS= read -r rel; do [[ -n "$rel" ]] && SEENMAP[".agents/$rel"]=1; done \
+          < <(git -C "$CORE" ls-tree -r --name-only "$ours_commit" -- "hooks" 2>/dev/null) ;;
+    esac
   done
   local ip
   for ip in "${installed[@]}"; do
-    # An installed path MAY be a directory: the footprint grammar allows it and
-    # eject matches installed paths as prefixes (strip_reason_for). Merging a
-    # directory as a single file mis-handles it -- `git show <c>:<dir>` yields a
-    # tree-listing dump (not content) and `-f <dir>` is false, so theirs looks
-    # empty and each version's tree-dump header differs -> a spurious conflict
-    # that blocks the whole atomic apply. So expand a directory-valued installed
-    # path into its member files -- the union of the adopter tree and core@new --
-    # exactly as the tree roots are expanded above. A file-valued installed path
-    # falls through to the direct 1:1 behavior below.
-    #
-    # >>> BTG-007 S-1.4-anchor-start: DIR-EXPAND-BRANCH (DEC-002 fix / DEC-008 guard) >>>
-    # The region between these two anchor comments is the shipped Defect-1
-    # directory-expansion branch (BTG-007), now delegated to upstream's
-    # expand_dir_row (PI-031, defined in upgrade-bootstrap.sh): it detects a
-    # directory-valued installed path (in the adopter tree OR core@new), expands it
-    # into its member files -- the union of `find` under the adopter tree and
-    # `git ls-tree -r` at core@new -- records DIR_EXPANDED provenance so the merge
-    # loop can fire the directory_as_file_path anomaly seam, and returns 0 so we
-    # `continue` past the file-valued 1:1 branch. It returns 1 for a regular file,
-    # falling through. Equivalent scope to the former inline branch (same find +
-    # ls-tree union), plus provenance + the seam. The S-1.4 standing guard strips
-    # exactly this region from a throwaway engine COPY (a marker-anchored sed
-    # delete, never line numbers) and proves the strip turns S-1.1 red -- i.e. that
-    # this branch is the discriminating cause of S-1.1 passing. The delete leaves
-    # valid bash that processes a directory as a single file (the pre-fix defect).
     expand_dir_row "$ip" "$ours_commit" && continue
-    # <<< BTG-007 S-1.4-anchor-end: DIR-EXPAND-BRANCH <<<
-    # File-valued installed path -- the direct 1:1 behavior.
     [[ -e "$TARGET/$ip" ]] && SEENMAP["$ip"]=1
-    git -C "$CORE" cat-file -e "$ours_commit:$ip" 2>/dev/null && SEENMAP["$ip"]=1
+    _core_git_path "$ours_commit" "$ip" >/dev/null 2>&1 && SEENMAP["$ip"]=1
   done
   # Deterministic order.
   while IFS= read -r rel; do
@@ -369,12 +353,14 @@ collect_in_scope() {
 # Resolve a tree_root binding hook to its native root through the adapter (the
 # same RC-6 resolution eject uses) -- no native-root literal in this engine.
 resolve_root() {
-  # >>> binding-resolution (clause-7 exempt) >>>
-  local hook="$1" adapter="$SELF_DIR/../../../ci-templates/scripts/adapters/claude-code.sh"
-  # In an adopter repo the adapter is installed under ci-templates/scripts.
+  local hook="$1"
+  if [[ "$hook" == "artifact_root:hooks" ]] && [[ -d "$TARGET/.agents/hooks" && ! -d "$TARGET/.claude/cadence-hooks" ]]; then
+    echo ".agents/hooks"; return 0
+  fi
+  local adapter="$SELF_DIR/../../../ci-templates/scripts/adapters/claude-code.sh"
   [[ -f "$adapter" ]] || adapter="$TARGET/ci-templates/scripts/adapters/claude-code.sh"
   [[ -f "$adapter" ]] || adapter="$CORE/ci-templates/scripts/adapters/claude-code.sh"
-  # <<< binding-resolution (clause-7 exempt) <<<
+  [[ -f "$adapter" ]] || adapter="$CORE/processes/ci-templates/scripts/adapters/claude-code.sh"
   if [[ ! -f "$adapter" ]]; then
     emit_seam UNSOUND_CONDITION upgrade.binding.adapter_missing "$adapter"
     echo "upgrade-cadence: cannot resolve tree roots -- runtime adapter not found." >&2

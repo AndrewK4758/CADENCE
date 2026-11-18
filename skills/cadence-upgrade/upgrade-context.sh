@@ -36,17 +36,21 @@ _context_writer_path() {
   local c
   for c in "$SELF_DIR/../cadence-adopt/managed-block.sh" \
            "$TARGET/.agents/skills/cadence-adopt/managed-block.sh" \
+           "$CORE/skills/cadence-adopt/managed-block.sh" \
            "$CORE/artifacts/commands/cadence-adopt/managed-block.sh"; do
     [[ -f "$c" ]] && { echo "$c"; return 0; }
   done
   return 1
 }
 
-# The adopter-owned context file and the framework-owned sidecar. Literals, not
-# placeholders: BTG-198 OQ-1 was resolved at the spec-approval gate to keep the
-# CLAUDE.md literal and neutralize only the include directive.
-UPGRADE_CONTEXT_FILE='CLAUDE.md'
 UPGRADE_CONTEXT_SIDECAR='CADENCE_DIRECTIVES.md'
+_upgrade_context_file_for() {
+  local t="$1"
+  if [[ -f "$t/AGENTS.md" ]]; then echo "AGENTS.md"; return 0; fi
+  if [[ -f "$t/CLAUDE.md" ]]; then echo "CLAUDE.md"; return 0; fi
+  echo "AGENTS.md"
+}
+UPGRADE_CONTEXT_FILE='AGENTS.md'
 
 # context_wiring_state <target>
 # Echoes exactly ONE state token. This is the requester's settled predicate --
@@ -59,28 +63,24 @@ UPGRADE_CONTEXT_SIDECAR='CADENCE_DIRECTIVES.md'
 #   import_missing  both files exist but nothing imports the sidecar
 context_wiring_state() {
   local target="$1"
+  local ctx_file; ctx_file="$(_upgrade_context_file_for "$target")"
+  UPGRADE_CONTEXT_FILE="$ctx_file"
   if [[ ! -f "$target/$UPGRADE_CONTEXT_SIDECAR" ]]; then
     echo "sidecar_missing"; return 0
   fi
-  if [[ ! -f "$target/$UPGRADE_CONTEXT_FILE" ]]; then
+  if [[ ! -f "$target/$ctx_file" ]]; then
     echo "context_missing"; return 0
   fi
-  if ! grep -qFx "@CADENCE_DIRECTIVES.md" "$target/$UPGRADE_CONTEXT_FILE"; then
+  if ! grep -qFx "@CADENCE_DIRECTIVES.md" "$target/$ctx_file"; then
     echo "import_missing"; return 0
   fi
   echo "healthy"
 }
 
-# context_assert_sidecar_in_core <ours_commit>
-# The RECONCILE add row is gated by `git cat-file -e "$ours_commit:<path>"`, and a
-# gate that declines simply `continue`s -- so an adopter upgrading to a core
-# version that does not own the sidecar would silently never receive it, and
-# would never be told. That is the exact silent failure this whole ticket exists
-# to kill, one layer down, so it is NAMED here rather than skipped (JI-6).
-# Non-blocking: it reports, it does not fail an otherwise-clean upgrade.
 context_assert_sidecar_in_core() {
   local ours_commit="$1"
-  git -C "$CORE" cat-file -e "$ours_commit:$UPGRADE_CONTEXT_SIDECAR" 2>/dev/null && return 0
+  { git -C "$CORE" cat-file -e "$ours_commit:$UPGRADE_CONTEXT_SIDECAR" 2>/dev/null \
+    || git -C "$CORE" cat-file -e "$ours_commit:processes/$UPGRADE_CONTEXT_SIDECAR" 2>/dev/null; } && return 0
   emit_seam DELTA_AUDIT_GAP upgrade.context.sidecar_not_in_core "$UPGRADE_CONTEXT_SIDECAR"
   echo "upgrade-cadence: core at this version does not own $UPGRADE_CONTEXT_SIDECAR." >&2
   echo "upgrade-cadence: it CANNOT be delivered from this core version -- this is not a successful delivery." >&2
@@ -152,18 +152,14 @@ context_repair() {
   state="$(context_wiring_state "$target")"
 
   if [[ "$state" == "sidecar_missing" ]]; then
-    if [[ ! -f "$CORE/$UPGRADE_CONTEXT_SIDECAR" ]]; then
-      # An UNREACHABLE SOURCE is a loud warning, not a repair failure -- the same
-      # posture this file already takes when the hooks manifest cannot be
-      # resolved. Non-zero is reserved for a write that was attempted and failed.
-      # A core version that predates the split simply has nothing to give, and
-      # making --repair exit non-zero for every adopter in that position would
-      # turn a fleet-wide expected state into a fleet-wide error.
+    local core_sidecar="$CORE/$UPGRADE_CONTEXT_SIDECAR"
+    [[ -f "$core_sidecar" ]] || core_sidecar="$CORE/processes/$UPGRADE_CONTEXT_SIDECAR"
+    if [[ ! -f "$core_sidecar" ]]; then
       emit_seam DELTA_AUDIT_GAP upgrade.context.sidecar_not_in_core "$UPGRADE_CONTEXT_SIDECAR"
       echo "upgrade-cadence --repair: warning -- core does not own $UPGRADE_CONTEXT_SIDECAR; context concern skipped (nothing written)." >&2
       return 0
     fi
-    if ! cp "$CORE/$UPGRADE_CONTEXT_SIDECAR" "$target/$UPGRADE_CONTEXT_SIDECAR"; then
+    if ! cp "$core_sidecar" "$target/$UPGRADE_CONTEXT_SIDECAR"; then
       echo "upgrade-cadence --repair: could not write $target/$UPGRADE_CONTEXT_SIDECAR." >&2
       return 1
     fi

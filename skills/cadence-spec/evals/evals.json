@@ -1,0 +1,40 @@
+{
+  "skill_name": "cadence-spec",
+  "notes": "Evaluates specification authoring guarantees: tier gating (High/Medium vs Low), CHORD 5-part behavioral decomposition, Step 4.5 adversarial spec challenge (falsifying placeholders, missing observability seams, and contradictory invariants via verify-spec.sh and verify-facts.sh), and non-ranked design-options exploration.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "high-tier-adversarial-spec-challenge",
+      "prompt": "Spec out ACME-101 and prepare it for Gate 1 spec approval.",
+      "expected_output": "Checks tier=High, runs cadence-architect pre-flight and cadence-explorer before cadence-spec-author, populates 6W4L and CHORD 5-row tables without placeholders, executes Step 4.5 Adversarial Spec Challenge + verify-spec.sh + verify-facts.sh prior to opening the spec PR, and records spec stage effort via stage-effort.sh.",
+      "assertions": [
+        "Runs cadence-architect and cadence-explorer before cadence-spec-author at High tier",
+        "Populates 5-row CHORD decomposition (Conditions, Handling, Outcomes, Rules, Deltas) without placeholder tokens",
+        "Executes Step 4.5 Adversarial Spec Challenge before Gate 1",
+        "Runs verify-spec.sh and verify-facts.sh cleanly before requesting spec approval",
+        "Does NOT rank options in design-options.md"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "low-tier-spec-refusal",
+      "prompt": "Write a full spec.md and test-plan.md for ACME-109.",
+      "expected_output": "Resolves tier=Low in metadata.yaml and halts before authoring spec.md because docs/policies/change-tiers.md forbids spec.md/test-plan.md at Low tier.",
+      "assertions": [
+        "Resolves tier=Low from metadata.yaml",
+        "Declines to author spec.md or test-plan.md at Low tier",
+        "Identifies problem.md Acceptance Criteria as the Low-tier contract"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "chord-invariant-contradiction-caught",
+      "prompt": "In ACME-105, Data Integrity is marked dormant while the CHORD table includes non-empty Deltas. Should verify-spec.sh pass?",
+      "expected_output": "Halts loudly: verify-spec-invariants.sh catches Data Integrity dormant paired with non-empty CHORD Deltas and fails closed before Gate 1.",
+      "assertions": [
+        "Flags contradiction between dormant Data Integrity pillar and non-empty CHORD Deltas",
+        "Rejects passing Gate 1 until resolved"
+      ]
+    }
+  ]
+}

@@ -1,17 +1,7 @@
 #!/usr/bin/env bash
 # Copies the portable CADENCE framework files into a target repository.
-#
-# Usage: .agents/skills/cadence-adopt/adopt-cadence.sh <target-repo-root> (legacy shim: scripts/adopt-cadence.sh <target-repo-root>)
-#
-# What it does:
-#   - Copies the portable framework files listed in
-#     docs/agentic-sdlc/getting-started.md step 1, preserving paths.
-#   - Copies docs/agentic-sdlc/intent-insights.md with this repo's
-#     accumulated entries stripped (structure and format sections kept).
-#   - Creates a fresh CHANGELOG.md skeleton and an empty archive/ directory.
-#
-# Never overwrites a file that already exists in the target.
-
+# Usage: skills/cadence-adopt/adopt-cadence.sh <target-repo-root> [--gitignore-machinery]
+# Never overwrites a file that already exists in the destination.
 set -euo pipefail
 
 usage() {
@@ -19,10 +9,6 @@ usage() {
   exit 1
 }
 
-# Argument parsing (PI-034): <target-repo-root> plus one optional known flag,
-# --gitignore-machinery. The single-positional-arg constraint is relaxed to
-# accept exactly that flag; an unknown --flag is still a usage error and a second
-# positional arg is still rejected. Default off => byte-identical legacy behavior.
 GITIGNORE_MACHINERY=0
 ARGS=()
 for arg in "$@"; do
@@ -34,33 +20,31 @@ for arg in "$@"; do
 done
 [[ ${#ARGS[@]} -eq 1 ]] || usage
 
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-DST="${ARGS[0]}"
+_resolve_src_root() {
+  local d; d="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  while [[ "$d" != "/" ]]; do
+    if [[ -f "$d/processes/CADENCE_DIRECTIVES.md" || -f "$d/CADENCE_DIRECTIVES.md" ]]; then
+      echo "$d"; return 0
+    fi
+    d="$(dirname "$d")"
+  done
+  git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null \
+    || (cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+}
 
-# The managed-.gitignore-block concern lives in a co-located sidecar module so
-# this entry point stays under the 300-line DX target (PI-034 R-1). Sourced in
-# this shell's scope; provides write_gitignore_block + the marker constants. Only
-# its function is invoked, and only when --gitignore-machinery is set.
+SRC="$(_resolve_src_root)"
+DST="${ARGS[0]}"
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Co-located sidecar modules sourced in this shell's scope (globals resolve at call time).
 # shellcheck source=/dev/null
-. "$(dirname "${BASH_SOURCE[0]}")/gitignore-block.sh"
-# BTG-198 (DEC-014): the always-sidecar context-wiring concern -- installs the
-# framework-owned CADENCE_DIRECTIVES.md and wires the adopter-owned CLAUDE.md to
-# it (generated stub, or a marker-fenced managed block when the target already
-# has one). Sourced in this shell's scope so it reads note_copied/note_skipped at
-# call time. Unlike the gitignore block it is NEVER optional: an adopter must
-# never end a run with zero CADENCE directives, which is the defect this ticket
-# exists to kill. It sources the shared managed-block.sh from beside itself.
+. "$SELF_DIR/gitignore-block.sh"
 # shellcheck source=/dev/null
-. "$(dirname "${BASH_SOURCE[0]}")/context-block.sh"
-# BTG-132 (DEC-005): the "provision" half of the copy/provision seam -- the
-# blocks that write what the ADOPTER owns (skeleton, generated create-once
-# artifacts, registrations, id-ledger seed). Sourced in this shell's scope, so
-# its functions read SRC/DST/copied/skipped/note_* at call time. Splitting the
-# entry point behind this named seam is what brings it back under the PI-037
-# 400-line DX ceiling; the call order below is the original block order.
+. "$SELF_DIR/context-block.sh"
 # shellcheck source=/dev/null
-. "$(dirname "${BASH_SOURCE[0]}")/adopt-provision.sh"
-. "$(dirname "${BASH_SOURCE[0]}")/adopt-release-tree.sh"  # BTG-314 release phase
+. "$SELF_DIR/adopt-provision.sh"
+# shellcheck source=/dev/null
+. "$SELF_DIR/adopt-release-tree.sh"
 
 copied=0
 skipped=0
@@ -71,57 +55,54 @@ if [[ ! -d "$DST" ]]; then
   echo "ERROR: target directory does not exist: $DST" >&2
   exit 1
 fi
-DST="$(cd "$DST" && pwd)"
+DST="$(cd "$DST" && pwd -P)"
 
-if [[ "$DST" == "$SRC" ]]; then
+if [[ "$DST" == "$(cd "$SRC" && pwd -P)" ]]; then
   echo "ERROR: target is the CADENCE repo itself" >&2
   exit 1
 fi
 
-# BTG-314 (DEC-014): CADENCE_ADOPT_RELEASE_TREE is a private hand-off handshake, never an adopter flag.
+# BTG-314 release handshake: run release-tree materialization when invoked directly.
 [[ -z "${CADENCE_ADOPT_RELEASE_TREE:-}" ]] && adopt_from_release_tree   # never returns
-# BTG-314 code review cycle 1 (blocking #1): "-e", not "-d" -- in a linked
-# worktree or submodule core, ".git" is a FILE, not a directory. "-d" let a
-# hand-set handshake bypass this halt and install that working tree.
-[[ -n "${CADENCE_ADOPT_RELEASE_TREE:-}" && -e "$SRC/.git" ]] && { echo "seam_type=UNSOUND_CONDITION event_name=adopt.release_tree.handshake_outside_tree subject=$SRC" >&2; exit 1; }
+[[ "${CADENCE_ADOPT_RELEASE_TREE:-}" != "checkout" && -n "${CADENCE_ADOPT_RELEASE_TREE:-}" && -e "$SRC/.git" ]] && {
+  echo "seam_type=UNSOUND_CONDITION event_name=adopt.release_tree.handshake_outside_tree subject=$SRC" >&2
+  exit 1
+}
 
-# Portable framework files, copied verbatim; directories recursively, file by file. Keep in sync with getting-started.md step 1.
+# Resolve target-relative path -> framework source path (supports sdlc processes/ + legacy flat layout).
+_src_for() {
+  local rel="$1" c
+  case "$rel" in
+    .agents/agents|.agents/agents/*) c="$SRC/agents${rel#.agents/agents}" ; [[ -e "$c" ]] && { echo "$c"; return 0; } ;;
+    .agents/skills|.agents/skills/*) c="$SRC/skills${rel#.agents/skills}" ; [[ -e "$c" ]] && { echo "$c"; return 0; } ;;
+    .agents/hooks|.agents/hooks/*)   c="$SRC/hooks${rel#.agents/hooks}"   ; [[ -e "$c" ]] && { echo "$c"; return 0; } ;;
+  esac
+  for c in "$SRC/$rel" "$SRC/processes/$rel"; do
+    [[ -e "$c" ]] && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+# Portable framework files, copied verbatim; directories recursively.
 COPY_PATHS=(
-  # BTG-198: the framework-owned CADENCE directive sidecar. CLAUDE.md is NOT
-  # here any more -- it is categorically ADOPTER-OWNED (footprint kind=seed) and
-  # is GENERATED by write_context_wiring below, never copied. Every shipped
-  # directive lives in this file, which the adopter never edits and
-  # /cadence-upgrade replaces on core upgrade.
   CADENCE_DIRECTIVES.md
   specs/CADENCE.md
   specs/TEMPLATE
-  docs/SYSTEM_OVERVIEW.md
   docs/ADR/TEMPLATE.md
   docs/flows/TEMPLATE.md
   docs/agentic-sdlc/CADENCE_ORG_TEMPLATE.md
   docs/agentic-sdlc/PROJECT_INTENT_TEMPLATE.md
   docs/agentic-sdlc/chord-reference.md
-  docs/agentic-sdlc/production-insights.md
   docs/agentic-sdlc/human-gates.md
   docs/agentic-sdlc/migration-workflow.md
   docs/agentic-sdlc/slash-commands.md
   docs/agentic-sdlc/team-rituals.md
   docs/policies/branch-strategy/long-lived-feature-release.md
   docs/policies/branch-strategy/trunk-based.md
-  # BTG-303: the version-scheme narrative pair, mirroring the branch-strategy pair
-  # immediately above -- one document per bindable version scheme, resolved from
-  # CADENCE_ORG.md#version-scheme-binding (§18). Neither document names a repo-
-  # specific value; the binding does.
   docs/policies/version-scheme/semver.md
   docs/policies/version-scheme/calver-yyyy-ww.md
-  # BTG-303 (cycle-4 blocking finding #1): the version-scheme migration guide itself.
-  # DEC-023's foregone-window ground names, as its first limb, disclosure "in the copy
-  # of its migration guide installed in the affected repository itself" -- so the guide
-  # must actually reach an adopter tree for that limb to be true. This is the single
-  # migration guide distributed by name; no other docs/migrations/*.md ships (a separate
-  # precedent question, not decided here).
-  docs/migrations/version-scheme-binding.md
-  docs/policies/surface-registry.md
+  docs/policies/cli-runtime-adoption-policy.md
+  docs/policies/conflict-resolution.md
   docs/policies/cadence-surfaces.md
   docs/policies/deprecation-policy.md
   docs/policies/doc-maintenance-policy.md
@@ -138,124 +119,41 @@ COPY_PATHS=(
   docs/guides/contributor_experience_guide.md
   docs/guides/ef-migration-examples.md
   docs/guides/process-metrics.md
+  docs/guides/workflow
   .agents/agents
   .agents/skills
-  # BTG-008: the compiled CADENCE hooks tree (peer of agents/skills). Installed
-  # under the CADENCE-exclusive hooks root (.claude/cadence-hooks -> the
-  # runtime's dedicated tree, never the adopter's own project-hooks dir -- DEC-004).
-  # Neutral placeholder form (PI-024/DEC-010) so the neutral-COPY_PATHS gate accepts
-  # it and the bound adapter resolves it at compile time. Registered in settings.json
-  # below (surgical, never-overwrite of project content).
-  .claude/cadence-hooks
-  # PI-017: the source-export ("eject") tool travels WITH the framework so an
-  # adopter repo (which holds the compiled .claude/ + installed docs but not
-  # artifacts/ or the compiler internals) can strip CADENCE from a client
-  # deliverable. eject resolves native artifact roots through the bound runtime
-  # adapter. NOTE: the framework-dev artifacts/footprint.generated is NOT copied
-  # -- it is deny-by-default for the framework repo and would wrongly strip an
-  # adopter's project code. Instead an ADOPTER descriptor (precise installed
-  # surface, no deny-by-default sweep) is GENERATED below (DEC-011).
+  .agents/hooks
   ci-templates/scripts/cadence-eject.sh
   ci-templates/scripts/eject-footprint.sh
-  # BTG-008: the eject header-prologues module + the adopter-mode settings.json
-  # transform-on-ship module travel with the framework so an adopter's eject can
-  # source them (the II-020/PI-020 fixture-completeness lesson).
   ci-templates/scripts/eject-footprint-headers.sh
   ci-templates/scripts/eject-transform.sh
   ci-templates/scripts/eject-exceptions.conf
   ci-templates/scripts/adapters
-  # BTG-083: the dead-citation gate travels WITH the framework for the same
-  # reason eject does -- /cadence-archive and the archivist role are shipped, and their
-  # archival step BLOCKS on `dead-citation-gate.sh --id <ticket>`. Shipping the
-  # obligation without the tool that discharges it would make the step exit 127
-  # in an adopter repo, and archival would either deadlock or the agent would
-  # improvise a silent skip. An obligation is never shipped without its tool.
-  # The exemption ALLOWLIST ships too: the gate fails closed, so without it every
-  # historical-narrative citation in the installed docs would block. The
-  # BASELINE is deliberately NOT copied -- it is DEBT naming THIS repo's files
-  # and is generated for the adopter's own tree below (the same generate-don't-copy
-  # rule the eject descriptor follows).
   ci-templates/scripts/dead-citation-gate.sh
-  # The gate SOURCES this module (the ledgers + the shrink-only ratchet, split
-  # out to keep both halves inside the <400-line DX ceiling). Shipping the gate
-  # without it exits 2 in the adopter repo, which is the same omission as not
-  # shipping the gate at all -- the II-015 inventory-mirroring invariant.
   ci-templates/scripts/dead-citation-ledgers.sh
   ci-templates/scripts/dead-citation-exemptions.txt
-  # BTG-186: the chaos-citation gate travels WITH the framework for the same
-  # reason the dead-citation gate does -- run-gates.sh is shipped and names this
-  # script in its pre-flight existence loop, so an adopter who receives the
-  # runner without the script gets `exit 2` and NO gate verdict at all, not a
-  # degraded one. An obligation is never shipped without its tool.
-  # No ledger or baseline ships alongside it because none exists: the measured
-  # debt baseline is zero, so the gate is preventative and has nothing to carry.
   ci-templates/scripts/chaos-citation-gate.sh
   ci-templates/scripts/authored-doc-gate.sh
   ci-templates/scripts/authored-doc-predicates.sh
   ci-templates/scripts/authored-doc-orgtoken.sh
   ci-templates/scripts/authored-doc-ledgers.sh
-  # BTG-247 DEC-007/spec.md Step 5: the fifth sourced sibling -- the reporting/
-  # presentation half, split out once the family exceeded the re-derived
-  # 324-line headroom threshold. INSTALL ALL FIVE, never four of five.
   ci-templates/scripts/authored-doc-report.sh
-  # BTG-197: the core-prefix seed gate, shipped for exactly the reason the two
-  # gates above are -- run-gates.sh is shipped and names this script in its
-  # pre-flight existence loop, so an adopter who receives the runner without the
-  # script gets `exit 2` and NO gate verdict at all. An obligation is never
-  # shipped without its tool (BTG-083), and its RECONCILE row lands in the SAME
-  # change (BTG-100 / BTG-186 / BTG-191 -- PROD_CADENCE-010, recorded as recurring).
-  # It ships so the runner starts, not because the adopter has anything to
-  # remediate -- but NOT, as this comment previously claimed, because the gate is
-  # "permanently silent on an adopter's tree by construction". Review cycle 1
-  # disproved that: production-insights.md three entries below is copied VERBATIM,
-  # so an adopted tree carries core's PROD records (high-water PROD_CADENCE-027) and the
-  # gate DID fire there once Phase 2 renamed them. The gate is now scoped to trees
-  # carrying a kind=framework_dev footprint row instead (DEC-031), which is why
-  # the silence is real rather than assumed. Do not restore the old reasoning: it
-  # was an argument over all three prefixes that only ever held for two of them.
   ci-templates/scripts/core-prefix-seed-gate.sh
-  # BTG-112: the SINGLE site that resolves a per-stage review multiplier and
-  # renders one stage's effort. All SEVEN shipped effort-recording instructions
-  # (the six lifecycle skills plus the archivist role) now invoke it BY PATH
-  # instead of describing the arithmetic, so an adopter that receives those
-  # instructions without this script gets exit 127 at every stage completion --
-  # the "an obligation is never shipped without its tool" rule (BTG-083), and
-  # the II-015 inventory-mirroring invariant. It reads CADENCE_ORG.md's stage
-  # table live and embeds no multiplier value, so it carries nothing this repo
-  # owns into an adopter tree.
   ci-templates/scripts/stage-effort.sh
-  # BTG-315: the single split computation site both tracker adapters invoke in
-  # split mode (a §9 per-prefix row naming an agent-time user). Both adapters'
-  # worklog steps call it BY PATH, so an adopter who turns split mode on
-  # without this script halts at every worklog projection for that prefix --
-  # the same "an obligation is never shipped without its tool" rule
-  # (BTG-083) `stage-effort.sh` above already follows. It reads the adopter's
-  # own CADENCE_ORG.md §19 table live and embeds no factor value of this
-  # repo's own.
   ci-templates/scripts/worklog-split.sh
-  # BTG-179: the SOLE reader of CADENCE_ORG.md's per-prefix binding grammar.
-  # CADENCE_ORG.md's three binding sections instruct every consumer to resolve a
-  # per-prefix binding through this script BY PATH, and the allocator sidecar's
-  # `--binding-for` / `--guard-ticket-seed` invoke it directly -- so an adopter
-  # receiving those instructions without the script halts at every per-prefix
-  # resolution. Same rule as dead-citation-gate.sh and stage-effort.sh above: an
-  # obligation is never shipped without its tool (BTG-083, BTG-112). It reads the
-  # adopter's own CADENCE_ORG.md live and embeds no binding of this repo's.
   ci-templates/scripts/org-binding-resolve.sh
   ci-templates/scripts/org-binding-parse.sh
   ci-templates/scripts/org-binding-modes.sh
-  # BTG-247 DEC-012/OQ-B: the fourth, cross-section module -- INSTALL ALL FOUR,
-  # never three of four (PROD_CADENCE-010's recorded partial-discharge failure).
   ci-templates/scripts/org-binding-crossref.sh
 )
 
 copy_file() {
-  local rel="$1"
+  local rel="$1" src_item="$2"
   if [[ -e "$DST/$rel" ]]; then
     note_skipped "$rel"
   else
     mkdir -p "$(dirname "$DST/$rel")"
-    cp "$SRC/$rel" "$DST/$rel"
+    cp -L "$src_item" "$DST/$rel"
     note_copied "$rel"
   fi
 }
@@ -263,75 +161,77 @@ copy_file() {
 echo "Copying CADENCE framework files from $SRC to $DST"
 
 for path in "${COPY_PATHS[@]}"; do
-  if [[ -d "$SRC/$path" ]]; then
-    while IFS= read -r -d '' f; do
-      copy_file "${f#"$SRC/"}"
-    done < <(find "$SRC/$path" -type f -print0 | sort -z)
-  elif [[ -f "$SRC/$path" ]]; then
-    copy_file "$path"
-  else
+  src_target="$(_src_for "$path" || true)"
+  if [[ -z "$src_target" ]]; then
     echo "ERROR: missing in source: $path" >&2
+    exit 1
+  fi
+  if [[ -d "$src_target" ]]; then
+    while IFS= read -r -d '' f; do
+      case "$f" in
+        */__pycache__/*|*.pyc) continue ;;
+      esac
+      if [[ "$path" == ".agents/hooks" && "$f" == *.json ]]; then
+        continue
+      fi
+      copy_file "$path/${f#"$src_target/"}" "$f"
+    done < <(find -L "$src_target" -type f -print0 | sort -z)
+  elif [[ -f "$src_target" ]]; then
+    copy_file "$path" "$src_target"
+  else
+    echo "ERROR: unsupported source entry: $src_target" >&2
     exit 1
   fi
 done
 
-# intent-insights.md: copy with this repo's accumulated entries stripped.
-# Drops each "### II-NNN" block up to its closing "---" separator; keeps
-# the header, entry format, category, and pattern summary sections.
+# intent-insights.md (adopter seed, created from template or stripped source entries).
 rel="docs/agentic-sdlc/intent-insights.md"
 if [[ -e "$DST/$rel" ]]; then
   note_skipped "$rel"
 else
+  src_ii="$(_src_for "docs/agentic-sdlc/intent-insights.template.md" || _src_for "$rel" || true)"
+  [[ -n "$src_ii" ]] || { echo "ERROR: missing in source: intent-insights template/seed" >&2; exit 1; }
   mkdir -p "$(dirname "$DST/$rel")"
-  awk '/^### II-/ { skip = 1 } skip && /^---$/ { skip = 0 } !skip' \
-    "$SRC/$rel" > "$DST/$rel"
+  awk '/^### II-/ { skip = 1 } skip && /^---$/ { skip = 0 } !skip' "$src_ii" > "$DST/$rel"
   note_copied "$rel (entries stripped)"
 fi
 
-# authored-doc-exemptions.txt: copy with this repo's accrued rows stripped.
-# Keeps the header and the row grammar; drops every non-comment line, so an
-# adopter starts with an EMPTY ledger against their own tree.
-#
-# NOT IN COPY_PATHS, deliberately, and handled here for the same reason
-# intent-insights.md is: those entries are this repository's data, not the
-# framework's. Every row names a path in THIS repo and quotes a phrase from THIS
-# repo's history, including live project keys -- copying it byte-for-byte would
-# ship this organisation's tokens into every adopting tree, which is exactly the
-# defect code review cycle 1 caught (blocking B-1). An empty ledger is also the
-# SAFE default: nothing is excused, so the gate reports more rather than less.
+# production-insights.md (adopter seed, created from template if absent).
+rel="docs/agentic-sdlc/production-insights.md"
+if [[ -e "$DST/$rel" ]]; then
+  note_skipped "$rel"
+else
+  src_pi="$(_src_for "docs/agentic-sdlc/production-insights.template.md" || _src_for "$rel" || true)"
+  if [[ -n "$src_pi" ]]; then
+    mkdir -p "$(dirname "$DST/$rel")"
+    cp -L "$src_pi" "$DST/$rel"
+    note_copied "$rel (seeded from template)"
+  fi
+fi
+
+# authored-doc-exemptions.txt: copy with framework repo's accrued rows stripped.
 rel="ci-templates/scripts/authored-doc-exemptions.txt"
 if [[ -e "$DST/$rel" ]]; then
   note_skipped "$rel"
-elif [[ -f "$SRC/$rel" ]]; then
-  mkdir -p "$(dirname "$DST/$rel")"
-  grep -E '^[[:space:]]*(#|$)' "$SRC/$rel" > "$DST/$rel"
-  note_copied "$rel (rows stripped)"
+else
+  src_ade="$(_src_for "$rel" || true)"
+  if [[ -n "$src_ade" && -f "$src_ade" ]]; then
+    mkdir -p "$(dirname "$DST/$rel")"
+    grep -E '^[[:space:]]*(#|$)' "$src_ade" > "$DST/$rel"
+    note_copied "$rel (rows stripped)"
+  fi
 fi
-provision_repo_skeleton
 
+provision_repo_skeleton
 provision_generated_artifacts
 
-# BTG-198: the always-sidecar context wiring. ONE code path regardless of whether
-# the target arrived with a CLAUDE.md, so CLAUDE.md is adopter-owned across every
-# adoption. Runs unconditionally (never a flag), after the descriptor block so
-# the provision order stays stable, and BEFORE the verify loop so that loop can
-# assert both deliverables landed. A failure here ABORTS adoption -- an adopter
-# who ends a run with zero CADENCE directives is exactly the silent failure this
-# is here to prevent (II-014).
 if ! write_context_wiring "$SRC" "$DST"; then
-  echo "Adoption aborted — could not wire the CADENCE directives into $DST/CLAUDE.md." >&2
+  echo "Adoption aborted — could not wire the CADENCE directives into $DST/$CONTEXT_FILE." >&2
   exit 1
 fi
 
 provision_registrations
 
-
-# PI-034: optional managed .gitignore block. Runs AFTER the footprint descriptor
-# create-once block (its hard precondition, DEC-010) and BEFORE the verify loop
-# (so the verify loop can assert the block landed). ALL of this is gated on the
-# flag, so flag-absent runs perform ZERO .gitignore I/O and emit no new output
-# (byte-identical legacy behavior, DEC-007). An explicit flag whose deliverable
-# cannot be produced FAILS LOUD (DEC-006 / II-014).
 if [[ "$GITIGNORE_MACHINERY" -eq 1 ]]; then
   if write_gitignore_block "$SRC" "$DST"; then
     note_copied ".gitignore (machinery block ${GITIGNORE_ACTION})"
@@ -340,31 +240,21 @@ if [[ "$GITIGNORE_MACHINERY" -eq 1 ]]; then
     exit 1
   fi
 fi
+
 provision_id_ledger
 
-
-# >>> BTG-198 context-postcondition-anchor-start: CONTEXT WIRING POST-CONDITION >>>
-# Assert the two context deliverables actually landed, BEFORE the generic
-# missing-paths loop below, so an undeliverable context file is NAMED with its
-# own seam rather than folded into a generic list (JI-6). Unconditional: unlike
-# the .gitignore block there is no flag to gate this on -- an adopter must never
-# end a run with zero CADENCE directives, which is the defect this ticket
-# exists to kill. The seam scenarios inject a deliverable-destroying line
-# immediately before this anchor to prove the assertion refuses a false success.
 if ! verify_context_wiring "$DST"; then
   exit 1
 fi
-# <<< BTG-198 context-postcondition-anchor-end: CONTEXT WIRING POST-CONDITION <<<
 
-# Verify every declared target landed in $DST. copy_file either copies or
-# skips-because-present, so a path missing here means adoption did not land
-# (wrong target, interrupted run, hand-rolled copy) — fail loud, never report
-# a false success.
 missing=()
-for path in "${COPY_PATHS[@]}" "docs/agentic-sdlc/intent-insights.md" \
+for path in "${COPY_PATHS[@]}" \
+            "docs/agentic-sdlc/intent-insights.md" \
+            "docs/agentic-sdlc/production-insights.md" \
             "CHANGELOG.md" "archive" "specs/drafts/.gitignore" \
-            "artifacts/footprint.generated" "CLAUDE.md" \
-            ".cadence-version" ".claude/settings.json" ".mcp.json"; do
+            "artifacts/footprint.generated" "AGENTS.md" \
+            ".agents/hooks.json" ".gemini/GEMINI.md" ".gemini/agents" ".gemini/skills" \
+            ".cadence-version"; do
   [[ -e "$DST/$path" ]] || missing+=("$path")
 done
 if (( ${#missing[@]} )); then
@@ -374,9 +264,6 @@ if (( ${#missing[@]} )); then
   exit 1
 fi
 
-# PI-034 (DEC-008): when the flag is set, the managed block is a requested
-# deliverable -- assert its open marker is present in $DST/.gitignore before
-# reporting success (DELTA_AUDIT_GAP adopt.gitignore.block_missing). Fail closed.
 if [[ "$GITIGNORE_MACHINERY" -eq 1 ]] \
    && ! grep -qF "$GITIGNORE_BEGIN" "$DST/.gitignore" 2>/dev/null; then
   echo >&2
@@ -385,15 +272,10 @@ if [[ "$GITIGNORE_MACHINERY" -eq 1 ]] \
   exit 1
 fi
 
-# BTG-198 (AC-4): the conflict-review notice, printed on STDOUT immediately
-# before the summary so it is the last thing a human reads, and ONLY after the
-# context wiring succeeded -- a notice implying success past a failed deliverable
-# is the II-014 anti-pattern. Once per run; no persistent state is written.
 print_context_notice
 
 echo
 echo "Done: $copied copied, $skipped skipped (already present)."
-echo "Next: continue with step 2 of docs/agentic-sdlc/getting-started.md"
-echo "(author PROJECT_INTENT.md and CADENCE_ORG.md from their _TEMPLATE files, then record"
-echo "your project's own architecture and conventions in CLAUDE.md — the CADENCE directives"
-echo "themselves live in the framework-owned CADENCE_DIRECTIVES.md and are imported from it)."
+echo "Next: author PROJECT_INTENT.md and docs/agentic-sdlc/CADENCE_ORG.md from their _TEMPLATE files,"
+echo "and record your project's own architecture and conventions in AGENTS.md (CADENCE directives"
+echo "live in CADENCE_DIRECTIVES.md and are imported from AGENTS.md and .gemini/GEMINI.md)."

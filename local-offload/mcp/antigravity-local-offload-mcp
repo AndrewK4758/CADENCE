@@ -166,7 +166,10 @@ def offload_deep_review(
         timeout=180.0,
     )
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
-    return core.fit_inline(f"### Local Deep Review (`{model}`, {elapsed_ms:.0f} ms)\n{static_summary}\n\n{resp['choices'][0]['message'].get('content', '').strip()}")
+    llm_body = resp["choices"][0]["message"].get("content", "").strip() or "(No findings returned)"
+    disp_rows = static_rows[:8] + ([f"- *... and {len(static_rows) - 8} more file(s)*"] if len(static_rows) > 8 else [])
+    disp_static = ("\n".join(disp_rows) if disp_rows else "- (No diff or context files provided)")
+    return core.fit_inline(f"### Local Deep Review (`{model}`, {elapsed_ms:.0f} ms){flag_hdr}\n\n{llm_body}\n\n**Scope Metrics:**\n{disp_static}")
 
 
 @mcp.tool()

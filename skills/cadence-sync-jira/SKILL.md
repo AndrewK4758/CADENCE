@@ -1,10 +1,9 @@
 ---
 name: cadence-sync-jira
 description: Project specification metadata and lifecycle status to a Jira Server / Data Center instance via direct REST v2 -- a lightweight orchestrator sequencing co-located single-operation shell scripts, authenticated with a Personal Access Token held strictly in the operator environment.
-argument-hint: 
+argument-hint: "[ticket-id]"
 arguments: [target]
 allowed-tools: Read Glob Grep Bash
-model: gemini-3.8-flash-high
 ---
 
 

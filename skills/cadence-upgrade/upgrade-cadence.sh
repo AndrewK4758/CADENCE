@@ -108,7 +108,11 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 . "$SELF_DIR/upgrade-vocab-ref.sh"
 TARGET="${UPGRADE_TARGET:-$PWD}"
-CORE="${UPGRADE_CORE:-$(cd "$SELF_DIR/../../.." && pwd)}"
+if [[ -n "${UPGRADE_CORE:-}" ]]; then
+  CORE="$UPGRADE_CORE"
+else
+  CORE="$(git -C "$SELF_DIR" rev-parse --show-toplevel 2>/dev/null || cd "$SELF_DIR/../../.." && pwd)"
+fi
 STAMP="$TARGET/.cadence-version"
 FOOTPRINT="$TARGET/artifacts/footprint.generated"
 
