@@ -1,5 +1,5 @@
 {
-  "skill_name": "cadence-cycle",
+  "skill_name": "cadence-build",
   "notes": "Evals run against a throwaway CADENCE-shaped fixture built by tests/fixtures/build_cadence_fixture.sh (ACME-101..121). Integration branch is `trunk`, not `main`. LIMIT \u2014 the fixture has no git remote and no forge, so evals grade the DECISION (admit / refuse / count / ask / stop) and stated sequence; ready_mr.sh is covered by a mock-gh test in tests/run-cadence-tests.sh. ACME-110 carries THREE ledger markers while stage_effort records fewer code-review entries; ACME-111 is at the cap of 4 with open blockers; ACME-113 has untracked spec.md; Trivial runs zero /cadence-review cycles.",
   "evals": [
     {
@@ -23,7 +23,7 @@
       "check": {
         "type": "script",
         "fixture": "cadence_fixture",
-        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-106 --repo-root \"$FIX\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-106 --repo-root \"$FIX\"",
         "stdout_regex": [
           "status=spec-approved",
           "tier=High",
@@ -35,14 +35,14 @@
       "id": 1,
       "name": "spec-not-landed-refused",
       "prompt": "acme-113 is ready to build \u2014 spec's approved. go ahead and implement it",
-      "expected_output": "Identifies status `spec-approved` at tier High, but the spec is NOT on the integration branch (specs/ACME-113/ is untracked), so the spec never landed. Not admitted. This is 'not yet' rather than 'already past'. Names /cadence-prep (to propose/merge the spec MR) and stops, explaining that an implementation branch cut now would not contain the contract it is reviewed against.",
+      "expected_output": "Identifies status `spec-approved` at tier High, but the spec is NOT on the integration branch (specs/ACME-113/ is untracked), so the spec never landed. Not admitted. This is 'not yet' rather than 'already past'. Names /cadence-define (to propose/merge the spec MR) and stops, explaining that an implementation branch cut now would not contain the contract it is reviewed against.",
       "files": [],
       "assertions": [
         "Checks whether the spec is present on the integration branch",
         "Determines that the spec has NOT landed on the integration branch",
         "Declines to run /cadence-implement",
         "Frames this as 'not yet' \u2014 the spec phase is incomplete \u2014 rather than as the ticket being past this skill's window",
-        "Names /cadence-prep as what carries it from here",
+        "Names /cadence-define as what carries it from here",
         "Explains that implementing now would base the branch on a tree missing the spec",
         "Does NOT treat `status: spec-approved` as proof the spec merged"
       ],
@@ -70,7 +70,7 @@
       "check": {
         "type": "script",
         "fixture": "cadence_fixture",
-        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-110 --repo-root \"$FIX\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-110 --repo-root \"$FIX\"",
         "stdout_regex": [
           "ledger_cycles_completed=3"
         ]
@@ -94,7 +94,7 @@
       "check": {
         "type": "script",
         "fixture": "cadence_fixture",
-        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-111 --repo-root \"$FIX\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-111 --repo-root \"$FIX\"",
         "stdout_regex": [
           "ledger_cycles_completed=4"
         ]
@@ -120,7 +120,7 @@
         "type": "script",
         "fixture": "cadence_fixture",
         "setup_sh": "mkdir -p \"$FIX/bin\" && echo \"true\" > \"$FIX/state\" && cat > \"$FIX/bin/gh\" <<SH\n#!/usr/bin/env bash\nif [[ \"\\$1 \\$2\" == \"pr view\" ]]; then\n  printf '{\"state\":\"OPEN\",\"isDraft\":%s,\"url\":\"https://github.com/acme/repo/pull/88\"}\\n' \"\\$(cat \"$FIX/state\")\"\nelif [[ \"\\$1 \\$2\" == \"pr ready\" ]]; then\n  printf 'false' > \"$FIX/state\"\nfi\nSH\nchmod +x \"$FIX/bin/gh\"",
-        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-112 --repo-root \"$FIX\" && PATH=\"$FIX/bin:$PATH\" bash \"$ROOT/skills/cadence-cycle/scripts/ready_mr.sh\" 88",
+        "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-112 --repo-root \"$FIX\" && PATH=\"$FIX/bin:$PATH\" bash \"$ROOT/skills/cadence-build/scripts/ready_mr.sh\" 88",
         "stdout_regex": [
           "blocking=0",
           "result=READY was_draft=yes"
@@ -147,7 +147,7 @@
       "check": {
         "type": "script",
         "fixture": "cadence_fixture",
-        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-103 --repo-root \"$FIX\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-103 --repo-root \"$FIX\"",
         "stdout_regex": [
           "tier=Trivial",
           "status=triaged"
@@ -171,7 +171,7 @@
       "check": {
         "type": "script",
         "fixture": "cadence_fixture",
-        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-109 --repo-root \"$FIX\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-109 --repo-root \"$FIX\"",
         "stdout_regex": [
           "tier=Low",
           "status=triaged"
@@ -182,20 +182,20 @@
       "id": 7,
       "name": "high-triaged-refused",
       "prompt": "start on acme-101 please, it's been triaged",
-      "expected_output": "Identifies status `triaged` at tier High. At Medium and High a spec is owed before implementation, and none exists yet, so the ticket is not admitted. This is 'not yet'. Names /cadence-prep (or /cadence-spec) as what comes first and stops.",
+      "expected_output": "Identifies status `triaged` at tier High. At Medium and High a spec is owed before implementation, and none exists yet, so the ticket is not admitted. This is 'not yet'. Names /cadence-define (or /cadence-spec) as what comes first and stops.",
       "files": [],
       "assertions": [
         "Identifies the ticket's current status as `triaged` and the tier as High",
         "Declines to implement because a spec is owed at this tier",
         "Frames this as 'not yet' rather than as the ticket being past this skill's window",
-        "Names /cadence-prep or /cadence-spec as what comes first",
+        "Names /cadence-define or /cadence-spec as what comes first",
         "Does NOT invoke /cadence-implement",
         "Does NOT write a spec itself"
       ],
       "check": {
         "type": "script",
         "fixture": "cadence_fixture",
-        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-101 --repo-root \"$FIX\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-101 --repo-root \"$FIX\"",
         "stdout_regex": [
           "tier=High",
           "status=triaged"
@@ -206,22 +206,22 @@
       "id": 8,
       "name": "problem-statement-refused",
       "prompt": "the nightly export job silently drops rows for tenants over about 200k. can you implement a fix for that?",
-      "expected_output": "The argument is a problem statement, not a ticket id. This skill implements a ticket that already exists; it does not create one. Halts with a named cause, explaining that implementing an untriaged problem means inventing both the tier and the acceptance criteria. Names /cadence-triage or /cadence-prep as the way in. Does not invoke /cadence-triage itself to keep going.",
+      "expected_output": "The argument is a problem statement, not a ticket id. This skill implements a ticket that already exists; it does not create one. Halts with a named cause, explaining that implementing an untriaged problem means inventing both the tier and the acceptance criteria. Names /cadence-triage or /cadence-define as the way in. Does not invoke /cadence-triage itself to keep going.",
       "files": [],
       "assertions": [
         "Recognises the input is a problem statement rather than a ticket id",
         "Declines to proceed and names the cause",
         "Explains that there is no tier or acceptance criteria to implement against",
         "Does NOT invoke /cadence-triage itself to keep the run going",
-        "Names /cadence-triage or /cadence-prep as what establishes the ticket first",
+        "Names /cadence-triage or /cadence-define as what establishes the ticket first",
         "Does NOT create a ticket, spec, or branch"
       ],
       "check": {
         "type": "contract",
         "patterns": [
           {
-            "file": "skills/cadence-cycle/SKILL.md",
-            "regex": "raw problem|/cadence-prep|/cadence-triage"
+            "file": "skills/cadence-build/SKILL.md",
+            "regex": "raw problem|/cadence-define|/cadence-triage"
           }
         ]
       }
@@ -229,24 +229,43 @@
     {
       "id": 9,
       "name": "ledger-marker-interop",
-      "prompt": "quick question before i kick anything off \u2014 if i start acme-110 with /cadence-cycle and then inspect state with /cadence-prep or resume later, does it know how many review rounds have already happened? read-only",
-      "expected_output": "Yes, because the cycle ledger marker prefix is shared (`cadence-run:cycle`): this skill writes `cadence-run:cycle` markers, the exact string read_state.py greps for in both /cadence-prep and /cadence-cycle. A skill-specific marker name would make the cycles invisible and restart a capped review at one. The same holds for metadata fields \u2014 merge_request is the implementation MR and is not repurposed.",
+      "prompt": "quick question before i kick anything off \u2014 if i start acme-110 with /cadence-build and then inspect state with /cadence-define or resume later, does it know how many review rounds have already happened? read-only",
+      "expected_output": "Yes, because the cycle ledger marker prefix is shared (`cadence-run:cycle`): this skill writes `cadence-run:cycle` markers, the exact string read_state.py greps for in both /cadence-define and /cadence-build. A skill-specific marker name would make the cycles invisible and restart a capped review at one. The same holds for metadata fields \u2014 merge_request is the implementation MR and is not repurposed.",
       "files": [],
       "assertions": [
         "States that the cycle ledger marker is written as `cadence-run:cycle`",
         "Explains that the shared marker name is what makes the skills interoperable",
         "States that a skill-specific marker name would make the cycle count read as zero",
         "Connects that failure to the cycle cap being restarted or bypassed",
-        "Does NOT propose introducing a `cadence-cycle:cycle` marker",
+        "Does NOT propose introducing a `cadence-<skill>:cycle` marker",
         "Does NOT propose a new metadata.yaml field for this skill's own use"
       ],
       "check": {
         "type": "script",
         "fixture": "cadence_fixture",
-        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-110 --repo-root \"$FIX\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-110 --repo-root \"$FIX\"",
         "stdout_regex": [
           "ledger_entries=3",
           "ledger_last=n=3,phase=code-review,blocking=1,nonblocking=1"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "schema-migration-hook",
+      "prompt": "ACME-106 spec adds a new PostgreSQL table. Does /cadence-build run migrations too?",
+      "expected_output": "Yes \u2014 when `specs/<id>/spec.md` declares schema/migration work or `--with-migrations` is passed, `/cadence-build` invokes `/cadence-migrate` (`cadence-migration-author`) before TDD implementation & review.",
+      "assertions": [
+        "Mentions `--with-migrations` / schema change detection routing to `/cadence-migrate`",
+        "Preserves `/cadence-implement` -> `/cadence-review` loop and `cadence-run:cycle` ledger markers"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-build/SKILL.md",
+            "regex": "/cadence-migrate"
+          }
         ]
       }
     }

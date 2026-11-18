@@ -5,7 +5,7 @@ Used across all three human quality gates (`/cadence-review`, `/cadence-maintain
 **Gate parameters supplied by caller:**
 - `<gate>`: `/cadence-review`, `/cadence-maintain`, or `/cadence-archive`
 - `<draft-pattern>`: `specs/drafts/{ticket-id}-{review|maintain|archive}-<UTC>-<N>.md` (single whitespace-free path under `specs/drafts/`, created if absent; `<UTC>` captured **once per gate run** via `date -u +%Y%m%dT%H%M%SZ`; `<N>` = 1-based candidate ordinal).
-- `<label-context>`: `after final code review` (Low-tier `/cadence-cycle` gate) or `<gate>`.
+- `<label-context>`: `after final code review` (Low-tier `/cadence-build` gate) or `<gate>`.
 
 ---
 

@@ -245,3 +245,27 @@ Run a strictly read-only repository audit via `.agents/skills/cadence-doctor/doc
 ## `/cadence-eject <source-repo-root> <destination-dir> | --check-footprint`
 
 Wrap `cadence-eject.sh` to validate the eject footprint descriptor read-only or export a CADENCE-stripped deliverable copy after previewing strip scope (plus BL-003 history boundary), obtaining operator confirmation, and verifying CADENCE directories are absent from `<destination-dir>`.
+
+---
+
+## Consolidated Stage Workflows
+
+## `/cadence-onboard <target-repo-root> [--linked] [--gitignore-machinery] [--skip-interview]`
+
+Onboard a repository to CADENCE end-to-end: runs `adopt-cadence.sh`, optionally links `.agents/` and `.gemini/` to canonical core via `import/link-sdlc.sh --replace` when `--linked` is passed, completes `/cadence-interview` bindings in `CADENCE_ORG.md`, and verifies repository + offload health via `/cadence-doctor --check-offload`.
+
+## `/cadence-define [--propose] <ticket-id-or-problem>`
+
+Advance a ticket through the entire definition phase and stop before implementation: optionally drafts Step 00 (`--propose` -> `/cadence-propose`), then chains `/cadence-triage`, `/cadence-elicit`, and `/cadence-spec`, resolves open questions / Gate 1 rulings, and opens/publishes the spec-approval MR (`read_state.py` / `ready_mr.sh`).
+
+## `/cadence-build <ticket-id> [--with-migrations] [--max-cycles 5]`
+
+Advance an approved/triaged ticket through implementation and verification: ensures isolated worktree setup, chains `/cadence-implement` (plus `/cadence-migrate` when `--with-migrations` or schema/SQL specs trigger it), runs iterative `/cadence-review` + `security-trigger.sh`/`cadence-security-auditor` loops tracked via `<!-- cadence-run:cycle ... -->` markers, and readies the PR for Gate 3 or merge.
+
+## `/cadence-close <ticket-id> [--no-archive]`
+
+Close out a code-reviewed ticket through Gate 3 and cleanup: inspects `read_state.py`, runs tier-conditional Gate 3 `/cadence-maintain` (`Medium`/`High` when `maintainer_approved_at` is unset; skipped on `Low`/`Trivial`), lands via `/cadence-merge` + tracker sync without `--no-verify`, and chains `/cadence-archive` + post-close `doctor.sh` unless `--no-archive` is set.
+
+## `/cadence-housekeep [--since <N>] [--include-active] [--full] [--promote] [--with-release [major|minor|patch]]`
+
+Run repository hygiene in one command: executes read-only `/cadence-doctor --check-offload [--full]` and `/cadence-retro`, gates `--promote` (`II-*`/`PROD-*` ID minting) behind explicit operator confirmation, and gates optional `--with-release` behind a clean doctor pass and `/cadence-release` confirmations.

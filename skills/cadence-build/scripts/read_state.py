@@ -2,7 +2,7 @@
 """Resolve a CADENCE ticket's machine-readable state in one shot.
 
 SHARED FILE -- byte-identical copies of this script live in the scripts/ dir of
-every cadence-* skill that reads ticket state (/cadence-prep and /cadence-cycle).
+every cadence-* skill that reads ticket state (/cadence-define and /cadence-build).
 They are copies rather than one shared import because the skills are distributed
 separately and each has to stand alone.
 
@@ -19,7 +19,7 @@ Fix any copy, then propagate it to the others verbatim. Do not hand-edit one.
 
 What must NEVER be renamed to match a skill: the cycle-ledger marker below reads
 `cadence-run:cycle` in every copy. It is the SHARED historical marker prefix
-/cadence-cycle writes and /cadence-prep reads, which preserves compatibility with
+/cadence-build writes and /cadence-define reads, which preserves compatibility with
 prior ticket histories and keeps cycle counting consistent across skills.
 
 The calling skill re-reads ticket state on every loop iteration. Doing that by hand

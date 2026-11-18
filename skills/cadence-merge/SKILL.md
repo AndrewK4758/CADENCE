@@ -17,7 +17,7 @@ Because `/cadence-merge` performs protected-branch merge confirmation, possible 
 Before mutating any git branch or metadata:
 
 1. **Resolve ticket state and `#branch-strategy-binding`:**
-   - Read `specs/$ticket_id/metadata.yaml` and `specs/$ticket_id/submission.md` (and run `.agents/skills/cadence-cycle/scripts/read_state.py $ticket_id` when installed).
+   - Read `specs/$ticket_id/metadata.yaml` and `specs/$ticket_id/submission.md` (and run `.agents/skills/cadence-build/scripts/read_state.py $ticket_id` when installed).
    - Read `docs/agentic-sdlc/CADENCE_ORG.md#branch-strategy-binding` (`bound-strategy`, `integration-branch`, `integration-branch-protected`, `branch-naming-convention`). Halt fail-closed if `bound-strategy` or `integration-branch` is missing, empty, or `<placeholder>`. Echo `integration_branch=<name>` in status output.
 2. **Validate tier & required human gates (`docs/policies/change-tiers.md`):**
    - Normalize `tier:` from `metadata.yaml` (`trivial | low | medium | high`). Halt immediately if empty or unrecognized (never default to Low).

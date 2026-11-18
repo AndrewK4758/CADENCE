@@ -1,6 +1,6 @@
 # Runtime-Neutral Worktree Isolation, State Reader & Cycle Ledger
 
-Shared execution contract for multi-phase orchestrators (`/cadence-prep` and `/cadence-cycle`). Preserves identical on-disk state semantics across Antigravity (`agy`), Blitz, Gemini CLI, and headless worker agents without relying on runtime-specific CLI binaries.
+Shared execution contract for multi-phase orchestrators (`/cadence-define` and `/cadence-build`). Preserves identical on-disk state semantics across Antigravity (`agy`), Blitz, Gemini CLI, and headless worker agents without relying on runtime-specific CLI binaries.
 
 ---
 
@@ -12,7 +12,7 @@ python3 <skill-dir>/scripts/read_state.py <TICKET-ID>
 
 Never parse `metadata.yaml` or `submission.md` cycle counts manually: agents wrap multi-line YAML scalars unexpectedly, and `read_state.py` detects ticket-ID case mismatches instead of misreporting `location=absent`. If `read_state.py` is missing or exits non-zero (`not_a_cadence_repo`, `binding_absent`, `binding_unset`, `ticket_id_case_mismatch`, `status_unreadable`), **halt** immediately citing its exact stderr line.
 
-`read_state.py` copies in `skills/cadence-prep/scripts/` and `skills/cadence-cycle/scripts/` are maintained byte-identical (verify with `md5sum`).
+`read_state.py` copies in `skills/cadence-define/scripts/` and `skills/cadence-build/scripts/` are maintained byte-identical (verify with `md5sum`).
 
 ---
 
@@ -68,7 +68,7 @@ Capture `guard_tuple=` before every loop iteration and re-read it immediately af
 
 ## 5. Shared Cycle Ledger Contract (`cadence-run:cycle`)
 
-`/cadence-cycle` appends a machine-readable HTML comment at the end of each review block inside `specs/<TICKET-ID>/submission.md` under `## Discussion`:
+`/cadence-build` appends a machine-readable HTML comment at the end of each review block inside `specs/<TICKET-ID>/submission.md` under `## Discussion`:
 
 ```html
 <!-- cadence-run:cycle n=2 phase=code-review blocking=1 nonblocking=3 at=2026-08-21T14:02:11Z -->

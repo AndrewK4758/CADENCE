@@ -78,7 +78,7 @@ fi
 # was working. Either way that is a decision to surface, not to push past.
 if [ "$STATE" != "OPEN" ]; then
   WAS_DRAFT="$DRAFT"
-  echo "ready_mr: $PR is $STATE, not OPEN -- nothing to publish, and this is not the MR a prep run should be finishing." >&2
+  echo "ready_mr: $PR is $STATE, not OPEN -- nothing to publish, and this is not the MR this run should be finishing." >&2
   finish ERROR "not-open-$STATE"; exit 2
 fi
 

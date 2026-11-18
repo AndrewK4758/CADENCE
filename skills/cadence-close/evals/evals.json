@@ -1,0 +1,83 @@
+{
+  "skill_name": "cadence-close",
+  "notes": "Evaluates /cadence-close consolidated close-out workflow: read_state.py preflight, tier-conditional Gate 3 (/cadence-maintain on Medium/High vs skip on Low), /cadence-merge --no-archive + tracker sync, and /cadence-archive handoff.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "medium-tier-requires-gate3-before-merge-on-fixture",
+      "prompt": "Run /cadence-close ACME-112 when Gate 2 code review passed with blocking=0 but maintainer_approved_at is still empty.",
+      "expected_output": "Reads ACME-112 state via read_state.py, sees tier=Medium, status=in-review, ledger_last blocking=0, and maintainer_approved_at unset; runs /cadence-maintain before /cadence-merge --no-archive and /cadence-archive.",
+      "assertions": [
+        "Reads metadata state via read_state.py rather than manual YAML parsing",
+        "Enforces Gate 3 /cadence-maintain when tier is Medium/High and maintainer_approved_at is empty",
+        "Chains /cadence-merge --no-archive and /cadence-archive unless deferred or cancelled"
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "cmd": "python3 \"$ROOT/skills/cadence-build/scripts/read_state.py\" ACME-112 --repo-root \"$FIX\"",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "tier=Medium",
+            "status=in-review",
+            "ledger_last=n=1,phase=code-review,blocking=0,",
+            "maintainer_approved_at=$"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "must_exist": [
+            "skills/cadence-close/SKILL.md"
+          ],
+          "patterns": [
+            {
+              "file": "skills/cadence-close/SKILL.md",
+              "regex": "/cadence-maintain"
+            },
+            {
+              "file": "skills/cadence-close/SKILL.md",
+              "regex": "/cadence-merge"
+            },
+            {
+              "file": "skills/cadence-close/SKILL.md",
+              "regex": "/cadence-archive"
+            },
+            {
+              "file": "skills/cadence-close/SKILL.md",
+              "regex": "--no-verify"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "name": "low-tier-skips-gate3-and-honors-no-archive",
+      "prompt": "Run /cadence-close ACME-109 --no-archive after Gate 2 approval at Low tier.",
+      "expected_output": "Logs gate3=SKIPPED (tier exempt), merges via /cadence-merge --no-archive resolving #branch-strategy-binding, stops cleanly when --no-archive is passed, and verifies post-close doctor health.",
+      "assertions": [
+        "Skips /cadence-maintain at Low and Trivial tiers without failing on empty maintainer_approved_at",
+        "Honors --no-archive flag cleanly and resolves integration branch dynamically"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-close/SKILL.md",
+            "regex": "gate3=SKIPPED"
+          },
+          {
+            "file": "skills/cadence-close/SKILL.md",
+            "regex": "--no-archive"
+          },
+          {
+            "file": "skills/cadence-close/SKILL.md",
+            "regex": "#branch-strategy-binding"
+          }
+        ]
+      }
+    }
+  ]
+}

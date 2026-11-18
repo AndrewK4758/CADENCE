@@ -52,7 +52,7 @@ Because multi-word inline skill arguments can truncate across runtimes (BTG-281)
 
 Offer three clean routes matching `CADENCE_ORG.md` §9/§10 and `00-problem.md`:
 1. **File raw stub now (Recommended for backlog / multi-step intake):** invoke `/cadence-triage --file-only specs/drafts/<slug>.md` (passing `--prefix <PREFIX>` when `CADENCE_ORG.md` §9 has `>=2` prefix rows or running non-interactively).
-2. **Triage & classify immediately (Route B):** invoke `/cadence-triage specs/drafts/<slug>.md` (or pass its content directly) to allocate + run `cadence-triage-agent` right away.
+2. **Define end-to-end or triage immediately (Route B):** invoke `/cadence-define` (or `/cadence-triage specs/drafts/<slug>.md`) to allocate + classify + advance through specification right away.
 3. **Keep draft for tracker-first Route A / maintainer discussion:** leave `specs/drafts/<slug>.md` on disk and display its exact text ready to paste as tracker type `Issue` in the backlog.
 
 ## Constraints

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline deterministic eval runner for all 24 CADENCE skills (Option 2C)."""
+"""Offline deterministic eval runner for all CADENCE skills (Option 2C)."""
 import argparse
 import hashlib
 import json

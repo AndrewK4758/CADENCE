@@ -1,24 +1,24 @@
 ---
-name: cadence-cycle
-description: Drive a CADENCE ticket through implementation and code-review cycles and stop — pick up after the approved spec landed on the integration branch (or at triaged for Trivial/Low), iterate /cadence-implement and /cadence-review until blocking issues reach zero, open the implementation MR, record it in metadata.yaml, and publish it ready for review. Never invokes /cadence-maintain, monitors merge, or runs /cadence-archive.
-argument-hint: "<ticket-id>"
+name: cadence-build
+description: Drive a CADENCE ticket through implementation (including schema migrations when declared) and code-review cycles and stop — pick up after the approved spec landed on the integration branch (or at triaged for Trivial/Low), iterate /cadence-implement (plus /cadence-migrate when schema changes exist) and /cadence-review until blocking issues reach zero, open the implementation MR, record it in metadata.yaml, and publish it ready for review. Never invokes /cadence-maintain, monitors merge, or runs /cadence-archive.
+argument-hint: "<ticket-id> [--with-migrations]"
 arguments: [ticket_id]
 allowed-tools: Read Write Edit Glob Grep Bash Skill
 ---
 
-# cadence-cycle
+# cadence-build
 
 Drive one established ticket from **approved spec landed on `<integration-branch>`** (or `triaged` at Low/Trivial) up to **having its implementation MR open, recorded in `merge_request`, and published ready for review**, then stop.
 
-This orchestrator sits strictly between `/cadence-prep` and `/cadence-maintain`. Never invoke `/cadence-triage`, `/cadence-maintain`, or `/cadence-archive`, never accept a free-text problem statement, and never monitor or self-merge the MR after `ready_mr.sh` confirms it is ready.
+This orchestrator sits strictly between `/cadence-define` and `/cadence-maintain` / `/cadence-close`. Never invoke `/cadence-triage`, `/cadence-maintain`, `/cadence-close`, or `/cadence-archive`, never accept a free-text problem statement, and never monitor or self-merge the MR after `ready_mr.sh` confirms it is ready.
 
-> **Shared Worktree, State Reader, Progress-Guard & Ledger Contract:** Read `.agents/skills/cadence-cycle/references/worktree-and-ledger.md` before executing Step 3. Preserve the literal shared HTML comment marker prefix **`cadence-run:cycle`** in `submission.md` so `read_state.py` counts cycles identically across orchestrators; never repurpose `spec_mr` or `merge_request`.
+> **Shared Worktree, State Reader, Progress-Guard & Ledger Contract:** Read `.agents/skills/cadence-build/references/worktree-and-ledger.md` before executing Step 3. Preserve the literal shared HTML comment marker prefix **`cadence-run:cycle`** in `submission.md` so `read_state.py` counts cycles identically across orchestrators; never repurpose `spec_mr` or `merge_request`.
 
 ## Reading State & Preflight
 
 ```bash
-python3 .agents/skills/cadence-cycle/scripts/read_state.py <TICKET-ID> \
-  || python3 skills/cadence-cycle/scripts/read_state.py <TICKET-ID>
+python3 .agents/skills/cadence-build/scripts/read_state.py <TICKET-ID> \
+  || python3 skills/cadence-build/scripts/read_state.py <TICKET-ID>
 ```
 
 Never parse `metadata.yaml` or cycle counts manually. `read_state.py` validates `CADENCE_ORG.md` and `§15 Branch-Strategy Binding` markers (`integration-branch` and `branch-naming-convention`) and halts on ticket-ID case mismatches or absent `read_state.py` (`read_state_unavailable`).
@@ -32,7 +32,7 @@ Never parse `metadata.yaml` or cycle counts manually. `read_state.py` validates 
 
 - **Ticket-id shaped + `specs/<id>/` exists** → proceed to Step 2.
 - **Ticket-id shaped + `archive/<id>/` exists** → clean exit (`nothing to do`).
-- **Ticket-id shaped + neither directory exists** → **halt** (`ticket_not_established`); direct operator to `/cadence-triage` or `/cadence-prep`.
+- **Ticket-id shaped + neither directory exists** → **halt** (`ticket_not_established`); direct operator to `/cadence-triage` or `/cadence-define`.
 - **Not ticket-id shaped** → **halt** (`not_a_ticket_id`), quoting input verbatim.
 
 ## Step 2 — Admission Gate
@@ -41,20 +41,20 @@ Run `read_state.py` and evaluate `status` jointly with `tier`:
 
 | `status` | Admitted? |
 |---|---|
-| `triaged` | **ONLY if `tier` ∈ {`Trivial`, `Low`}** (`Medium`/`High` -> *not yet* in window; direct to `/cadence-prep`) |
+| `triaged` | **ONLY if `tier` ∈ {`Trivial`, `Low`}** (`Medium`/`High` -> *not yet* in window; direct to `/cadence-define`) |
 | `spec-approved` | **ONLY after verifying `spec.md` landed on `origin/<integration-branch>`** (for `Medium`/`High`) |
 | `in-progress` | yes |
 | `in-review` | **ONLY while implementation MR is not yet both recorded and published ready** (Trivial skips cycle check) |
-| `draft`, `spec-in-review` | no — *not yet* in window; direct to `/cadence-prep` |
+| `draft`, `spec-in-review` | no — *not yet* in window; direct to `/cadence-define` |
 | `merged`, `archived` | no — *already past* window (`nothing to do`); direct to `/cadence-archive` or report done |
 | unreadable, empty, or unknown | **halt**, quoting raw `status` / `tier` verbatim (never default unknown tier to `Low`) |
 
-- **Gate at `spec-approved` (Medium/High):** Run `git ls-tree origin/<integration-branch> specs/<TICKET-ID>/` (corroborating `SPEC_MR` when online). Because `/cadence-prep` writes `status: spec-approved` into the spec branch commit before merging, `spec.md` absent from `origin/<integration-branch>` means **not yet** admitted — direct operator to merge the spec MR via `/cadence-prep` first, never cut an implementation branch against an unmerged spec.
-- **Gate at `in-review`:** If `merge_request` is populated, check `gh pr view "$MERGE_REQUEST" --json state,isDraft,url`: `OPEN` + `isDraft: false` -> clean exit directing to `/cadence-maintain`; `MERGED` -> clean exit noting stale `status` ready for `/cadence-archive`; `CLOSED` -> **halt**; offline -> inspect local `ledger_cycles_completed` & `submission.md` and avoid redundant cycles if latest blocking count is `0`.
+- **Gate at `spec-approved` (Medium/High):** Run `git ls-tree origin/<integration-branch> specs/<TICKET-ID>/` (corroborating `SPEC_MR` when online). Because `/cadence-define` writes `status: spec-approved` into the spec branch commit before merging, `spec.md` absent from `origin/<integration-branch>` means **not yet** admitted — direct operator to merge the spec MR via `/cadence-define` first, never cut an implementation branch against an unmerged spec.
+- **Gate at `in-review`:** If `merge_request` is populated, check `gh pr view "$MERGE_REQUEST" --json state,isDraft,url`: `OPEN` + `isDraft: false` -> clean exit directing to `/cadence-close` (or `/cadence-maintain`); `MERGED` -> clean exit noting stale `status` ready for `/cadence-archive`; `CLOSED` -> **halt**; offline -> inspect local `ledger_cycles_completed` & `submission.md` and avoid redundant cycles if latest blocking count is `0`.
 
 ## Step 3 — State Loop
 
-Per `.agents/skills/cadence-cycle/references/worktree-and-ledger.md`, verify runtime-neutral worktree isolation + `guard_tuple=` staleness, read state via `read_state.py`, and enforce the **loop progress guard** every iteration.
+Per `.agents/skills/cadence-build/references/worktree-and-ledger.md`, verify runtime-neutral worktree isolation + `guard_tuple=` staleness, read state via `read_state.py`, and enforce the **loop progress guard** every iteration.
 
 ### The Trivial Path
 `/cadence-implement` refuses `tier: Trivial`. Execute directly in this run without handing back a to-do list:
@@ -77,6 +77,7 @@ Halt verbatim on any non-zero exit (including `sprint.binding.form_removed` / `s
 ### Implement / Review Cycle Loop (Cap = 4)
 1. **Starting cycle count:** read `ledger_cycles_completed` from `read_state.py` (never count `stage_effort`; fall back to counting verdict blocks in `submission.md` only if legacy ticket has `0` markers). Check consistency between marker count and verdict block count — **halt** if they diverge.
 2. **Each iteration:**
+   - **Schema migration check (`spec.md` or `--with-migrations` on Cycle 1):** Before or immediately alongside entity changes in `/cadence-implement`, if `--with-migrations` is supplied or `specs/<TICKET-ID>/spec.md` declares database/schema migrations (`expand`/`contract`), invoke `/cadence-migrate <TICKET-ID>` (`cadence-migration-author`) first so reversible expand migrations and apply/rollback/reapply verification land in the branch before review.
    - Invoke `/cadence-implement <TICKET-ID>` (relaying the run-level sprint confirmation if `Confirm`).
    - If `merge_request` is still empty, immediately push and open the implementation MR **as a draft** targeting `<integration-branch>`, record `merge_request` in `metadata.yaml`, commit, and push (keeps draft until blocking == 0).
    - Invoke `/cadence-review <TICKET-ID>` (which runs `verify-facts.sh --trace`, evaluates `security-trigger.sh`, and dispatches `cadence-security-auditor` alongside `cadence-reviewer` whenever `decision=TRIGGER`), **holding** non-blocking follow-up candidates during the loop (see below).
@@ -94,10 +95,10 @@ Halt verbatim on any non-zero exit (including `sprint.binding.form_removed` / `s
 ## Finishing the Implementation MR
 
 ```bash
-bash .agents/skills/cadence-cycle/scripts/ready_mr.sh <pr-url-or-number> \
-  || bash skills/cadence-cycle/scripts/ready_mr.sh <pr-url-or-number>
+bash .agents/skills/cadence-build/scripts/ready_mr.sh <pr-url-or-number> \
+  || bash skills/cadence-build/scripts/ready_mr.sh <pr-url-or-number>
 ```
-Exit `0`: quote verbatim `ready_mr:` line, verify `metadata.yaml` `merge_request` equals `url=` (commit/push if reconciled), and **stop immediately** (never self-merge or monitor merge). Name `/cadence-maintain <TICKET-ID>` as the next step. Exit `2`: **halt** citing MR and failure cause.
+Exit `0`: quote verbatim `ready_mr:` line, verify `metadata.yaml` `merge_request` equals `url=` (commit/push if reconciled), and **stop immediately** (never self-merge or monitor merge). Name `/cadence-close <TICKET-ID>` (or `/cadence-maintain <TICKET-ID>`) as the next step. Exit `2`: **halt** citing MR and failure cause.
 
 ## Run-End Checklist (Every Exit Path)
 
@@ -105,6 +106,6 @@ Exit `0`: quote verbatim `ready_mr:` line, verify `metadata.yaml` `merge_request
 2. **Verbatim `ready_mr:` line** + confirmation `merge_request` matches `url=`.
 3. **Cycle count summary:** prior cycles, cycles run this invocation, final `blocking`/`nonblocking`.
 4. **Session topology & worktree status** (`worktree_state`, left-standing path & branch).
-5. **Stopping reason & next actor** (`/cadence-maintain <TICKET-ID>` or unblock action).
+5. **Stopping reason & next actor** (`/cadence-close <TICKET-ID>`, `/cadence-maintain <TICKET-ID>`, or unblock action).
 6. **Sprint-enforcement record** (`org-binding-resolve.sh --sprint` output, single-run confirmation or `in-sprint`).
 7. **Held follow-up disposition summary** (held count at Medium/High, or final Low-tier gate dispositions).

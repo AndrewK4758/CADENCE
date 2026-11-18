@@ -49,7 +49,7 @@ Checking `status: spec-approved` in Step 4 above inspects the **working-tree** `
 
 2. **Tier exemption check.** When `tier` ∈ {Trivial, Low}, bypass P1 and P2, log `"integration preconditions N/A at tier <tier>"`, and proceed to the Sprint-enforcement guard. When `tier` ∈ {Medium, High}, execute 2a, P1, and P2 below.
 
-   **2a. Resolve the Integration-Branch Enforcement Binding — prior to P1/P2 (Medium/High only).** Inspect the `integration-branch-enforcement-enabled` marker in `CADENCE_ORG.md` §14 (*Integration-Branch Enforcement Binding*) **by reference** — never hardcode its setting here, and keep this enforcement site synchronized with `cadence-cycle` (`implement.ibe.enforcement_site_drift` guard) — applying this three-way branch **prior to** ref resolution and P1/P2:
+   **2a. Resolve the Integration-Branch Enforcement Binding — prior to P1/P2 (Medium/High only).** Inspect the `integration-branch-enforcement-enabled` marker in `CADENCE_ORG.md` §14 (*Integration-Branch Enforcement Binding*) **by reference** — never hardcode its setting here, and keep this enforcement site synchronized with `cadence-build` (`implement.ibe.enforcement_site_drift` guard) — applying this three-way branch **prior to** ref resolution and P1/P2:
    - `yes` → execute ref resolution plus P1 and P2 below **in full**.
    - `no` → **BYPASS P1 and P2.** Emit `"integration-branch enforcement disabled by CADENCE_ORG.md#integration-branch-enforcement-binding"` and advance to the Sprint-enforcement guard.
    - **absent / empty / un-substituted placeholder (e.g., `<no | yes>`) / any other value → HALT (fail-loud), never defaulting silently:**

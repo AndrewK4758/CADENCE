@@ -54,7 +54,7 @@ for p in root.rglob("*"):
     if (
         rel.startswith(("agents/", "hooks/", "local-offload/mcp/", "tests/"))
         or re.match(r"skills/.*/SKILL\.md$", rel)
-        or rel.startswith(("skills/cadence-spec/", "skills/cadence-review/references/", "skills/cadence-cycle/references/", "skills/cadence-adopt/", "skills/cadence-doctor/", "skills/cadence-prep/scripts/", "skills/cadence-cycle/scripts/"))
+        or rel.startswith(("skills/cadence-spec/", "skills/cadence-review/references/", "skills/cadence-build/references/", "skills/cadence-adopt/", "skills/cadence-doctor/", "skills/cadence-define/scripts/", "skills/cadence-build/scripts/"))
     ):
         if len(text.splitlines()) >= 400:
             errs.append(f"line ceiling >=400 ({len(text.splitlines())}L) in {rel}")
@@ -99,7 +99,7 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
     parts = txt.split("---\n", 2)
     if len(parts) >= 3 and re.search(r"^model:", parts[1], re.M):
         errs.append(f"hardcoded model: in {sm.relative_to(root)}")
-    for bad in ("/cadence-run", "/cadence-finish"):
+    for bad in ("/cadence-run", "/cadence-finish", "/cadence-prep", "/cadence-cycle"):
         if bad in txt:
             errs.append(f"dangling command {bad} in {sm.relative_to(root)}")
     if m := provider_leak.search(txt):
@@ -125,8 +125,8 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
 
 for a, b in [
     ("hooks/antigravity-local-offload-hook", "hooks/local-offload-enforcer.sh"),
-    ("skills/cadence-prep/scripts/read_state.py", "skills/cadence-cycle/scripts/read_state.py"),
-    ("skills/cadence-prep/scripts/ready_mr.sh", "skills/cadence-cycle/scripts/ready_mr.sh"),
+    ("skills/cadence-define/scripts/read_state.py", "skills/cadence-build/scripts/read_state.py"),
+    ("skills/cadence-define/scripts/ready_mr.sh", "skills/cadence-build/scripts/ready_mr.sh"),
 ]:
     if (root / a).read_bytes() != (root / b).read_bytes():
         errs.append(f"twin drift: {a} != {b}")
@@ -214,9 +214,9 @@ PY
 t4_fixture_and_gates() {
   local fix="$1"
   bash "$ROOT/tests/fixtures/build_cadence_fixture.sh" "$fix" >/dev/null
-  python3 "$ROOT/skills/cadence-cycle/scripts/read_state.py" ACME-110 --repo-root "$fix" | grep -q "ledger_cycles_completed=3"
-  python3 "$ROOT/skills/cadence-prep/scripts/read_state.py" ACME-105 --repo-root "$fix" | grep -q "integration_branch=trunk"
-  ! python3 "$ROOT/skills/cadence-prep/scripts/read_state.py" acme-105 --repo-root "$fix" >/dev/null 2>&1
+  python3 "$ROOT/skills/cadence-build/scripts/read_state.py" ACME-110 --repo-root "$fix" | grep -q "ledger_cycles_completed=3"
+  python3 "$ROOT/skills/cadence-define/scripts/read_state.py" ACME-105 --repo-root "$fix" | grep -q "integration_branch=trunk"
+  ! python3 "$ROOT/skills/cadence-define/scripts/read_state.py" acme-105 --repo-root "$fix" >/dev/null 2>&1
   [[ "$(bash "$ROOT/processes/ci-templates/scripts/stage-effort.sh" --stage spec --observed 7 --root "$fix")" == "15m" ]]
   (cd "$fix" && bash ci-templates/scripts/org-binding-resolve.sh --form | grep -q "section9=per-prefix")
   (cd "$fix" && bash ci-templates/scripts/org-binding-resolve.sh --tracker ACME | grep -q "tracker=inner-source")
@@ -259,7 +259,7 @@ elif [[ "\$1 \$2" == "pr ready" ]]; then
 fi
 SH
   chmod +x "$fix/bin/gh"
-  PATH="$fix/bin:$PATH" bash "$ROOT/skills/cadence-prep/scripts/ready_mr.sh" 99 | grep -q "result=READY was_draft=yes"
+  PATH="$fix/bin:$PATH" bash "$ROOT/skills/cadence-define/scripts/ready_mr.sh" 99 | grep -q "result=READY was_draft=yes"
 }
 
 t5_adopt_and_eject() {
@@ -342,7 +342,7 @@ PY
 }
 EVAL_TMP="$(mktemp -d)"
 TMP_DIRS+=("$EVAL_TMP")
-run_subtest "T8 executable eval runner across all 25 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
+run_subtest "T8 executable eval runner across all 28 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]

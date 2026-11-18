@@ -8,13 +8,13 @@
 
 Every letter of **CADENCE** maps directly to a governed phase of the software engineering lifecycle:
 
-1. **C — Classify**: Issue intake, 4-part problem framing (`VERB`, `SCOPE`, `WHY`, `CONSTRAINTS`), objective change-tier sizing (`Trivial`, `Low`, `Medium`, `High`), automatic local semantic duplicate/codebase discovery, and intent elicitation (`cadence-triage-agent`, `/cadence-propose`, `/cadence-triage`, `/cadence-elicit`, `/cadence-mint`).
-2. **A — Architect & Explore**: Cross-boundary implicit contract discovery and 2–3 structurally distinct, unranked steelmanned design options (`cadence-architect`, `cadence-explorer`, `/cadence-prep`).
-3. **D — Decompose & Specify**: Grounding via the **Contextual Grounding Matrix (`6W×4L`)**, evaluation against **Engineering Pillars**, and **CHORD** 5-part behavioral decomposition (**C**onditions [`Given`], **H**andling/Triggers [`When`], **O**utcomes [`Then` external], **R**ules [`Then` invariants], **D**eltas [`Then` internal mutations]) into `spec.md` and Gherkin `test-plan.md`, gated by `[Human Gate: Spec Approval]` (`cadence-spec-author`, `/cadence-spec`, `/cadence-interview`, `/cadence-doctor`).
-4. **E — Execute via TDD**: Strict BDD Red $\rightarrow$ Green $\rightarrow$ Accumulate $\rightarrow$ Commit cycles, wide mechanical refactors, and expand/contract schema migrations (`cadence-implementer`, `cadence-migration-author`, `/cadence-implement`, `/cadence-refactor`, `/cadence-migrate`, `/cadence-cycle`, `/cadence-parallel`).
+1. **C — Classify**: Issue intake, 4-part problem framing (`VERB`, `SCOPE`, `WHY`, `CONSTRAINTS`), objective change-tier sizing (`Trivial`, `Low`, `Medium`, `High`), automatic local semantic duplicate/codebase discovery, and intent elicitation (`cadence-triage-agent`, `/cadence-propose`, `/cadence-triage`, `/cadence-elicit`, `/cadence-mint`, `/cadence-define`).
+2. **A — Architect & Explore**: Cross-boundary implicit contract discovery and 2–3 structurally distinct, unranked steelmanned design options (`cadence-architect`, `cadence-explorer`, `/cadence-define`).
+3. **D — Decompose & Specify**: Grounding via the **Contextual Grounding Matrix (`6W×4L`)**, evaluation against **Engineering Pillars**, and **CHORD** 5-part behavioral decomposition (**C**onditions [`Given`], **H**andling/Triggers [`When`], **O**utcomes [`Then` external], **R**ules [`Then` invariants], **D**eltas [`Then` internal mutations]) into `spec.md` and Gherkin `test-plan.md`, gated by `[Human Gate: Spec Approval]` (`cadence-spec-author`, `/cadence-spec`, `/cadence-onboard`, `/cadence-interview`, `/cadence-doctor`).
+4. **E — Execute via TDD**: Strict BDD Red $\rightarrow$ Green $\rightarrow$ Accumulate $\rightarrow$ Commit cycles, wide mechanical refactors, and expand/contract schema migrations (`cadence-implementer`, `cadence-migration-author`, `/cadence-implement`, `/cadence-refactor`, `/cadence-migrate`, `/cadence-build`, `/cadence-parallel`).
 5. **N — Navigate Gates**: Automatic local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-reviewer`, `cadence-security-auditor`, `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`).
-6. **C — Consolidate**: Tier-gated integration merges, same-session tracker projection to YouTrack or Jira, and clean deliverable ejects (`/cadence-merge`, `/cadence-sync-youtrack`, `/cadence-sync-jira`, `/cadence-eject`).
-7. **E — Enshrine**: Relocation to `archive/{ticket-id}/`, two-pass dead-citation sweeps, ADR and intent-insight promotion, cross-ticket retrospectives, living business flow updates (`docs/flows/`), and release cutting (`cadence-archivist`, `/cadence-archive`, `/cadence-retro`, `/cadence-release`).
+6. **C — Consolidate**: Tier-gated integration merges, same-session tracker projection to YouTrack or Jira, and clean deliverable ejects (`/cadence-close`, `/cadence-merge`, `/cadence-sync-youtrack`, `/cadence-sync-jira`, `/cadence-eject`).
+7. **E — Enshrine**: Relocation to `archive/{ticket-id}/`, two-pass dead-citation sweeps, ADR and intent-insight promotion, cross-ticket retrospectives, living business flow updates (`docs/flows/`), and release cutting (`cadence-archivist`, `/cadence-archive`, `/cadence-retro`, `/cadence-release`, `/cadence-housekeep`).
 
 ---
 
@@ -37,22 +37,25 @@ CADENCE/
 │   ├── cadence-triage-agent/
 │   ├── log-triage/
 │   └── repo-scout/
-├── skills/                          # 25 governed /cadence-* workflow skills
+├── skills/                          # 28 governed /cadence-* workflow skills
 │   ├── cadence-adopt/
 │   ├── cadence-archive/
+│   ├── cadence-build/
 │   ├── cadence-bump-model/
-│   ├── cadence-cycle/
+│   ├── cadence-close/
+│   ├── cadence-define/
 │   ├── cadence-doctor/
 │   ├── cadence-eject/
 │   ├── cadence-elicit/
+│   ├── cadence-housekeep/
 │   ├── cadence-implement/
 │   ├── cadence-interview/
 │   ├── cadence-maintain/
 │   ├── cadence-merge/
 │   ├── cadence-migrate/
 │   ├── cadence-mint/
+│   ├── cadence-onboard/
 │   ├── cadence-parallel/
-│   ├── cadence-prep/
 │   ├── cadence-propose/
 │   ├── cadence-refactor/
 │   ├── cadence-release/

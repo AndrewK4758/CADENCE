@@ -1,0 +1,62 @@
+{
+  "skill_name": "cadence-onboard",
+  "notes": "Evaluates /cadence-onboard consolidated setup workflow: adopt-cadence.sh provisioning + --linked link-sdlc.sh --replace + doctor.sh verification and /cadence-interview gating.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "adopt-and-link-framework-into-fresh-repo",
+      "prompt": "Run /cadence-onboard <repo> --linked against a fresh git repository.",
+      "expected_output": "Runs adopt-cadence.sh to seed CADENCE adopter artifacts, runs link-sdlc.sh --replace so .agents/ and .gemini/ link cleanly to SDLC core, runs doctor.sh --root <repo>, and reports valid runtime symlinks plus remaining /cadence-interview placeholders.",
+      "assertions": [
+        "Delegates copy setup to adopt-cadence.sh rather than manual file copying",
+        "Applies --linked via import/link-sdlc.sh --replace creating valid .agents and .gemini symlinks",
+        "Runs doctor.sh read-only verification and surfaces remaining CADENCE_ORG.md placeholders"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "empty_git",
+        "cmd": "bash \"$ROOT/skills/cadence-adopt/adopt-cadence.sh\" \"$FIX\" && bash \"$ROOT/import/link-sdlc.sh\" \"$FIX\" --replace && test -L \"$FIX/.agents/skills\" && test -L \"$FIX/.gemini/skills\" && (bash \"$ROOT/skills/cadence-doctor/doctor.sh\" --root \"$FIX\" || true)",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "Done:",
+          "Linked CADENCE SDLC",
+          "PASS  runtime symlinks valid"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "skip-interview-and-doctor-offload-contract",
+      "prompt": "Run /cadence-onboard in non-interactive mode with --skip-interview.",
+      "expected_output": "Runs adopt-cadence.sh cleanly, skips interactive prompts cleanly under --skip-interview, runs doctor.sh --check-offload, routes verbose output through offload_log_triage, and points to /cadence-define after completing /cadence-interview.",
+      "assertions": [
+        "Supports --gitignore-machinery, --linked, and --skip-interview flags cleanly",
+        "Routes doctor verification via --check-offload and offload_log_triage on :11434"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-onboard/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-onboard/SKILL.md",
+            "regex": "adopt-cadence\\.sh"
+          },
+          {
+            "file": "skills/cadence-onboard/SKILL.md",
+            "regex": "link-sdlc\\.sh.*--replace"
+          },
+          {
+            "file": "skills/cadence-onboard/SKILL.md",
+            "regex": "--check-offload"
+          },
+          {
+            "file": "skills/cadence-onboard/SKILL.md",
+            "regex": "/cadence-define"
+          }
+        ]
+      }
+    }
+  ]
+}

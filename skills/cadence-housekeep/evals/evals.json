@@ -1,0 +1,64 @@
+{
+  "skill_name": "cadence-housekeep",
+  "notes": "Evaluates /cadence-housekeep consolidated maintenance workflow: read-only defaults combining doctor.sh --check-offload + retro_scan.py synthesis + confirmation-gated --promote and doctor-gated --with-release.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "read-only-doctor-and-retro-baseline",
+      "prompt": "Run /cadence-housekeep in an adopted repository with an empty archive/ directory.",
+      "expected_output": "Executes doctor.sh read-only checks and retro_scan.py cleanly with zero file writes, surfacing diagnostic counts and status=empty_archive.",
+      "assertions": [
+        "Runs doctor.sh and retro_scan.py read-only by default without mutating files or reserving IDs",
+        "Preserves SKIP/WARN/FAIL accuracy rather than hiding warnings"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "adopted_repo",
+        "cmd": "bash \"$ROOT/skills/cadence-doctor/doctor.sh\" --root \"$FIX\" && python3 \"$ROOT/skills/cadence-retro/retro_scan.py\" --root \"$FIX\"",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "Doctor Summary:",
+          "status=empty_archive"
+        ],
+        "check_unchanged": [
+          "docs/agentic-sdlc/CADENCE_ORG.md",
+          "CHANGELOG.md"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "confirmation-gated-promote-and-doctor-gated-release",
+      "prompt": "Run /cadence-housekeep --with-release when /cadence-doctor reported failures, and verify --promote gating.",
+      "expected_output": "Halts before /cadence-release whenever doctor.sh exited non-zero, requires explicit confirmation before --promote reserves IDs, never edits archived tickets, and routes verbose output via offload_log_triage on :11434.",
+      "assertions": [
+        "Refuses /cadence-release when doctor.sh reports failures",
+        "Keeps --promote and /cadence-release strictly confirmation-gated"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-housekeep/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-housekeep/SKILL.md",
+            "regex": "doctor\\.sh"
+          },
+          {
+            "file": "skills/cadence-housekeep/SKILL.md",
+            "regex": "retro_scan\\.py"
+          },
+          {
+            "file": "skills/cadence-housekeep/SKILL.md",
+            "regex": "--with-release"
+          },
+          {
+            "file": "skills/cadence-housekeep/SKILL.md",
+            "regex": "offload_log_triage"
+          }
+        ]
+      }
+    }
+  ]
+}

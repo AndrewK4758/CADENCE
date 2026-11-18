@@ -224,7 +224,7 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 
 When invoked, the architect's output (Observed/Inferred/Unknown findings, Draft Contracts, Open Questions) feeds directly into the spec's compatibility-impact section. Invocation at Medium tier remains opt-in by the spec-author; it is never mandatory unless the change escalates to High tier.
 
-**Security & Concurrency Auditor (`cadence-security-auditor`, hybrid trigger):** Always invoked at **High** tier; at **Low** and **Medium** tiers, `/cadence-review` (and `/cadence-cycle` / `/cadence-parallel`) runs `security-trigger.sh` and triggers `cadence-security-auditor` alongside `cadence-reviewer` whenever changed paths or diff hunks touch authentication/authorization, secrets/cryptography, SQL/migrations, concurrency/locks/transactions, or untrusted input/exec boundaries.
+**Security & Concurrency Auditor (`cadence-security-auditor`, hybrid trigger):** Always invoked at **High** tier; at **Low** and **Medium** tiers, `/cadence-review` (and `/cadence-build` / `/cadence-parallel`) runs `security-trigger.sh` and triggers `cadence-security-auditor` alongside `cadence-reviewer` whenever changed paths or diff hunks touch authentication/authorization, secrets/cryptography, SQL/migrations, concurrency/locks/transactions, or untrusted input/exec boundaries.
 
 **Examples:** Adding a new field to an existing API response, new database column with backfill, new validation rule that changes existing behavior, integrating with an internal notification service.
 
