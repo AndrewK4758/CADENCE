@@ -132,6 +132,7 @@ Skills are user-invokable slash-command workflows stored directly in `.agents/sk
 | `/cadence-doctor` | Run a strictly read-only audit of CADENCE governance files, org bindings, `<400L` compliance, footprint freshness, allocator health, installed gates, and optional `--ticket` artifacts |
 | `/cadence-eject` | Safely wrap `cadence-eject.sh` to validate eject footprint descriptors (`--check-footprint`) or export a CADENCE-stripped deliverable copy after preview confirmation and verification |
 | `/cadence-release` | Cut a governed release — compute the major/minor/patch version bump from `[Unreleased]` changelog entries (with operator confirmation), finalize CHANGELOG, update README, draft release notes, commit, create an annotated git tag, and push |
+| `/cadence-retro` | Run a read-only cross-ticket retrospective across `archive/*/` via `retro_scan.py` and `:11434` semantic clustering, surfacing rework hotspots, effort variance, deferred follow-ups, and confirmation-gated `II-NNN`/`PROD-NNN` insight candidates |
 
 ---
 

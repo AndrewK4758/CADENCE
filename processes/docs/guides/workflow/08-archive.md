@@ -92,5 +92,5 @@ All file moves, markdown authoring, and tracker syncs remain 100% owned by `/cad
 - [`../../policies/branch-strategy/long-lived-feature-release.md`](../../policies/branch-strategy/long-lived-feature-release.md) · [`trunk-based.md`](../../policies/branch-strategy/trunk-based.md) — how "is this merged?" and post-merge branch cleanup resolve.
 - [`../../policies/finding-classes.md`](../../policies/finding-classes.md) — `adr-owed` promotion (step 1b) and `out-of-scope-defect` follow-up filing (step 2e).
 - [`../../policies/doc-maintenance-policy.md`](../../policies/doc-maintenance-policy.md) — human approval requirement for `docs/flows/` and `docs/SYSTEM_OVERVIEW.md`.
-- [`../../ADR/`](../../ADR/) · [`../../agentic-sdlc/intent-insights.md`](../../agentic-sdlc/intent-insights.md) — destinations for promoted architectural decisions and reusable insights.
+- [`../../ADR/`](../../ADR/) · [`../../agentic-sdlc/intent-insights.md`](../../agentic-sdlc/intent-insights.md) — destinations for promoted architectural decisions and reusable insights (and use `/cadence-retro` to synthesize cross-ticket trends across `archive/*/`).
 - [`../../../specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) — the change-proposal and disposition record finalized at archival.

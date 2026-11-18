@@ -14,7 +14,7 @@ Every letter of **CADENCE** maps directly to a governed phase of the software en
 4. **E — Execute via TDD**: Strict BDD Red $\rightarrow$ Green $\rightarrow$ Accumulate $\rightarrow$ Commit cycles, wide mechanical refactors, and expand/contract schema migrations (`cadence-implementer`, `cadence-migration-author`, `/cadence-implement`, `/cadence-refactor`, `/cadence-migrate`, `/cadence-cycle`, `/cadence-parallel`).
 5. **N — Navigate Gates**: Automatic local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-reviewer`, `cadence-security-auditor`, `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`).
 6. **C — Consolidate**: Tier-gated integration merges, same-session tracker projection to YouTrack or Jira, and clean deliverable ejects (`/cadence-merge`, `/cadence-sync-youtrack`, `/cadence-sync-jira`, `/cadence-eject`).
-7. **E — Enshrine**: Relocation to `archive/{ticket-id}/`, two-pass dead-citation sweeps, ADR and intent-insight promotion, living business flow updates (`docs/flows/`), and release cutting (`cadence-archivist`, `/cadence-archive`, `/cadence-release`).
+7. **E — Enshrine**: Relocation to `archive/{ticket-id}/`, two-pass dead-citation sweeps, ADR and intent-insight promotion, cross-ticket retrospectives, living business flow updates (`docs/flows/`), and release cutting (`cadence-archivist`, `/cadence-archive`, `/cadence-retro`, `/cadence-release`).
 
 ---
 
@@ -37,7 +37,7 @@ CADENCE/
 │   ├── cadence-triage-agent/
 │   ├── log-triage/
 │   └── repo-scout/
-├── skills/                          # 24 governed /cadence-* workflow skills
+├── skills/                          # 25 governed /cadence-* workflow skills
 │   ├── cadence-adopt/
 │   ├── cadence-archive/
 │   ├── cadence-bump-model/
@@ -56,6 +56,7 @@ CADENCE/
 │   ├── cadence-propose/
 │   ├── cadence-refactor/
 │   ├── cadence-release/
+│   ├── cadence-retro/
 │   ├── cadence-review/
 │   ├── cadence-spec/
 │   ├── cadence-sync-jira/
@@ -107,7 +108,7 @@ CADENCE/
 │   ├── ci-templates/
 │   ├── docs/
 │   └── specs/
-└── tests/                           # Offline CADENCE regression suite & 24-skill eval runner
+└── tests/                           # Offline CADENCE regression suite & 25-skill eval runner
     ├── eval_runner.py
     ├── run-cadence-tests.sh
     ├── run-evals.sh
@@ -271,7 +272,7 @@ curl -s http://127.0.0.1:11434/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"inference","messages":[{"role":"user","content":"Reply with OK"}],"max_tokens":8}' | jq -r '.choices[0].message.content'
 
-# 5. Run the offline regression suite and 24-skill executable eval runner
+# 5. Run the offline regression suite and 25-skill executable eval runner
 bash tests/run-cadence-tests.sh
 bash tests/run-evals.sh --verbose        # Add --with-offload for advisory :11434 rubric grading
 ```

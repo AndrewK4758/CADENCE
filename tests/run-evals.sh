@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline deterministic eval runner across all 24 skills/*/evals/evals.json.
+# Offline deterministic eval runner across all skills/*/evals/evals.json.
 # Usage:
 #   bash tests/run-evals.sh [--skill <name>] [--with-offload] [--verbose]
 set -euo pipefail

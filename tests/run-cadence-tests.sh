@@ -273,9 +273,10 @@ t5_adopt_and_eject() {
   test -e "$dst/.gemini/agents/cadence-security-auditor/agent.md"
   test -x "$dst/.agents/skills/cadence-review/security-trigger.sh"
   test -e "$dst/.gemini/skills/cadence-spec/SKILL.md"
-  for ns in cadence-doctor cadence-eject cadence-merge cadence-propose cadence-refactor; do
+  for ns in cadence-doctor cadence-eject cadence-merge cadence-propose cadence-refactor cadence-retro; do
     test -e "$dst/.gemini/skills/$ns/SKILL.md"
   done
+  test -x "$dst/.agents/skills/cadence-retro/retro_scan.py"
   test -x "$dst/.agents/skills/cadence-doctor/doctor.sh"
   test -e "$dst/.gemini/hooks.json"
   grep -q '\.agents/hooks/' "$dst/.agents/hooks.json"
@@ -341,7 +342,7 @@ PY
 }
 EVAL_TMP="$(mktemp -d)"
 TMP_DIRS+=("$EVAL_TMP")
-run_subtest "T8 executable eval runner across all 24 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
+run_subtest "T8 executable eval runner across all 25 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]

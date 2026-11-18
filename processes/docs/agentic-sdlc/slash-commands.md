@@ -9,7 +9,7 @@ Slash commands in `.agents/skills/` (projected to `.gemini/skills/` or `.claude/
 When executing CADENCE slash commands, read-only discovery, test/build log compaction, and pre-review mechanical sweeps automatically offload to the local 2-tier hardware coprocessor pipeline (`local-offload` MCP server + `log-triage` and `repo-scout` subagents):
 
 - **Tier 1 — Always-On Embedding (`127.0.0.1:11434`)**:
-  - `embedding` (`embeddinggemma-2`) + `local_semantic_embed`: Activated during `/cadence-propose`, `/cadence-triage`, and `/cadence-spec` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, and locate codebase symbols without bloating the primary model's context window.
+  - `embedding` (`embeddinggemma-2`) + `local_semantic_embed`: Activated during `/cadence-propose`, `/cadence-triage`, `/cadence-spec`, `/cadence-archive`, and `/cadence-retro` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, cluster cross-ticket patterns, and locate codebase symbols without bloating the primary model's context window.
 - **Tier 2 — On-Demand Inference (`127.0.0.1:11434`)**:
   - `inference` via `offload_log_triage` / `log-triage` and `repo-scout`: Activated during `/cadence-implement`, `/cadence-refactor`, `/cadence-merge`, and `/cadence-doctor` to compact verbose test runner and compiler logs into verbatim failure lines, `file:line` coordinates, and coverage metrics while preserving the full raw log at `/tmp/agy-last-triage.log`.
   - `inference` via `offload_deep_review`: Activated during `/cadence-review` and `/cadence-maintain` for advisory pre-review sweeps checking Pillar 3 (`<400`-line file ceiling), comment discipline, and CHORD observability seam completeness before the `Deep-reasoning` tier (`xhigh` effort) issues gate verdicts.
@@ -168,6 +168,12 @@ Enshrine a merged ticket into the permanent repository archive. Delegates to `ca
 **Behavior when the classifier script is absent (BTG-099):** both steps first check that `ci-templates/scripts/dead-citation-gate.sh` exists **and is non-empty** (since a zero-byte file would exit 0 and masquerade as a clean sweep). If the script is not installed, archival neither halts nor silently skips: it emits an explicit notice naming the missing gate and PROD_CADENCE-009 risk, offers an optional manual fallback, records `DEAD-CITATION-SWEEP: SKIPPED` or `DEAD-CITATION-SWEEP: MANUAL` in `summary.md`, and proceeds. An installed classifier exiting with status **2** (setup failure) **halts** immediately.
 
 **Outputs:** Enshrined artifacts under `archive/{ticket-id}/` including `summary.md` (with its *Citation Dispositions* table), updated `CHANGELOG.md`, `metadata.yaml` set to `status: archived`, and any proposed updates to `docs/flows/` or `docs/SYSTEM_OVERVIEW.md`.
+
+---
+
+## `/cadence-retro [--since <N|YYYY-MM-DD>] [--include-active] [--promote]`
+
+Synthesize cross-ticket metrics and recurring failure patterns across `archive/*/` via `.agents/skills/cadence-retro/retro_scan.py` and `:11434` semantic clustering (`local_semantic_embed`). Default execution is strictly read-only, reporting tier distribution, recorded `stage_effort` variance, multi-cycle code-review rework hotspots, `Deferred` follow-ups, unguarded citation sweeps, and deduplicated `II-NNN` / `PROD-NNN` insight candidates; promotions run only after explicit operator confirmation using atomic `mint-id.sh --reserve`.
 
 ---
 
