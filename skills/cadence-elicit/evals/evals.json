@@ -1,0 +1,39 @@
+{
+  "skill_name": "cadence-elicit",
+  "notes": "Evaluates /cadence-elicit invariants: Medium/High tier gate, anchored ^## Elicited Intent$ overwrite check, 7-question ceiling + depth-1 rubric follow-ups, No response ambiguity retry without coercion, byte-for-byte template-probe-menu fidelity, bidirectional plurality split + all-or-nothing rollback, and stage: triage effort logging only on file write.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "refuses-low-or-trivial-tier-without-writes",
+      "prompt": "Run /cadence-elicit ACME-109 where metadata.yaml has tier: Low.",
+      "expected_output": "Normalizes tier=Low and halts immediately citing docs/policies/change-tiers.md without prompting or touching problem.md or metadata.yaml, and skips Step 7 effort logging and tracker sync.",
+      "assertions": [
+        "Halts immediately on Trivial, Low, missing, or unrecognized tier",
+        "Modifies zero files and skips Step 7 stage_effort + tracker sync on refusal"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "menu-ambiguity-retry-and-verbatim-capture",
+      "prompt": "In ACME-101 (Medium tier), user clicks both 'No response' and 'Candidate 1' on Probe 1, then selects 'Candidate 1' on retry.",
+      "expected_output": "Detects mutual exclusion with No response without writing anything or converting to skipped, re-presents the identical option array once naming the violated rule (costing 0 of the 7-question cap), and on 'Candidate 1' selection writes Candidate 1's exact description bytes verbatim with **Source:** template-probe-menu and stage: triage effort via stage-effort.sh.",
+      "assertions": [
+        "Rejects 'No response' paired with another selection without coercing to _(skipped by requester)_",
+        "Re-presents byte-identical options once on ambiguity at zero extra question budget",
+        "Records exact option description bytes verbatim under **Source:** template-probe-menu",
+        "Appends stage: triage increment via stage-effort.sh and adds to actual_effort after Step 5 write"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "decomposition-handoff-rollback-on-child-refusal",
+      "prompt": "Confirmed 2-child decomposition creates child 1 (status: created) and returns status: refused on child 2.",
+      "expected_output": "Halts immediately without calling triage for remaining children, removes specs/<child-1>/ (created in this run) while never deleting pre-existing duplicate children, leaves parent metadata.yaml decomposed_into: untouched, and reports structured failure summary.",
+      "assertions": [
+        "Uses deterministic 12-hex sha256 idempotency_key excluding ## Elicited Intent",
+        "Deletes only children with status: created from current run and leaves duplicate children intact",
+        "Leaves parent decomposed_into: unmodified on partial failure"
+      ]
+    }
+  ]
+}

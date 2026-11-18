@@ -1,0 +1,37 @@
+{
+  "skill_name": "cadence-triage",
+  "notes": "Evaluates /cadence-triage contracts: --file-only Step F0 single-token file check before allocation (cadence_triage.fileonly.argument_unresolved), F1.5 N>=2 prefix selection, mint-id.sh --reserve without silent directory-scan fallback, handoff duplicate check strictly before --reserve, and Step 5 Tier + probe-count elicit offer gate.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "file-only-unresolved-token-halts-before-allocation",
+      "prompt": "Run /cadence-triage --file-only nonexistent-token on an unbound repository.",
+      "expected_output": "Halts at Step F0 with cadence_triage.fileonly.argument_unresolved before F1/F1.5/F2 execute, consuming zero sequence IDs, making zero tracker calls, and creating no specs/<id>/ directory.",
+      "assertions": [
+        "Evaluates Step F0 single-token file check prior to any allocation or tracker lookup",
+        "Halts with cadence_triage.fileonly.argument_unresolved on unreadable/missing single token",
+        "Performs zero mint-id.sh --reserve calls, zero tracker calls, and zero specs/<id>/ writes"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "allocator-failure-refuses-directory-scan-fallback",
+      "prompt": "Triage a new problem description when mint-id.sh --reserve fails because flock is missing.",
+      "expected_output": "Halts loudly surfacing the allocator error and forbids falling back to scanning specs/, archive/, or docs/ADR/ (idalloc.caller.silent_scan_fallback).",
+      "assertions": [
+        "Calls .agents/skills/cadence-mint/mint-id.sh --reserve for local sequence minting",
+        "Halts on non-zero allocator exit without scanning specs/, archive/, or docs/ADR/"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "handoff-dupcheck-before-reserve-and-elicit-offer-gate",
+      "prompt": "Run handoff mode for an already-created child (decomposed_from + idempotency_key match) and separately run standard triage yielding Low tier.",
+      "expected_output": "In handoff mode, returns status: duplicate without calling --reserve (never violating idalloc.triage.reserve_before_dupcheck) and suppresses Step 5 elicit offer; at Low tier, skips offering /cadence-elicit.",
+      "assertions": [
+        "Checks (decomposed_from, idempotency_key) duplicate BEFORE calling mint-id.sh --reserve",
+        "Suppresses Step 5 /cadence-elicit offer in handoff mode (suppress_elicit_offer: true) and at Trivial/Low tier"
+      ]
+    }
+  ]
+}

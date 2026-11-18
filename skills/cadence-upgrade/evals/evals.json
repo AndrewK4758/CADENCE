@@ -1,0 +1,28 @@
+{
+  "skill_name": "cadence-upgrade",
+  "notes": "Evaluates /cadence-upgrade guarantees: wrapper-only execution of upgrade-cadence.sh, Step 0 AUTOGEN_CONFIRM=1 atomic footprint bootstrap, --dry-run zero-write preview, never silently auto-resolving .cadence-upgrade-staging/ conflicts, Step 5.5 org-fold preserving live CADENCE_ORG.md on conflict, Step 5.6 staged-file presence check before /cadence-interview, and Step 4.6 --rewrite-vocab UPGRADE_CORE check.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "dry-run-and-staged-conflict-non-silent-merge",
+      "prompt": "Upgrade to 4.1.0 with --dry-run, then run live when an installed skill file has conflicting local edits.",
+      "expected_output": "Delegates to upgrade-cadence.sh --dry-run performing zero filesystem writes on preview; on live conflict writes marker files under .cadence-upgrade-staging/ leaving working tree and .cadence-version unchanged, refuses auto-resolving conflicts, and routes noisy >30-line conflict output through offload_log_triage.",
+      "assertions": [
+        "Delegates exclusively to upgrade-cadence.sh without reimplementing 3-way merges via Edit/Write",
+        "Performs zero writes to .cadence-version or working tree under --dry-run",
+        "Stages conflicts under .cadence-upgrade-staging/ leaving .cadence-version unchanged and never auto-resolves them"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "step5-6-post-upgrade-interview-routing-and-rewrite-vocab",
+      "prompt": "After a clean version upgrade, Step 5.5 org-fold writes .cadence-upgrade-staging/docs/agentic-sdlc/CADENCE_ORG.md; should Step 5.6 auto-invoke /cadence-interview?",
+      "expected_output": "Checks filesystem presence of .cadence-upgrade-staging/docs/agentic-sdlc/CADENCE_ORG.md (never grepping live CADENCE_ORG.md), takes the conflict branch, does NOT auto-invoke /cadence-interview, and directs the operator to resolve the staged file onto live CADENCE_ORG.md first.",
+      "assertions": [
+        "Routes Step 5.6 strictly by existence of .cadence-upgrade-staging/docs/agentic-sdlc/CADENCE_ORG.md",
+        "Refuses to auto-invoke /cadence-interview when org-fold staged a conflict",
+        "Requires AUTOGEN_CONFIRM=1 for --autogen-footprint and separate UPGRADE_CORE for --rewrite-vocab"
+      ]
+    }
+  ]
+}

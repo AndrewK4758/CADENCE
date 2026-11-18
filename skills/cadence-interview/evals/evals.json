@@ -1,0 +1,27 @@
+{
+  "skill_name": "cadence-interview",
+  "notes": "Evaluates /cadence-interview contracts: unrecognized flag refusal, missing live CADENCE_ORG.md fail-closed halt, Where/Who/Why scope containment (§7-§15 byte-preserved), non-destructive N/A retention, default idempotent no-op, and Step 7 disk re-read post-write check.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "unrecognized-flag-and-missing-org-halt",
+      "prompt": "Run /cadence-interview --reinterview in a repo with CADENCE_ORG.md present (and separately run /cadence-interview where CADENCE_ORG.md is missing).",
+      "expected_output": "Halts immediately on misspelled flag --reinterview citing unrecognized argument instead of falling back to default mode; halts when live docs/agentic-sdlc/CADENCE_ORG.md is absent without synthesizing it.",
+      "assertions": [
+        "Halts fail-closed on unrecognized flag without defaulting to default mode",
+        "Halts when docs/agentic-sdlc/CADENCE_ORG.md does not exist without synthesizing the file"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "non-destructive-na-and-post-write-self-check",
+      "prompt": "Fill placeholders in Where/Who/Why selecting N/A on one row and Observed candidate on another while leaving §15 intact.",
+      "expected_output": "Writes literal N/A keeping the table row intact (preserving column 1 and Notes), leaves §7-§15 and CADENCE_ORG_TEMPLATE.md byte-identical, re-reads CADENCE_ORG.md from disk in Step 7 confirming row counts preserved and zero placeholders in populated cells (UNSOUND_CONDITION on structural corruption).",
+      "assertions": [
+        "Preserves table rows when N/A is selected instead of deleting rows",
+        "Restricts edits strictly to second-column value cells under Where/Who/Why leaving §7-§15 untouched",
+        "Re-reads CADENCE_ORG.md from disk in Step 7 verifying row counts, scope containment, and residual placeholders"
+      ]
+    }
+  ]
+}

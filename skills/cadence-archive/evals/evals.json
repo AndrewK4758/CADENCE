@@ -1,0 +1,39 @@
+{
+  "skill_name": "cadence-archive",
+  "notes": "Evaluates /cadence-archive contracts: cancelled precedence over branch state, archive.close_out_reason_absent halt, non-vacuous ratified carve-out, two-part dead-citation sweeps (--id then --except-id), non-empty [ -s ] gate check, authored-doc-gate over both insight registers, Step 2e follow-up backstop, and archive stage_effort via stage-effort.sh.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "cancelled-empty-resolution-halts-cleanly",
+      "prompt": "Archive ticket ACME-114 whose metadata.yaml has status: cancelled and resolution: \"\" (even though a branch commit exists).",
+      "expected_output": "Honors cancelled precedence over branch reachability, halts immediately with archive.close_out_reason_absent citing missing resolution:, performs zero file moves or CHANGELOG/tracker edits, and asks operator to populate resolution:.",
+      "assertions": [
+        "Evaluates cancelled entry state with precedence over branch merge reachability",
+        "Halts with archive.close_out_reason_absent when merged_at and resolution: are both empty",
+        "Moves zero files and writes zero summary.md / CHANGELOG.md / tracker sync changes on halt"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "blocking-two-pass-citation-and-insight-gates",
+      "prompt": "Archive merged ticket ACME-101 where cadence-archivist promotes ADR-0012 citing specs/ACME-050/spec.md (already archived) and appends a PROD resolution note.",
+      "expected_output": "Checks [ -s dead-citation-gate.sh ] (never [ -f ]), runs --id ACME-101 in Step 2b, then runs --except-id ACME-101 in Step 2c catching the stale ACME-050 link without using --emit-baseline, runs authored-doc-gate.sh on both intent-insights.md and production-insights.md, and logs dispositions in summary.md.",
+      "assertions": [
+        "Checks non-zero file size [ -s ] for dead-citation-gate.sh and authored-doc-gate.sh",
+        "Executes dead-citation-gate.sh --id <ticket> BEFORE --except-id <ticket>",
+        "Refuses --emit-baseline to silence Step 2c hits and dispositions REPOINT or EXEMPT in summary.md",
+        "Runs authored-doc-gate.sh against both intent-insights.md and production-insights.md"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "adr-owed-and-stage-effort-exit-checks",
+      "prompt": "Finalize archival when ## Discussion holds an undispositioned [adr-owed] entry.",
+      "expected_output": "Dispositions [adr-owed] in Step 1b/2e (promote into docs/ADR/ or defer into Follow-ups created) failing with archive.adr_owed.undispositioned if left unhandled, and records archive stage_effort via stage-effort.sh (never recomputed from git log history).",
+      "assertions": [
+        "Dispositions every [adr-owed] finding into a concrete ADR or Follow-ups created entry (else archive.adr_owed.undispositioned)",
+        "Computes archive stage_effort via stage-effort.sh rather than git log timestamps"
+      ]
+    }
+  ]
+}

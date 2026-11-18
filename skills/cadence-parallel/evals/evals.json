@@ -1,0 +1,30 @@
+{
+  "skill_name": "cadence-parallel",
+  "notes": "Evaluates /cadence-parallel concurrency & tier invariants: separate cadence-explorer before cadence-spec-author, missing/invalid tier never defaults to Low, mandatory Step 3 integration-branch checkpoint before implementation worktrees, dependency hold until merged, no-op subagent never resumed, additive rebase conflict resolution, and post-review edit routing back to owning worktree.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "tier-routing-and-mandatory-checkpoint-before-worktrees",
+      "prompt": "Orchestrate parallel delivery for ACME-101 (High), ACME-109 (Low), and ACME-200 (tier: \"\").",
+      "expected_output": "Halts ACME-200 without defaulting empty tier to Low; routes ACME-109 straight past spec/maintainer (Code Review single gate); invokes cadence-explorer before cadence-spec-author on ACME-101; requires Gate 1 approval + Step 3 checkpoint merge into integration branch before spawning isolated implementation worktrees.",
+      "assertions": [
+        "Pauses any ticket with missing/blank/invalid tier without defaulting to Low",
+        "Skips cadence-spec-author, cadence-architect, and cadence-maintainer for Low-tier tickets",
+        "Dispatches cadence-explorer before cadence-spec-author for Medium/High tickets",
+        "Enforces Step 3 checkpoint commit and integration-branch merge prior to creating isolated implementation worktrees"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "noop-worktree-never-resumed-and-additive-rebase",
+      "prompt": "One worker exits without commits while another worker's branch conflicts on CHANGELOG.md after a sibling merged.",
+      "expected_output": "Never resumes a zero-change/no-op worktree subagent (spawns fresh worktree session); delegates rebase onto latest integration branch back to owning worktree context preserving both siblings' CHANGELOG entries, re-runs full tests through offload_log_triage, and runs offload_deep_review prior to cadence-reviewer.",
+      "assertions": [
+        "Spawns a fresh isolated worktree subagent instead of resuming a zero-change subagent context",
+        "Resolves shared append-only file conflicts additively (never blind --ours/--theirs) in owning worktree",
+        "Routes post-review edits back to owning worktree rather than read-only reviewer/maintainer",
+        "Runs offload_log_triage on tests and offload_deep_review prior to cadence-reviewer"
+      ]
+    }
+  ]
+}

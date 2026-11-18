@@ -1,0 +1,29 @@
+{
+  "skill_name": "cadence-sync-jira",
+  "notes": "Evaluates /cadence-sync-jira thin-orchestrator guarantees: direct REST v2 (curl -K- stdin PAT, never argv/logs), Step 3 jira-preserve.sh --issue-key only (update path, non-epic), fresh mktemp description per ticket via jira-md2wiki.sh, early jira-metadata-write.sh for jira_url and umbrella_epic_url, non-zero halt partial report vs exit-0 *_result refusal, and bulk isolation.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "thin-orchestrator-early-write-and-pat-hygiene",
+      "prompt": "Sync new ticket BTG-142 to Jira Server/DC where Step 4 creates an issue and Step 5 transition halts non-zero.",
+      "expected_output": "Passes JIRA_PAT strictly via curl -K- stdin (never argv/temp/logs), skips jira-preserve.sh on mode=create, allocates a fresh mktemp wiki-markup description file, calls jira-metadata-write.sh immediately after Step 4 to persist jira_url so re-run does not mint duplicates, halts without rolling back Jira, and emits emit_partial_report routing verbose error >30L via offload_log_triage.",
+      "assertions": [
+        "Never exposes JIRA_PAT in argv, temp files, metadata.yaml, or triage logs",
+        "Skips Step 3 jira-preserve.sh on create path and on type: epic (and passes --issue-key only when run)",
+        "Persists jira_url via jira-metadata-write.sh immediately after Step 4 create",
+        "Halts on non-zero exit without rolling back earlier steps and emits partial-completion report"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "bulk-sync-isolation-and-reference-accounting",
+      "prompt": "Run /cadence-sync-jira all when one ticket halts and others have zero reference rejections.",
+      "expected_output": "Allocates a fresh mktemp description file inside each per-ticket loop iteration, isolates the halted ticket (preserving its partial report) while advancing remaining tickets, reports halted ticket IDs explicitly, and affirmatively reports when references_unreadable/unresolved/skipped are all zero.",
+      "assertions": [
+        "Generates a distinct fresh mktemp description file per ticket in bulk sync",
+        "Isolates per-ticket halts rather than aborting independent sibling tickets",
+        "Reports any non-zero counter and each halted ticket by ID, and affirmatively states clean reference counts when 0"
+      ]
+    }
+  ]
+}

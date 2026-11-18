@@ -1,0 +1,29 @@
+{
+  "skill_name": "cadence-adopt",
+  "notes": "Evaluates /cadence-adopt guarantees: wrapper-only execution of adopt-cadence.sh, refusal of missing args/remote URLs/symlink-resolved self-targets, --gitignore-machinery pass-through, idempotency, ledger seeding, and post-copy verification at canonical destination.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "refuses-remote-url-and-self-target",
+      "prompt": "Run /cadence-adopt against git@github.com:acme/project.git (and then against `.` inside the CADENCE repo itself).",
+      "expected_output": "Rejects remote URLs instructing operator to clone locally first, and rejects `.` via canonical realpath / pwd -P comparison against git top-level without copying or modifying any file.",
+      "assertions": [
+        "Rejects remote URLs containing :// or git@ prefix",
+        "Canonicalizes destination and refuses self-target against the CADENCE source repo",
+        "Never uses Edit or Write tools directly to copy framework files"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "adopts-idempotently-with-gitignore-and-verifies-target",
+      "prompt": "Adopt CADENCE into /tmp/new-service with --gitignore-machinery and then re-run on the same directory.",
+      "expected_output": "Delegates to adopt-cadence.sh --gitignore-machinery, streams copied:/skip (exists): lines verbatim, independently verifies specs/CADENCE.md, specs/TEMPLATE/, and .agents/skills/ exist at canonical target, seeds ADR ledger (--peek ADR), and keeps AGENTS.md tracked.",
+      "assertions": [
+        "Delegates exclusively to .agents/skills/cadence-adopt/adopt-cadence.sh",
+        "Passes --gitignore-machinery through while preserving tracked AGENTS.md",
+        "Independently checks specs/CADENCE.md, specs/TEMPLATE, and .agents/skills at canonical destination after exit 0",
+        "Re-running reports skip (exists): on pre-existing files without overwriting them"
+      ]
+    }
+  ]
+}
