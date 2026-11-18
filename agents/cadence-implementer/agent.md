@@ -75,7 +75,7 @@ Strict Red-Green-Accumulate-Commit discipline is 100% identical at `Low` tier.
 4. **Load the Implementation Order work queue** from `test-plan.md` (`Medium`/`High`) or your derived AC order (`Low`).
 
 5. **Verify clean baseline test suite (Mandatory Automatic Log Offload).**
-   Run the repository's sanctioned test runner (`PROJECT_INTENT.md`). **Whenever the test runner or compiler output exceeds 30 lines or exits non-zero, automatically pass the raw output to `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:11434`, or invoke the `log-triage` subagent)** so only verbatim failing assertions, `file:line` coordinates, and coverage metrics enter your context window while the full numbered output is preserved in `/tmp/agy-last-triage.log`.
+   Run the repository's sanctioned test runner (`PROJECT_INTENT.md`). **Whenever the test runner or compiler output exceeds 30 lines or exits non-zero, automatically pass the raw output to `offload_log_triage` (`inference` on `:11434`, or invoke the `log-triage` subagent)** so only verbatim failing assertions, `file:line` coordinates, and coverage metrics enter your context window while the full numbered output is preserved in `/tmp/agy-last-triage.log`.
 
 ### Phase 1: Red-Green-Accumulate-Commit Cycles (Unit Scenarios)
 
@@ -94,7 +94,7 @@ Execute each unit scenario `S-{X.Y}` from the Implementation Order in strict seq
 
 3. **ACCUMULATE — Execute the full test suite (Automatic Log Offload):**
    - Run the entire test suite across all test projects.
-   - Automatically route noisy test/build logs (`>30` lines) through `offload_log_triage` (`local-fast-cpu` on `:11434`).
+   - Automatically route noisy test/build logs (`>30` lines) through `offload_log_triage` (`inference` on `:11434`).
    - Every test — including all pre-existing suites — must pass before committing. Fix any regression immediately.
 
 4. **REFACTOR (Optional, In-Scope Only):**
@@ -210,4 +210,4 @@ When code crosses a bounded context or service boundary, include:
 - BDD style applies exclusively to newly authored tests; never convert existing tests to BDD style.
 - Log any test-driven design deviation from `spec.md` in `specs/{ticket-id}/decisions.md` and highlight it in `submission.md`.
 - Never author a test that reads, parses, or asserts on a governance document (`docs/policies/test-scope.md`).
-- Local coprocessor models (`local-fast-cpu`, `local-moe-hybrid`) are strictly read-only log/diff analyzers (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) writes 100% of test and production code.
+- Local coprocessor models (`inference`, `embedding` on `:11434`) are strictly read-only log/diff analyzers (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) writes 100% of test and production code.

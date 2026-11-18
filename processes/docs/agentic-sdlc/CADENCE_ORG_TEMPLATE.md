@@ -465,9 +465,9 @@ This section declares the capability tiers and concrete model identifiers used b
 
 ### Automatic 2-Tier Local Hardware Coprocessor Offload Rules
 
-1. **Zero Autonomous File Writes:** Local coprocessor models (`gemma-4-e2b-it`, `gemma-4-12b-it`, `gemma-4-26b-a4b-it`, `nomic-embed-text`) act strictly as read-only analytical and retrieval coprocessors (`enable_write_tools: false`). All planning, specification authoring, code generation, and gate verdicts remain 100% owned by the primary cloud tiers.
-2. **Verbatim Log Extraction + Raw Escape Hatch:** During `/cadence-implement` TDD cycles, `offload_log_triage` (`local-fast-cpu` on `:11434`) compacts verbose test/compiler output into verbatim error lines, `file:line` coordinates, and coverage metrics while writing the complete unedited log with line numbers to `/tmp/agy-last-triage.log` for deeper inspection whenever needed.
-3. **Zero-VRAM Semantic Discovery & On-Demand Pre-Review Sweeps:** `/cadence-triage` and `/cadence-spec` use `local_semantic_embed` / `repo-scout` (`:11434`) to search insights and codebase symbols at 0 MB GPU VRAM, while `/cadence-review` and `/cadence-maintain` invoke `offload_deep_review` (`:11434`) for advisory mechanical checks prior to issuing gate verdicts.
+1. **Zero Autonomous File Writes:** Local coprocessor models (`embedding` and `inference` on `:11434`) act strictly as read-only analytical and retrieval coprocessors (`enable_write_tools: false`). All planning, specification authoring, code generation, and gate verdicts remain 100% owned by the primary tiers (`Deep-reasoning` / `Fast-mechanical`).
+2. **Verbatim Log Extraction + Raw Escape Hatch:** During `/cadence-implement` TDD cycles, `offload_log_triage` (`inference` on `:11434`) compacts verbose test/compiler output into verbatim error lines, `file:line` coordinates, and coverage metrics while writing the complete unedited log with line numbers to `/tmp/agy-last-triage.log` for deeper inspection whenever needed.
+3. **Semantic Discovery & Pre-Review Sweeps:** `/cadence-triage` and `/cadence-spec` use `local_semantic_embed` (`embedding` on `:11434`) / `repo-scout` (`inference` on `:11434`) to search insights and codebase symbols, while `/cadence-review` and `/cadence-maintain` invoke `offload_deep_review` (`inference` on `:11434`) for advisory mechanical checks prior to issuing gate verdicts.
 
 ### Adopter substitution
 

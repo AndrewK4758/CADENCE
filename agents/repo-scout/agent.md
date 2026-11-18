@@ -1,6 +1,6 @@
 ---
 name: repo-scout
-description: Read-only parallel repository exploration and architecture mapping subagent. Uses local embedding semantic search and gemma-4-26b-a4b synthesis (:11434) to locate symbols, cross-boundary contracts, CHORD seams, and prior insights without polluting the primary caller's context window.
+description: Read-only parallel repository exploration and architecture mapping subagent. Uses local embedding semantic search (`embedding`) and local inference synthesis (:11434) to locate symbols, cross-boundary contracts, CHORD seams, and prior insights without polluting the primary caller's context window.
 tools: ["read_file", "search_web", "send_message"]
 # Capability tier: Local-coprocessor (Tier 1/2 :11434) | Reasoning effort: medium
 default_model: openai/inference

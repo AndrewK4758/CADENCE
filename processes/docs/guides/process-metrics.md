@@ -153,7 +153,7 @@ Because CADENCE agents (`cadence-triage-agent`, `cadence-spec-author`, `cadence-
 | Performance concern | Human only | Requires production intuition agents don't have |
 | Domain correctness | Human only | Business rules in reviewer's head, not in spec |
 
-**The pattern to watch:** If human reviewers repeatedly catch mechanical defects that `cadence-reviewer` or `offload_deep_review` should have flagged (such as layer-boundary violations or `< 400`-line ceiling breaches), refine the reviewer role instructions in `artifacts/roles/cadence-reviewer.md`. Conversely, if the agent raises recurring false positives on an accepted idiom, document that idiom in `AGENTS.md`.
+**The pattern to watch:** If human reviewers repeatedly catch mechanical defects that `cadence-reviewer` or `offload_deep_review` should have flagged (such as layer-boundary violations or Pillar 3 file-size ceiling breaches per `CADENCE_ORG.md`), refine the reviewer role instructions in `artifacts/roles/cadence-reviewer.md`. Conversely, if the agent raises recurring false positives on an accepted idiom, document that idiom in `AGENTS.md`.
 
 ### 6b. Code Review Rejection Rate (Gate 2 — Human)
 

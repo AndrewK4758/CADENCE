@@ -8,10 +8,10 @@ Slash commands in `.agents/skills/` (projected to `.gemini/skills/` or `.claude/
 
 When executing CADENCE slash commands, read-only discovery, test/build log compaction, and pre-review mechanical sweeps automatically offload to the local 2-tier hardware coprocessor pipeline (`local-offload` MCP server + `log-triage` and `repo-scout` subagents):
 
-- **Tier 1 — Always-On Zero-VRAM CPU (`127.0.0.1:11434`)**:
-  - `local-embed-cpu` (`nomic-embed-text`, 0 MB VRAM) + `repo-scout`: Activated during `/cadence-triage` and `/cadence-spec` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, and locate codebase symbols without bloating the primary model's context window.
-  - `local-fast-cpu` (`gemma-4-e2b-it`, 128MB 3D V-Cache, 0 MB VRAM) + `log-triage` (`offload_log_triage`): Activated during `/cadence-implement` TDD loops and CI verification to compact verbose test runner and compiler logs into verbatim failure lines, `file:line` coordinates, and coverage metrics while preserving the full raw log at `/tmp/agy-last-triage.log`.
-- **Tier 2 — On-Demand Hybrid MoE & GPU (`127.0.0.1:11434`)**:
+- **Tier 1 — Always-On Embedding (`127.0.0.1:11434`)**:
+  - `embedding` (`embeddinggemma-2`) + `local_semantic_embed`: Activated during `/cadence-propose`, `/cadence-triage`, and `/cadence-spec` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, and locate codebase symbols without bloating the primary model's context window.
+- **Tier 2 — On-Demand Inference (`127.0.0.1:11434`)**:
+  - `inference` via `offload_log_triage` / `log-triage` and `repo-scout`: Activated during `/cadence-implement`, `/cadence-refactor`, `/cadence-merge`, and `/cadence-doctor` to compact verbose test runner and compiler logs into verbatim failure lines, `file:line` coordinates, and coverage metrics while preserving the full raw log at `/tmp/agy-last-triage.log`.
   - `inference` via `offload_deep_review`: Activated during `/cadence-review` and `/cadence-maintain` for advisory pre-review sweeps checking Pillar 3 (`<400`-line file ceiling), comment discipline, and CHORD observability seam completeness before the `Deep-reasoning` tier (`xhigh` effort) issues gate verdicts.
 
 All local coprocessor models run with `enable_write_tools: false` and never modify repository files.

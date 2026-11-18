@@ -162,7 +162,7 @@ Verify `CADENCE_ORG.md#tracker-binding` resolves a bound tracker and sync skill 
 
 ### Step 8: Propose Living Flow Documentation Updates (`docs/flows/` & `docs/SYSTEM_OVERVIEW.md`)
 
-**Automatically run `local_semantic_embed`** (`local-embed-cpu` on `:11434`, 0 MB VRAM) to match the archived spec's endpoints, events, queues, and bounded contexts against `docs/flows/*.md` and `docs/SYSTEM_OVERVIEW.md`:
+**Automatically run `local_semantic_embed`** (`embedding` on `:11434`) to match the archived spec's endpoints, events, queues, and bounded contexts against `docs/flows/*.md` and `docs/SYSTEM_OVERVIEW.md`:
 - Draft updates to modified `docs/flows/{flow-name}.md` files (or instantiate from `docs/flows/TEMPLATE.md` for new flows), append `- archive/{ticket-id}/ — {brief description}` under `Related Specs`, update `docs/SYSTEM_OVERVIEW.md` if topology changed, and commit for human review:
   ```bash
   git add docs/flows/ docs/SYSTEM_OVERVIEW.md

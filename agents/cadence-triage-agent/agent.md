@@ -162,4 +162,4 @@ Consult the repository's `AGENTS.md`, `GEMINI.md` (`.gemini/`), or `CLAUDE.md` f
 - Outside `specs/{ticket-id}/` (`problem.md`, `metadata.yaml`, `decisions.md`), the only file you may modify is `docs/agentic-sdlc/production-insights.md` (append-only during `bug` triage).
 - Surface ambiguities explicitly rather than guessing.
 - Evaluate security and privacy exposure (OWASP Top 10, PII/HIPAA/SOC 2 boundaries) on every intake.
-- Local coprocessor models (`local-embed-cpu`, `local-fast-cpu`, `local-moe-hybrid`) act strictly as read-only discovery/compaction accelerators (`enable_write_tools: false`). You retain 100% ownership of classification, scope checks, and artifact authoring.
+- Local coprocessor models (`embedding`, `inference` on `:11434`) act strictly as read-only discovery/compaction accelerators (`enable_write_tools: false`). You retain 100% ownership of classification, scope checks, and artifact authoring.

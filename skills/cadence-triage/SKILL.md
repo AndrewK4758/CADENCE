@@ -8,13 +8,13 @@ allowed-tools: Read Glob Grep Bash Write Edit Skill
 
 ## Task
 
-Perform intake triage on the issue designated by `$ticket_id`. Delegate the analytical evaluation to the `cadence-triage-agent` subagent (powered by automatic `local_semantic_embed` and `local-moe-hybrid` pre-discovery). Once the subagent completes, if the issue is classified as Medium or High tier and still contains unanswered template probes, offer to guide the requester through those probes interactively by invoking the `cadence-elicit` skill.
+Perform intake triage on the issue designated by `$ticket_id`. Delegate the analytical evaluation to the `cadence-triage-agent` subagent (powered by automatic `local_semantic_embed` (`embedding`) and `repo-scout` (`inference`) pre-discovery). Once the subagent completes, if the issue is classified as Medium or High tier and still contains unanswered template probes, offer to guide the requester through those probes interactively by invoking the `cadence-elicit` skill.
 
 **Handoff mode.** The `/cadence-elicit` skill can call `/cadence-triage` programmatically to mint and initialize a decomposition child ticket (see step 4d of `cadence-elicit`). Whenever the call includes a handoff payload (carrying `parent_ticket_id` and `suppress_elicit_offer`), obey the handoff-specific branches in step 3 and step 5 below and return the structured payload defined under **## Handoff mode (decomposition children)**. Standard `/cadence-triage <id-or-description>` invocations omit that payload and execute the standard triage flow.
 
 ## Steps
 
-0. **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `local-moe-hybrid`).** Prior to broad repository file reads or duplicate scanning (unless `--file-only` is active, which performs no classification or duplicate search), automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and/or the `local-moe-hybrid` discovery coprocessor (`gemma-4-26b-a4b` on `:11434`) to index and query `specs/`, `archive/`, `docs/agentic-sdlc/intent-insights.md`, `docs/agentic-sdlc/production-insights.md`, and relevant codebase symbols. Pass the resulting semantic matches and candidate file coordinates to `cadence-triage-agent` in step 3 so primary context is never polluted by brute-force directory scans.
+0. **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `repo-scout`).** Prior to broad repository file reads or duplicate scanning (unless `--file-only` is active, which performs no classification or duplicate search), automatically invoke `local_semantic_embed` (`embedding` on `:11434`) and/or the `repo-scout` discovery coprocessor (`inference` on `:11434`) to index and query `specs/`, `archive/`, `docs/agentic-sdlc/intent-insights.md`, `docs/agentic-sdlc/production-insights.md`, and relevant codebase symbols. Pass the resulting semantic matches and candidate file coordinates to `cadence-triage-agent` in step 3 so primary context is never polluted by brute-force directory scans.
 
 1. **Resolve the identifier-allocation binding** from `CADENCE_ORG.md#id-allocation-binding` (§10) alongside the bound issue tracker from `#tracker-binding` (§9 — resolve **vendor-neutrally**, never hardcoding any tracker product name). The state of the §10 binding governs which origination branch executes:
 
@@ -98,7 +98,7 @@ Perform intake triage on the issue designated by `$ticket_id`. Delegate the anal
 4. **Present the triage summary** to the operator:
    - Assigned type, priority, and scope/tier
    - Affected codebase modules and files
-   - Related or duplicate prior tickets discovered via `local_semantic_embed` / `local-moe-hybrid`
+   - Related or duplicate prior tickets discovered via `local_semantic_embed` / `repo-scout`
    - Recommended next lifecycle command
    - Verbatim `Acceptance Criteria:` status line (BTG-327) from `cadence-triage-agent` Outputs step 4 -- either `drafted N` or `no ACs derivable` with its stated reason -- making the AC disposition immediately visible without opening `problem.md`.
 

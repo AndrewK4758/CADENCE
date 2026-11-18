@@ -30,8 +30,8 @@ Every change tier that modifies source code or configuration passes through Code
 
 Before `cadence-reviewer` synthesizes its formal review verdict, `/cadence-review` automatically invokes CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`) to run fast mechanical pre-scans:
 
-1. **Advisory Mechanical Pre-Scan (`offload_deep_review` on `local-moe-hybrid` / `local-12b-gpu`):** Scans the diff against `spec.md` / `test-plan.md` to check the Agentic DX `< 400`-line file ceiling, comment discipline rules `C1`–`C8` (`docs/policies/comment-discipline.md`), CHORD observability seam wiring (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`), and non-blocking finding classification (`docs/policies/finding-classes.md`).
-2. **Test & Gate Runner Verification (`offload_log_triage` / `log-triage` on `local-fast-cpu`):** Compacts test suite and `run-gates.sh` verification logs at 0 MB VRAM while preserving verbatim assertion output and `file:line` coordinates (with full raw output written to `/tmp/agy-last-triage.log`).
+1. **Advisory Mechanical Pre-Scan (`offload_deep_review` via `inference`):** Scans the diff against `spec.md` / `test-plan.md` to check Pillar 3's file-size ceiling, comment discipline rules `C1`–`C8` (`docs/policies/comment-discipline.md`), CHORD observability seam wiring (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`), and non-blocking finding classification (`docs/policies/finding-classes.md`).
+2. **Test & Gate Runner Verification (`offload_log_triage` / `log-triage` via `inference`):** Compacts test suite and `run-gates.sh` verification logs (`:11434`) while preserving verbatim assertion output and `file:line` coordinates (with full raw output written to `/tmp/agy-last-triage.log`).
 
 Every advisory finding surfaced by `offload_deep_review` is independently verified by the primary `cadence-reviewer` reasoning model before being included in the review report.
 
@@ -49,7 +49,7 @@ Launch the governed review pass from your agentic CLI runtime (`.agents/skills/c
 
 - **Contract compliance** — every acceptance criterion in `spec.md` (or `problem.md` at Low tier) is implemented completely.
 - **Test coverage & scope** — every Gherkin scenario in `test-plan.md` (or AC at Low tier) has a passing test tagged per `C5`, and no test reads forbidden governance paths ([`test-scope.md`](../../policies/test-scope.md)).
-- **Engineering Pillars** — Simplicity, Operability (structured JSON logs + CHORD seams), Agentic DX (`< 400`-line ceiling), Data Integrity (audit records with actor from auth context), Security Posture, and Backwards Compatibility.
+- **Engineering Pillars** — Simplicity, Operability (structured JSON logs + CHORD seams), Agentic Ergonomics (authored file-size ceiling per `CADENCE_ORG.md`), Data Integrity (audit records with actor from auth context), Security Posture, and Backwards Compatibility.
 - **Architecture & comment discipline** — Clean Architecture layer boundaries, `C7` boundary comments on cross-boundary files/functions, and `C1`–`C8` comment rules ([`comment-discipline.md`](../../policies/comment-discipline.md)).
 - **Documentation freshness** — flow/system doc updates or explicit acknowledgment, plus the two-search reconciliation sweep record (`doc-maintenance-policy.md`; an affirmative flow-doc-absence claim without a recorded search return is **blocking** per BTG-293).
 - **Migration safety** — schema/data separation, reversibility, and idempotency guards ([`migration-policy.md`](../../policies/migration-policy.md)).

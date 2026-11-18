@@ -20,7 +20,7 @@ Prior to invoking `cadence-maintainer`, verify both preconditions:
 
 ## Steps
 
-0. **Mandatory Automatic Mechanical Pre-Scan (`offload_deep_review`).** Once the branch reference and integration branch diff (`git diff <integration-branch>...{branch-name}`) are resolved in Steps 1–3, automatically invoke `offload_deep_review` (`local-moe-hybrid` / `gemma-4-26b-a4b` on `:11434`) on the diff **before** delegating to `cadence-maintainer`. The local coprocessor performs an advisory pre-scan verifying:
+0. **Mandatory Automatic Mechanical Pre-Scan (`offload_deep_review`).** Once the branch reference and integration branch diff (`git diff <integration-branch>...{branch-name}`) are resolved in Steps 1–3, automatically invoke `offload_deep_review` (`inference` on `:11434`) on the diff **before** delegating to `cadence-maintainer`. The local coprocessor performs an advisory pre-scan verifying:
    - Single-pass readability ceiling (`<400` lines per modified/added file under the Agentic Ergonomics pillar)
    - Comment and docstring preservation discipline
    - CHORD observability seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`) and public Surface Compatibility markers

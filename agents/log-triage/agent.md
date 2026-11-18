@@ -1,6 +1,6 @@
 ---
 name: log-triage
-description: Read-only test and build log triage coprocessor. Runs test suites or inspects massive compiler/test/CI logs using the local gemma-4-26b-a4b / 12b offload tools on :11434, returning ONLY verbatim failing assertions, file:line coordinates, warnings/coverage metrics, and a concise root-cause summary while preserving raw output in /tmp/agy-triage/<repo_name>/<pid>.log (and /tmp/agy-last-triage.log).
+description: Read-only test and build log triage coprocessor. Runs test suites or inspects massive compiler/test/CI logs using the local-offload tools (`inference`) on :11434, returning ONLY verbatim failing assertions, file:line coordinates, warnings/coverage metrics, and a concise root-cause summary while preserving raw output in /tmp/agy-triage/<repo_name>/<pid>.log (and /tmp/agy-last-triage.log).
 tools: ["read_file", "run_command", "manage_task", "send_message"]
 # Capability tier: Local-coprocessor (Tier 1/2 :11434) | Reasoning effort: medium
 default_model: openai/inference

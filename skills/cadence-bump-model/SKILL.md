@@ -10,7 +10,7 @@ allowed-tools: Read Edit Glob Grep Bash
 
 Update a single capability tier's concrete model identifier from `$from_model` to `$to_model` across every authoritative representation atomically in one run: the tier-resolution `case` arm in runtime adapter scripts (`processes/ci-templates/scripts/adapters/*.sh` or `ci-templates/scripts/adapters/*.sh`), the concrete-model cell in `docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping`, and `.agents/agents/*/agent.md` (`agents/*/agent.md` in core) `default_model:` lines when applicable. (Project `.gemini/` projections via `adapters/gemini-agy.sh`.)
 
-CADENCE defines two primary capability tiers (`Deep-reasoning` and `Fast-mechanical`) in `CADENCE_ORG.md#model-tier-mapping`, alongside read-only local hardware coprocessor tiers (`local-fast-cpu`, `local-embed-cpu`, `local-12b-gpu`, `local-moe-hybrid`). Each capability tier maps to a single concrete model identifier for the active runtime. This skill updates the concrete model identifier for **one tier per invocation** — requiring explicit `from` and `to` model arguments so tier boundaries stay explicit and accidental cross-tier reassignments are prevented.
+CADENCE defines two primary capability tiers (`Deep-reasoning` and `Fast-mechanical`) in `CADENCE_ORG.md#model-tier-mapping`, alongside read-only local hardware coprocessor models (`embedding` and `inference` on `:11434`). Each capability tier maps to a single concrete model identifier for the active runtime. This skill updates the concrete model identifier for **one tier per invocation** — requiring explicit `from` and `to` model arguments so tier boundaries stay explicit and accidental cross-tier reassignments are prevented.
 
 ## Prerequisites
 

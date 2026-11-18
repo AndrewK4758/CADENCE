@@ -40,10 +40,10 @@ At `Medium` and `High` tiers, inspect:
    - `docs/policies/surface-registry.md` and `docs/policies/cadence-surfaces.md` — the public surface registries cataloging APIs, events, schemas, and configuration contracts alongside their stability tiers and guarantee windows. `surface-registry.md` tracks project-owned adopter surfaces; `cadence-surfaces.md` tracks CADENCE core framework surfaces. Always resolve `"registered surface"` as the union across every registry present per `docs/policies/change-tiers.md`'s *Resolving "registered surface"* rule — an empty table in one file never proves no surface is affected.
    - `docs/policies/deprecation-policy.md` — required sunset horizons, runtime deprecation signals, and consumer migration rules.
 
-2. **Execute automatic local semantic discovery over insight registers and codebase (Zero-VRAM / Hybrid MoE Offload — Automatic).**
-   Before manually reading source trees, **automatically invoke the local hardware coprocessor** so insight matching and symbol discovery run at 0 MB GPU VRAM (`:11434`) and on-demand hybrid MoE (`:11434`):
-   - Call `local_semantic_embed` (`local-embed-cpu` on `:11434`) against `docs/agentic-sdlc/production-insights.md` and `docs/agentic-sdlc/intent-insights.md` using the ticket's `domain_entities`, `affected_layers`, and problem statement.
-   - Delegate to the `repo-scout` subagent (`local-moe-hybrid` 26B-A4B) to locate affected source files, call graphs, and existing architectural patterns. *(Fallback guard: if the local offload service is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and execute discovery directly with `Glob`/`Grep`.)*
+2. **Execute automatic local semantic discovery over insight registers and codebase (`local_semantic_embed` / `repo-scout` on `:11434`).**
+   Before manually reading source trees, **automatically invoke the local hardware coprocessor** so insight matching and symbol discovery run on `:11434`:
+   - Call `local_semantic_embed` (`embedding` on `:11434`) against `docs/agentic-sdlc/production-insights.md` and `docs/agentic-sdlc/intent-insights.md` using the ticket's `domain_entities`, `affected_layers`, and problem statement.
+   - Delegate to the `repo-scout` subagent (`inference` on `:11434`) to locate affected source files, call graphs, and existing architectural patterns. *(Fallback guard: if the local offload service is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and execute discovery directly with `Glob`/`Grep`.)*
 
    Filter `docs/agentic-sdlc/production-insights.md` for entries matching:
    - `domain_entities` in `metadata.yaml`
@@ -196,11 +196,11 @@ Before returning, execute both structural verifiers:
 .agents/skills/cadence-spec/verify-spec.sh {ticket-id}
 .agents/skills/cadence-spec/verify-facts.sh {ticket-id}
 ```
-If either script exits non-zero or produces output exceeding 30 lines, **automatically route the output through `offload_log_triage`** (`local-fast-cpu` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`) and fix every reported `FAIL` before returning.
+If either script exits non-zero or produces output exceeding 30 lines, **automatically route the output through `offload_log_triage`** (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`) and fix every reported `FAIL` before returning.
 
 ## Constraints
 
 - Never write implementation code or framework-bound test code; specs contain signatures and concrete Gherkin scenarios only.
 - Every Gherkin scenario must be concrete (`Given an Order in Draft status`, never abstract placeholders) and independently executable.
 - Never write a Gherkin scenario whose subject is a governance document (`docs/policies/test-scope.md`); documentary criteria are verified at the human gate.
-- Local coprocessor models (`local-embed-cpu`, `local-fast-cpu`, `local-moe-hybrid`) are read-only accelerators (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) retains 100% ownership of specification authoring and design convergence.
+- Local coprocessor models (`embedding`, `inference` on `:11434`) are read-only accelerators (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) retains 100% ownership of specification authoring and design convergence.
