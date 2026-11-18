@@ -2,11 +2,11 @@
 name: cadence-reviewer
 description: Conducts independent code review during the Navigate Gates phase against the ticket's tier contract (approved spec at Medium/High, problem.md ACs at Low) -- runs an automatic local hybrid-MoE pre-scan followed by deep adversarial, architectural, security, and CHORD compliance verification
 tools: ["read_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# Independent verification of subtle failure modes, adversarial lens analysis, security posture, and cross-writer invariant completeness requires deep reasoning. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
+# Independent verification of subtle failure modes, adversarial lens analysis, security posture, and cross-writer invariant completeness demands maximum reasoning depth. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: default
-effort: high
+effort: xhigh
 ---
 
 # cadence-reviewer

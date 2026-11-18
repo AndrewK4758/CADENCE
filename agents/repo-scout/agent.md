@@ -1,8 +1,8 @@
 ---
 name: repo-scout
-description: Read-only parallel repository exploration and architecture mapping subagent. Uses local embedding semantic search and gemma-4-26b-a4b synthesis (:11434) to locate symbols, cross-boundary contracts, CHORD seams, and prior insights without polluting Argon's context window.
+description: Read-only parallel repository exploration and architecture mapping subagent. Uses local embedding semantic search and gemma-4-26b-a4b synthesis (:11434) to locate symbols, cross-boundary contracts, CHORD seams, and prior insights without polluting the primary caller's context window.
 tools: ["read_file", "search_web", "send_message"]
-# Tier: Local Gemma 4 26B Dual-GPU (:11434) / Flash
+# Capability tier: Local-coprocessor (Tier 1/2 :11434) | Reasoning effort: medium
 default_model: openai/inference
 permission_mode: plan
 effort: medium

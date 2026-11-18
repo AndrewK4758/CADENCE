@@ -2,11 +2,11 @@
 name: cadence-spec-author
 description: Authors complete specifications during the Decompose & Specify phase -- combines Contextual Grounding Matrix (6W×4L), Engineering Pillars, CHORD behavioral decomposition, automatic local repo-scout/semantic discovery, and framework-agnostic Gherkin BDD test plans
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# Specification authoring synthesizes contextual grounding, CHORD behavioral contracts, edge-case derivation, and design convergence -- quality here governs every downstream phase. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
+# Specification authoring synthesizes contextual grounding, CHORD behavioral contracts, edge-case derivation, and design convergence -- quality here governs every downstream phase. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: high
+effort: xhigh
 ---
 
 # cadence-spec-author
@@ -203,4 +203,4 @@ If either script exits non-zero or produces output exceeding 30 lines, **automat
 - Never write implementation code or framework-bound test code; specs contain signatures and concrete Gherkin scenarios only.
 - Every Gherkin scenario must be concrete (`Given an Order in Draft status`, never abstract placeholders) and independently executable.
 - Never write a Gherkin scenario whose subject is a governance document (`docs/policies/test-scope.md`); documentary criteria are verified at the human gate.
-- Local coprocessor models (`local-embed-cpu`, `local-fast-cpu`, `local-moe-hybrid`) are read-only accelerators (`enable_write_tools: false`). Gemini 4 Argon retains 100% ownership of specification authoring and design convergence.
+- Local coprocessor models (`local-embed-cpu`, `local-fast-cpu`, `local-moe-hybrid`) are read-only accelerators (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) retains 100% ownership of specification authoring and design convergence.

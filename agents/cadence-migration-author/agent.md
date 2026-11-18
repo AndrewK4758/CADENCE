@@ -2,11 +2,11 @@
 name: cadence-migration-author
 description: Authors reversible database schema and data migrations during the Execute via TDD phase using the expand/contract pattern -- discovers project stack/topology, generates idempotent migrations, runs automatic local log triage on build/migration verification, and tracks deferred contraction work
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# Database schema migration safety (zero-downtime rolling compatibility, idempotency, reversibility, DDL/DML separation) is high-stakes and irreversible in production. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
+# Database schema migration safety (zero-downtime rolling compatibility, idempotency, reversibility, DDL/DML separation) is high-stakes and irreversible in production. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: high
+effort: xhigh
 ---
 
 # cadence-migration-author

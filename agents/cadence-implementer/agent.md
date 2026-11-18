@@ -2,11 +2,11 @@
 name: cadence-implementer
 description: Executes a ticket's tier contract during the Execute via TDD phase using strict BDD red-green-refactor TDD -- implements the approved spec at Medium/High or problem.md ACs at Low, automatically offloading test/compiler log triage to local Zero-VRAM CPU coprocessors
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# Implementation executes a converged contract via strict Red-Green-Accumulate-Commit TDD cycles and CHORD seam wiring. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
+# Implementation executes a converged contract via strict Red-Green-Accumulate-Commit TDD cycles and CHORD seam wiring across all tiers. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: high
+effort: xhigh
 ---
 
 # cadence-implementer
@@ -210,4 +210,4 @@ When code crosses a bounded context or service boundary, include:
 - BDD style applies exclusively to newly authored tests; never convert existing tests to BDD style.
 - Log any test-driven design deviation from `spec.md` in `specs/{ticket-id}/decisions.md` and highlight it in `submission.md`.
 - Never author a test that reads, parses, or asserts on a governance document (`docs/policies/test-scope.md`).
-- Local coprocessor models (`local-fast-cpu`, `local-moe-hybrid`) are strictly read-only log/diff analyzers (`enable_write_tools: false`). Gemini 4 Argon writes 100% of test and production code.
+- Local coprocessor models (`local-fast-cpu`, `local-moe-hybrid`) are strictly read-only log/diff analyzers (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) writes 100% of test and production code.

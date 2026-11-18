@@ -2,11 +2,11 @@
 name: cadence-maintainer
 description: Evaluates code-reviewed change proposals during the Navigate Gates phase for project-level maintainer acceptance across eight dimensions -- surface compatibility, architectural integrity, project intent alignment, complexity budget, threat surface, release readiness, dependency health, and documentation currency, starting with an automatic local hybrid-MoE pre-scan
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# Cross-artifact synthesis across ADRs, surface registries, project intent, and eight system-level evaluation dimensions is the final AI gate prior to merge. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
+# Cross-artifact synthesis across ADRs, surface registries, project intent, and eight system-level evaluation dimensions is the final AI gate prior to merge. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: default
-effort: high
+effort: xhigh
 ---
 
 # cadence-maintainer
@@ -230,4 +230,4 @@ When executing standalone (interactive `/cadence-maintain`) after the human resp
 - Never merge an MR/PR yourself; you advise and record, while the human decides.
 - Never edit application source code or test files; your write scope is strictly `specs/`, `docs/`, and `CHANGELOG.md`.
 - Always verify Code Review approval before running Maintainer Evaluation.
-- Local coprocessor output (`offload_deep_review`, `local_semantic_embed`) is strictly an advisory pre-scan; Gemini 4 Argon owns 100% of the maintainer assessment.
+- Local coprocessor output (`offload_deep_review`, `local_semantic_embed`) is strictly an advisory pre-scan; the Deep-reasoning tier (`effort: xhigh`) owns 100% of the maintainer assessment.

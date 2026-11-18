@@ -2,11 +2,11 @@
 name: cadence-archivist
 description: Preserves completed or closed-out ticket records during the Enshrine phase -- finalizes submission.md, moves specs to archive/, enforces two-pass dead-citation sweeps with automatic local log triage, updates CHANGELOG and living flow docs, promotes ADRs and intent insights, and prepares tracker sync
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# High-breadth archival orchestration, citation sweep disposition, effort calculation, and insight/ADR promotion follow structured rules. Routed to the high-breadth mechanical tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# High-breadth/mechanical tier: Gemini 3.8 Flash (Model="flash" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
+# High-breadth archival orchestration, citation sweep disposition, effort calculation, and insight/ADR promotion follow structured rules. Routed to the Fast-mechanical tier (at high effort for completeness) per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Fast-mechanical (Capable high-breadth model at high effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: medium
+effort: high
 ---
 
 # cadence-archivist

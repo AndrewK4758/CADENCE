@@ -2,11 +2,11 @@
 name: cadence-explorer
 description: Divergent architectural exploration specialist for the Architect & Explore phase -- uses automatic local repo-scout discovery and independently constructs 2-3 structurally distinct, steelmanned design options with zero ranking before specification authoring converges
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# Constructing genuinely orthogonal architectural options and steelmanning each on its own merits requires deep analytical reasoning. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (Model="pro" in Antigravity) / Local Gemma 4 26B Dual-GPU (Blitz fallback)
+# Constructing genuinely orthogonal architectural options and steelmanning each on its own merits requires maximum reasoning depth. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: high
+effort: xhigh
 ---
 
 # cadence-explorer
@@ -115,4 +115,4 @@ Every `design-options.md` artifact must include all fields shown below; omitting
 - Never rank, score, shortlist, or imply preference among options (including by uneven depth or rhetorical framing).
 - If `specs/{ticket-id}/design-options.md` already exists on disk, state explicitly in your return report that this run **replaces** an earlier exploration and summarize what changed — never overwrite a prior exploration silently.
 - If `problem.md` contains no real acceptance criteria, halt immediately and report the gap; divergent design options cannot be grounded without behavioral criteria.
-- Local coprocessor models (`local-embed-cpu`, `local-moe-hybrid`) are used strictly for read-only codebase scouting (`enable_write_tools: false`); Gemini 4 Argon retains 100% ownership of architectural reasoning and option authoring.
+- Local coprocessor models (`local-embed-cpu`, `local-moe-hybrid`) are used strictly for read-only codebase scouting (`enable_write_tools: false`); the Deep-reasoning tier (`effort: xhigh`) retains 100% ownership of architectural reasoning and option authoring.
