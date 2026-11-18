@@ -102,11 +102,17 @@ CADENCE/
 │       ├── setup-egpu.sh            # Optional Linux USB4/TB5 eGPU PCIe & udev setup
 │       ├── stress-test-litert.sh    # 4-suite LiteRT (:11434) + frontier A/B/C stress benchmark
 │       └── nvidia-powerd-egpu-fix.c # LD_PRELOAD shim for nvidia-powerd with eGPU attached
-└── processes/                       # Portable CADENCE templates, CI gate scripts, policies & docs
-    ├── artifacts/
-    ├── ci-templates/
-    ├── docs/
-    └── specs/
+├── processes/                       # Portable CADENCE templates, CI gate scripts, policies & docs
+│   ├── artifacts/
+│   ├── ci-templates/
+│   ├── docs/
+│   └── specs/
+└── tests/                           # Offline CADENCE regression suite & 24-skill eval runner
+    ├── eval_runner.py
+    ├── run-cadence-tests.sh
+    ├── run-evals.sh
+    ├── test-security-trigger.sh
+    └── test-trace-gates.sh
 ```
 
 ---
@@ -255,7 +261,7 @@ systemctl --user status local-ai-offload.service
 # 2. Check loaded models in llama-swap (:11434)
 curl -s http://127.0.0.1:11434/running | jq .
 
-# 3. Verify 768-d semantic embeddings (nomic-embed-text)
+# 3. Verify 768-d semantic embeddings (embeddinggemma-2)
 curl -s http://127.0.0.1:11434/v1/embeddings \
   -H 'Content-Type: application/json' \
   -d '{"model":"embedding","input":"search_query: CADENCE SDLC"}' | jq '.data[0].embedding | length'
@@ -264,6 +270,10 @@ curl -s http://127.0.0.1:11434/v1/embeddings \
 curl -s http://127.0.0.1:11434/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"inference","messages":[{"role":"user","content":"Reply with OK"}],"max_tokens":8}' | jq -r '.choices[0].message.content'
+
+# 5. Run the offline regression suite and 24-skill executable eval runner
+bash tests/run-cadence-tests.sh
+bash tests/run-evals.sh --verbose        # Add --with-offload for advisory :11434 rubric grading
 ```
 
 See [`local-offload/README.md`](local-offload/README.md) for deep-dive details on `llamaswap-server` flags, GPU UUID detection, eGPU power/PCIe scripts, custom hook internals, and troubleshooting.

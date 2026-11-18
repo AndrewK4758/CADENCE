@@ -117,6 +117,8 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
         if not isinstance(cases, list) or len(cases) < 2:
             errs.append(f"evals must declare >=2 cases in {eval_file.relative_to(root)}")
         else:
+            if not any(isinstance(c.get("check"), dict) and "type" in c["check"] for c in cases):
+                errs.append(f"evals must declare >=1 executable check in {eval_file.relative_to(root)}")
             for c in cases:
                 if not all(k in c for k in ("id", "name", "prompt", "expected_output", "assertions")) or not c["assertions"]:
                     errs.append(f"malformed eval case in {eval_file.relative_to(root)}: {c!r}")
@@ -323,6 +325,23 @@ run_subtest "T4 fixtures, read_state, verify-spec/facts, ac-classify, ready_mr" 
 run_subtest "T5 adopt, .gemini projection, mint-id peek, idempotency, eject, check-footprint" t5_adopt_and_eject "$ADOPT_DST" "$EJECT_OUT"
 run_subtest "T6 verify-facts --trace spec/AC-to-code/test traceability gates" bash "$ROOT/tests/test-trace-gates.sh" "$ROOT"
 run_subtest "T7 security-trigger.sh hybrid audit dispatch gates" bash "$ROOT/tests/test-security-trigger.sh" "$ROOT"
+t8_eval_runner() {
+  local tmp_ev="$1"
+  bash "$ROOT/tests/run-evals.sh" >/dev/null
+  mkdir -p "$tmp_ev/skills/cadence-doctor/evals"
+  cp "$ROOT/skills/cadence-doctor/SKILL.md" "$tmp_ev/skills/cadence-doctor/"
+  python3 - "$ROOT/skills/cadence-doctor/evals/evals.json" "$tmp_ev/skills/cadence-doctor/evals/evals.json" <<'PY'
+import json, sys
+d = json.loads(open(sys.argv[1]).read())
+for c in d["evals"]:
+    c.pop("check", None)
+open(sys.argv[2], "w").write(json.dumps(d))
+PY
+  ! python3 -B "$ROOT/tests/eval_runner.py" --root "$tmp_ev" >/dev/null 2>&1
+}
+EVAL_TMP="$(mktemp -d)"
+TMP_DIRS+=("$EVAL_TMP")
+run_subtest "T8 executable eval runner across all 24 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]
