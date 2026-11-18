@@ -36,9 +36,12 @@ mkdir -p \
   "$HOME/.gemini/antigravity-cli/mcp/local-offload" \
   "$HOME/.gemini/antigravity/mcp/local-offload"
 
-# 1. Install FastMCP server, lifecycle hook, global hooks.json, and agy wrapper (normalizing /home/ak -> $HOME)
+# 1. Install FastMCP server, helper module, lifecycle hook, global hooks.json, and agy wrapper (normalizing /home/ak -> $HOME)
 sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/mcp/antigravity-local-offload-mcp" > "$HOME/.local/bin/antigravity-local-offload-mcp"
 chmod +x "$HOME/.local/bin/antigravity-local-offload-mcp"
+if [[ -f "$SCRIPT_DIR/mcp/offload_core.py" ]]; then
+  sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/mcp/offload_core.py" > "$HOME/.local/bin/offload_core.py"
+fi
 
 sed "s|/home/ak|$HOME|g" "$REPO_ROOT/hooks/antigravity-local-offload-hook" > "$HOME/.local/bin/antigravity-local-offload-hook"
 chmod +x "$HOME/.local/bin/antigravity-local-offload-hook"

@@ -141,9 +141,9 @@ Per [`processes/docs/policies/cli-runtime-adoption-policy.md`](processes/docs/po
 ### Automatic Local Hardware Coprocessor Offload
 Every prompt (both ad-hoc requests and `/cadence-*` workflows) automatically routes mechanical work to local models on `127.0.0.1:11434` while **Gemini 4 Argon** retains 100% ownership of planning, reasoning, code authoring, and gate verdicts:
 1. **Turn 0/1 Inline Schema Injection (`antigravity-local-offload-hook`)**: Injects `[MANDATORY LITERT / LOCAL-OFFLOAD PIPELINE (:11434) — INLINE SCHEMAS READY]` on the first turn of every session (with cross-hook deduplication across `global-litert-offload-enforcer` and `cadence-local-offload-enforcer`, plus `AGY_DISABLE_LITERT=1` benchmark bypass), allowing Argon to call `call_mcp_tool` immediately without reading `.json` schema files.
-2. **Step 0 — Universal Discovery (`local_semantic_embed` / `repo-scout`)**: Boundary-aware AST/section chunking (`top_k=6` default, 58-line Pinned Context Slices, full File Symbol Maps `sym@L<line>`, CamelCase symbol boost, and test-file demotion) on `nomic-embed-text` (`embedding`) before broad file reads or repeated `grep`/`find` sweeps.
+2. **Step 0 — Universal Discovery (`local_semantic_embed` / `repo-scout`)**: Boundary-aware AST/section chunking (`top_k=6` default, ~36-line Pinned Context Slices, File Symbol Maps `sym@L<line>`, truncation warnings past `max_files=80`, CamelCase symbol boost, and test-file demotion) on `:11434` (`embedding` / `embeddinggemma-2-BF16.gguf`) before broad file reads or repeated `grep`/`find` sweeps.
 3. **Command, Build & Test Triage (`offload_log_triage` / `log-triage`)**: Deduplicated signal compaction for any command output `>30` lines or non-zero exit code via `inference`, while saving the full numbered raw output per repo and child PID to `/tmp/agy-triage/<repo_name>/<pid>.log` (symlinked at `/tmp/agy-triage/<repo_name>/latest.log` and mirrored to `/tmp/agy-last-triage.log`).
-4. **Pre-Commit & Gate Deep Review (`offload_deep_review`)**: Delta-focused mechanical pre-review against CADENCE Engineering Pillars (`<400`-line ceiling, `C1`–`C8` comment discipline, CHORD observability seams: `UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
+4. **Pre-Commit & Gate Deep Review (`offload_deep_review`)**: Diff-aware (`diff_range`) and deterministic mechanical pre-review against CADENCE Engineering Pillars (`<400`-line ceiling, `C1`–`C8` comment discipline, CHORD observability seams: `UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
 
 ---
 
@@ -231,9 +231,9 @@ To link CADENCE into an individual project repository (creating `.agents/`, `.ge
 ~/projects/sdlc/import/link-sdlc.sh /path/to/your/repo --claude --opencode --blitz
 ```
 
-Or run the portable adoption skill to copy the governance templates (`CADENCE_ORG.md`, `PROJECT_INTENT.md`, `specs/`, `docs/`) into a target repo:
+Or run the portable adoption script to copy the governance templates (`CADENCE_ORG.md`, `PROJECT_INTENT.md`, `specs/`, `docs/`) into a target repo:
 ```bash
-bash ~/projects/sdlc/processes/ci-templates/scripts/adopt.sh /path/to/your/repo
+bash ~/projects/sdlc/skills/cadence-adopt/adopt-cadence.sh /path/to/your/repo
 ```
 
 ---
