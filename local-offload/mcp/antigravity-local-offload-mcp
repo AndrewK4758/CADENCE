@@ -105,7 +105,7 @@ def offload_deep_review(
     diff_range: str | None = None,
     cwd: str | None = None,
 ) -> str:
-    """Delegate diff-aware mechanical & CADENCE pillar pre-review to warm `inference` (:11434)."""
+    """Delegate diff-aware mechanical & policy pre-review to warm `inference` (:11434)."""
     work_dir = pathlib.Path(cwd).expanduser() if cwd else pathlib.Path.cwd()
     if cwd and not work_dir.is_dir():
         return f"ERROR: `offload_deep_review` cwd does not exist: `{cwd}`"
@@ -150,7 +150,7 @@ def offload_deep_review(
     context_blob = "\n\n".join(file_blocks) if file_blocks else "(No diff or context files)"
     t0 = time.perf_counter()
     sys_msg = (
-        "You are a token-minimal CADENCE Pre-Review Coprocessor. Output ONLY:\n"
+        "You are a token-minimal Pre-Review Coprocessor. Output ONLY:\n"
         "1. Actionable findings: `- **[Category]** `file:line` — defect/risk/policy/ADR drift -> minimal fix`.\n"
         "2. One compact line summarizing passing checks (Data/Audit, Security, Surface/API, Simplicity/Resilience, Size/ADRs)."
     )

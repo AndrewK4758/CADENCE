@@ -119,7 +119,7 @@ case "$cmd_str" in
   *"mvn test"*|*"mvn verify"*|*"mvn package"*|*"gradle test"*|*"gradle build"*|*"gradlew test"*|*"gradlew build"*|\
   *"make test"*|*"make check"*|*"make build"*|*"make all"*|*"ctest"*|*"cmake --build"*|*" ninja"*|"ninja"*|\
   *"run-tests.sh"*|*"verify-spec.sh"*|*"verify-facts.sh"*|*"authored-doc-gate.sh"*|*"dead-citation-gate.sh"*)
-    msg="CADENCE Automatic Local Offload (:11434): Route any test/build/compiler/gate output exceeding 30 lines or exiting non-zero through call_mcp_tool(ServerName='local-offload', ToolName='offload_log_triage', Arguments={'log_text_or_command': ...}) or invoke_subagent(TypeName='log-triage') (raw log saved at /tmp/agy-triage/<repo_name>/<pid>.log)."
+    msg="Automatic Local Offload (:11434): Route any test/build/compiler/gate output exceeding 30 lines or exiting non-zero through call_mcp_tool(ServerName='local-offload', ToolName='offload_log_triage', Arguments={'log_text_or_command': ...}) or invoke_subagent(TypeName='log-triage') (raw log saved at /tmp/agy-triage/<repo_name>/<pid>.log)."
     if [ "$is_agy" -eq 1 ]; then
       printf '%s' "$msg" > "$remind_file" 2>/dev/null
       printf '{}'
@@ -134,7 +134,7 @@ case "$cmd_str" in
     cnt=$((cnt + 1))
     printf '%s' "$cnt" > "$search_cnt_file" 2>/dev/null
     if [ "$cnt" -eq 2 ]; then
-      msg="CADENCE Automatic Local Offload (:11434): You have run multiple shell search commands. Use call_mcp_tool(ServerName='local-offload', ToolName='local_semantic_embed', ...) (on :11434) or invoke_subagent(TypeName='repo-scout') to semantically rank candidate files and offload multi-file exploration."
+      msg="Automatic Local Offload (:11434): You have run multiple shell search commands. Use call_mcp_tool(ServerName='local-offload', ToolName='local_semantic_embed', ...) (on :11434) or invoke_subagent(TypeName='repo-scout') to semantically rank candidate files and offload multi-file exploration."
       if [ "$is_agy" -eq 1 ]; then
         printf '%s' "$msg" > "$remind_file" 2>/dev/null
         printf '{}'

@@ -203,7 +203,7 @@ curl -fL -o gemma4-12b.gguf https://huggingface.co/unsloth/gemma-4-12B-it-GGUF/r
 curl -fL -o gemma4-12b-mmproj.gguf https://huggingface.co/unsloth/gemma-4-12B-it-GGUF/resolve/main/gemma-4-12B-it-mmproj-F16.gguf
 ```
 
-### Step 3: Install CADENCE, Custom Hooks, MCP Server & `llama-swap` Globally
+### Step 3: Install Local Offload & `llama-swap` Globally (CADENCE Stays Per-Repo)
 
 Clone this repository to `~/projects/sdlc` (or any directory) and run `link-sdlc.sh --global --enable-service`:
 
@@ -213,14 +213,9 @@ cd ~/projects/sdlc
 ./import/link-sdlc.sh --global --enable-service
 ```
 
-What `./import/link-sdlc.sh --global --enable-service` installs:
-- **`~/.agents/`**: Symlinks `agents/`, `skills/`, `hooks/`, and installs `agents.json`, `skills.json`, and `hooks.json`.
-- **`~/.gemini/config/`**:
-  - Symlinks all CADENCE & offload agents (`cadence-*`, `repo-scout`, `log-triage`) and skills (`cadence-*`).
-  - Installs global rules (`~/.gemini/config/GEMINI.md`) from `import/GEMINI.global.md`.
-  - Installs global lifecycle hooks (`~/.gemini/config/hooks.json`) from `hooks/hooks.global.json`.
-  - Registers the `local-offload` MCP server in `~/.gemini/config/mcp_config.json` and installs lazy-loaded tool schemas into `~/.gemini/antigravity-cli/mcp/local-offload/*.json`.
-- **`~/.blitz/`**: Configures flat agent (`~/.blitz/agents/*.md`) and skill (`~/.blitz/skills/<skill>/*`) symlinks for Blitz.
+By default, `./import/link-sdlc.sh --global --enable-service` keeps CADENCE 100% repository-scoped and installs only the framework-neutral global stack (pass `--with-cadence-global` only on CADENCE-exclusive hosts):
+- **`~/.agents/` & `~/.gemini/config/`**: Copies neutral coprocessor agents (`repo-scout`, `log-triage`), installs framework-neutral `hooks/hooks.global.json` (`global-local-offload-enforcer`), registers `local-offload` MCP in `~/.gemini/config/mcp_config.json`, and installs tool schemas into `~/.gemini/antigravity-cli/mcp/local-offload/*.json`.
+- **`~/.blitz/`**: Links flat neutral coprocessor agents (`repo-scout.md`, `log-triage.md`) into `~/.blitz/agents/`.
 - **`~/.local/bin/`**:
   - `antigravity-local-offload-mcp` (FastMCP server for `:11434` with AST-aligned Pinned Context Slices & `/tmp/agy-triage/<repo_name>/<pid>.log`)
   - `antigravity-local-offload-hook` (Global `PreInvocation` + `PostToolUse` lifecycle hook with Turn 0/1 inline schemas)

@@ -1,5 +1,5 @@
 {
-  "cadence-local-offload-enforcer": {
+  "global-local-offload-enforcer": {
     "enabled": true,
     "PreInvocation": [
       {
@@ -18,31 +18,6 @@
             "timeout": 10
           }
         ]
-      }
-    ]
-  },
-  "cadence-tms-sync-reminder": {
-    "enabled": true,
-    "PostToolUse": [
-      {
-        "matcher": "write_to_file|replace_file_content|multi_replace_file_content|Write|Edit|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/tms-sync-reminder.sh\" ]; then exec \"$r/.agents/hooks/tms-sync-reminder.sh\"; elif [ -x \"$HOME/.agents/hooks/tms-sync-reminder.sh\" ]; then exec \"$HOME/.agents/hooks/tms-sync-reminder.sh\"; fi; printf \"{}\"'",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
-  },
-  "cadence-tms-doc-sync-stop": {
-    "enabled": true,
-    "Stop": [
-      {
-        "type": "command",
-        "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/tms-doc-sync-stop.sh\" ]; then exec \"$r/.agents/hooks/tms-doc-sync-stop.sh\"; elif [ -x \"$HOME/.agents/hooks/tms-doc-sync-stop.sh\" ]; then exec \"$HOME/.agents/hooks/tms-doc-sync-stop.sh\"; fi; printf \"{}\"'",
-        "timeout": 15
       }
     ]
   }
