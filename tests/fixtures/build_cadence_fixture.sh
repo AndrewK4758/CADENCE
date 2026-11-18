@@ -32,26 +32,45 @@ cat > "$DEST/docs/agentic-sdlc/CADENCE_ORG.md" <<'EOF'
 | `archive` | Closeout | **1.0×** | Standard |
 
 ## Tracker Binding
-<!-- tracker-binding: none -->
-**Bound tracker(s):** None
 
-## Identifier Allocation Binding (§10)
-`id_scheme`: `ACME-NNN`
-**Bound allocator(s):** None — closed default
+### Per-prefix tracker bindings
+| Ticket prefix | Bound tracker | Project key(s) | TS-1 sync skill | Agent-time user |
+|---|---|---|---|---|
+| `*` | None -- inner-source | | | |
 
-## Sprint-Enforcement Binding (§13)
-| Prefix | Enabled | Fallback |
+## Id Allocation Binding
+- **id_scheme:** `ACME-NNN`
+
+### Per-prefix allocator bindings
+| Ticket prefix | Bound allocator | id_scheme |
 |---|---|---|
-| ACME | No | Confirm |
 
-## Integration-Branch Enforcement Binding (§14)
+## Sprint-Enforcement Binding
+
+### Per-prefix sprint-enforcement bindings
+| Ticket prefix | `sprint_enforcement_enabled` | `sprint_check_skill` | `sprint_check_fallback` |
+|---|---|---|---|
+| ACME | No | Confirm | Confirm |
+
+## Integration-Branch Enforcement Binding
 <!-- integration-branch-enforcement-enabled: yes -->
 
-## Branch-Strategy Binding (§15)
+## Branch-Strategy Binding
 <!-- bound-strategy: trunk-based -->
 <!-- integration-branch: trunk -->
 <!-- branch-naming-convention: {phase}/{type}/{id} -->
 <!-- integration-branch-protected: yes -->
+
+## Version-Scheme Binding
+<!-- bound-version-scheme: calver-yyyy-ww -->
+<!-- version-pattern: ^[0-9]{4}\.(0[1-9]|[1-4][0-9]|5[0-3])\.(0|[1-9][0-9]*)$ -->
+<!-- cycle-qualifying-cut: non-patch -->
+
+| Field | Value |
+|---|---|
+| `bound-version-scheme` | **calver-yyyy-ww** |
+| `version-pattern` | **`^[0-9]{4}\.(0[1-9]|[1-4][0-9]|5[0-3])\.(0|[1-9][0-9]*)$`** |
+| `cycle-qualifying-cut` | **non-patch** |
 EOF
 
 _mk_ticket() {

@@ -76,6 +76,9 @@ expected_effort = {
     "repo-scout": "medium",
 }
 provider_leak = re.compile(r'Model="(?:pro|flash)"|Gemini 4 Argon|flash optional', re.I)
+retired_coprocessor = re.compile(
+    r"\b(?:local-embed-cpu|local-fast-cpu|local-moe-hybrid|local-12b-gpu|gemma-4-[a-z0-9-]+|nomic-embed-text|owned by Gemini)\b"
+)
 for am in sorted((root / "agents").glob("*/agent.md")):
     txt = am.read_text(encoding="utf-8")
     data = yaml.safe_load(txt.split("---\n", 2)[1])
@@ -87,6 +90,8 @@ for am in sorted((root / "agents").glob("*/agent.md")):
         errs.append(f"unexpected effort {data.get('effort')!r} in {am.relative_to(root)} (expected {expected_effort.get(aname)!r})")
     if m := provider_leak.search(txt):
         errs.append(f"provider-specific routing {m.group(0)!r} in {am.relative_to(root)}")
+    if m := retired_coprocessor.search(txt):
+        errs.append(f"retired coprocessor alias {m.group(0)!r} in {am.relative_to(root)}")
 
 for sm in sorted((root / "skills").glob("*/SKILL.md")):
     txt = sm.read_text(encoding="utf-8")
@@ -98,6 +103,8 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
             errs.append(f"dangling command {bad} in {sm.relative_to(root)}")
     if m := provider_leak.search(txt):
         errs.append(f"provider-specific routing {m.group(0)!r} in {sm.relative_to(root)}")
+    if m := retired_coprocessor.search(txt):
+        errs.append(f"retired coprocessor alias {m.group(0)!r} in {sm.relative_to(root)}")
     eval_file = sm.parent / "evals" / "evals.json"
     if not eval_file.is_file():
         errs.append(f"missing evals file: {eval_file.relative_to(root)}")
@@ -202,6 +209,8 @@ t4_fixture_and_gates() {
   python3 "$ROOT/skills/cadence-prep/scripts/read_state.py" ACME-105 --repo-root "$fix" | grep -q "integration_branch=trunk"
   ! python3 "$ROOT/skills/cadence-prep/scripts/read_state.py" acme-105 --repo-root "$fix" >/dev/null 2>&1
   [[ "$(bash "$ROOT/processes/ci-templates/scripts/stage-effort.sh" --stage spec --observed 7 --root "$fix")" == "15m" ]]
+  (cd "$fix" && bash ci-templates/scripts/org-binding-resolve.sh --form | grep -q "section9=per-prefix")
+  (cd "$fix" && bash ci-templates/scripts/org-binding-resolve.sh --tracker ACME | grep -q "tracker=inner-source")
   (cd "$fix" && bash ci-templates/scripts/org-binding-resolve.sh --sprint ACME | grep -q "enabled=no")
 
   cd "$fix"
@@ -271,9 +280,10 @@ t5_adopt_and_eject() {
   [[ "$doc_pre" == *"FAIL  org config missing: docs/agentic-sdlc/CADENCE_ORG.md"* ]]
   cp "$dst/docs/agentic-sdlc/CADENCE_ORG_TEMPLATE.md" "$dst/docs/agentic-sdlc/CADENCE_ORG.md"
   local doc_org
-  doc_org="$(bash "$dst/.agents/skills/cadence-doctor/doctor.sh" --root "$dst" 2>&1 || true)"
+  doc_org="$(bash "$dst/.agents/skills/cadence-doctor/doctor.sh" --root "$dst")"
   [[ "$doc_org" == *"PASS  org-binding-resolve --form"* ]]
   [[ "$doc_org" == *"PASS  marker integration-branch=develop"* ]]
+  [[ "$doc_org" == *"PASS  authored-doc-gate"* ]]
   [[ "$doc_org" == *"WARN "* ]]
 
   bash "$dst/ci-templates/scripts/cadence-eject.sh" "$dst" "$out" >/dev/null
