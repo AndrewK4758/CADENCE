@@ -2,11 +2,11 @@
 name: cadence-implementer
 description: Executes a ticket's tier contract during the Execute via TDD phase using strict BDD red-green-refactor TDD -- implements the approved spec at Medium/High or problem.md ACs at Low, automatically offloading test/compiler log triage to local Zero-VRAM CPU coprocessors
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# Implementation executes a converged contract via strict Red-Green-Accumulate-Commit TDD cycles and CHORD seam wiring. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
+# Implementation executes a converged contract via strict Red-Green-Accumulate-Commit TDD cycles and CHORD seam wiring across all tiers. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: high
+effort: xhigh
 ---
 
 # cadence-implementer
@@ -75,7 +75,7 @@ Strict Red-Green-Accumulate-Commit discipline is 100% identical at `Low` tier.
 4. **Load the Implementation Order work queue** from `test-plan.md` (`Medium`/`High`) or your derived AC order (`Low`).
 
 5. **Verify clean baseline test suite (Mandatory Automatic Log Offload).**
-   Run the repository's sanctioned test runner (`PROJECT_INTENT.md`). **Whenever the test runner or compiler output exceeds 30 lines or exits non-zero, automatically pass the raw output to `offload_log_triage` (`local-fast-cpu` / `gemma-4-e2b` on `:11434`, or invoke the `log-triage` subagent)** so only verbatim failing assertions, `file:line` coordinates, and coverage metrics enter your context window while the full numbered output is preserved in `/tmp/agy-last-triage.log`.
+   Run the repository's sanctioned test runner (`PROJECT_INTENT.md`). **Whenever the test runner or compiler output exceeds 30 lines or exits non-zero, automatically pass the raw output to `offload_log_triage` (`inference` on `:11434`, or invoke the `log-triage` subagent)** so only verbatim failing assertions, `file:line` coordinates, and coverage metrics enter your context window while the full numbered output is preserved in `/tmp/agy-last-triage.log`.
 
 ### Phase 1: Red-Green-Accumulate-Commit Cycles (Unit Scenarios)
 
@@ -94,7 +94,7 @@ Execute each unit scenario `S-{X.Y}` from the Implementation Order in strict seq
 
 3. **ACCUMULATE — Execute the full test suite (Automatic Log Offload):**
    - Run the entire test suite across all test projects.
-   - Automatically route noisy test/build logs (`>30` lines) through `offload_log_triage` (`local-fast-cpu` on `:11434`).
+   - Automatically route noisy test/build logs (`>30` lines) through `offload_log_triage` (`inference` on `:11434`).
    - Every test — including all pre-existing suites — must pass before committing. Fix any regression immediately.
 
 4. **REFACTOR (Optional, In-Scope Only):**
@@ -161,9 +161,9 @@ For any database migrations included in the branch, verify compliance with `docs
 
 ### Phase 4: Pre-Review Coprocessor Scan & Finalization
 
-1. **Run the complete test suite, formatter, and clean build one final time** (automatically compacting any output `>30` lines via `offload_log_triage` and preserving `/tmp/agy-last-triage.log`).
+1. **Run the complete test suite, formatter, clean build, and traceability gate one final time** (automatically compacting any output `>30` lines via `offload_log_triage` and preserving `/tmp/agy-last-triage.log`). Run `.agents/skills/cadence-spec/verify-facts.sh --trace {ticket-id}` (except Trivial tier) and verify `exit 0` so every planned scenario/AC `C5` tag, CHORD observability seam, and `Files Affected` target is proven before finalizing.
 2. **Execute an automatic local coprocessor pre-review scan (`offload_deep_review`):**
-   - Call `offload_deep_review` (`local-moe-hybrid` on `:11434`) on `git diff` to check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
+   - Call `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[<touched files>]`) to inspect the unified diff and check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
 3. **Update `specs/{ticket-id}/metadata.yaml`:**
    - Set `branch: {branch-name}`.
    - Do **not** modify `status`, lifecycle timestamps (`implementation_started_at`, `review_started_at`), `spec_approved_at`/`spec_mr` (leave `""` at Low tier), or tracker state — `/cadence-implement` owns status transitions and tracker projection (`CADENCE_ORG.md` §9).
@@ -210,4 +210,4 @@ When code crosses a bounded context or service boundary, include:
 - BDD style applies exclusively to newly authored tests; never convert existing tests to BDD style.
 - Log any test-driven design deviation from `spec.md` in `specs/{ticket-id}/decisions.md` and highlight it in `submission.md`.
 - Never author a test that reads, parses, or asserts on a governance document (`docs/policies/test-scope.md`).
-- Local coprocessor models (`local-fast-cpu`, `local-moe-hybrid`) are strictly read-only log/diff analyzers (`enable_write_tools: false`). Gemini 4 Argon writes 100% of test and production code.
+- Local coprocessor models (`inference`, `embedding` on `:11434`) are strictly read-only log/diff analyzers (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) writes 100% of test and production code.

@@ -1,0 +1,58 @@
+{
+  "skill_name": "cadence-refactor",
+  "notes": "Evaluates wide mechanical refactor skill: worktree check, fail-closed escalation to /cadence-spec (Deep-reasoning) when touching registered surfaces/schemas/semantics, Fast-mechanical (high effort) over exhaustive manifest, dual-search docs sweep, log triage, and offload_deep_review.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "escalates-public-surface-break-to-spec",
+      "prompt": "Use cadence-refactor to rename a CLI flag and remove a configuration key registered as Stable in cadence-surfaces.md.",
+      "expected_output": "Refuses to execute as a mechanical refactor because the target touches a Stable registered surface; escalates to /cadence-spec (Deep-reasoning, xhigh effort) for Surface Compatibility & deprecation compliance.",
+      "assertions": [
+        "Consults docs/policies/surface-registry.md and docs/policies/cadence-surfaces.md before editing",
+        "Halts and escalates to /cadence-spec (Deep-reasoning, xhigh effort) when a registered surface or contract would change",
+        "Performs zero file mutations when escalating"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-refactor/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-refactor/SKILL.md",
+            "regex": "cadence-surfaces\\.md"
+          },
+          {
+            "file": "skills/cadence-refactor/SKILL.md",
+            "regex": "/cadence-spec"
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "exhaustive-mechanical-sweep-and-post-checks",
+      "prompt": "Rename internal helper parseTimeoutMs -> parseDurationMs and swap its two arguments across src/ and tests/ inside our feature worktree.",
+      "expected_output": "Verifies dedicated worktree isolation and internal-only scope, builds complete manifest via local_semantic_embed + deterministic grep (plus docs/ dual search), confirms manifest with operator, executes cleanly under Fast-mechanical (high effort), verifies zero stale matches remain, runs canonical tests via offload_log_triage, and runs offload_deep_review.",
+      "assertions": [
+        "Verifies execution inside a dedicated git worktree (not directly on protected integration branch)",
+        "Builds complete manifest across source, tests, configs, and docs/ prior to editing",
+        "Executes deterministic sweep under Fast-mechanical (high effort) preserving comments and <400L file ceiling",
+        "Verifies zero remaining stale occurrences, runs canonical tests via offload_log_triage, and executes offload_deep_review on the diff"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-refactor/SKILL.md",
+            "regex": "Fast-mechanical"
+          },
+          {
+            "file": "skills/cadence-refactor/SKILL.md",
+            "regex": "offload_log_triage"
+          }
+        ]
+      }
+    }
+  ]
+}

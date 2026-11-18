@@ -17,20 +17,22 @@ mkdir -p "$GEMINI_DIR"
 
 ln -sfn "../.agents/agents" "$GEMINI_DIR/agents"
 ln -sfn "../.agents/skills" "$GEMINI_DIR/skills"
-if [[ -f "$AGENTS_DIR/hooks/hooks.json" ]]; then
-  ln -sfn "../.agents/hooks/hooks.json" "$GEMINI_DIR/hooks.json"
-elif [[ -f "$AGENTS_DIR/hooks.json" ]]; then
+if [[ -f "$AGENTS_DIR/hooks.json" ]]; then
   ln -sfn "../.agents/hooks.json" "$GEMINI_DIR/hooks.json"
+elif [[ -f "$AGENTS_DIR/hooks/hooks.json" ]]; then
+  ln -sfn "../.agents/hooks/hooks.json" "$GEMINI_DIR/hooks.json"
 fi
 
 if [[ ! -f "$GEMINI_DIR/GEMINI.md" ]]; then
-  cat > "$GEMINI_DIR/GEMINI.md" <<'EOF'
+  directives_import="@../CADENCE_DIRECTIVES.md"
+  [[ -f "$TARGET_ROOT/processes/CADENCE_DIRECTIVES.md" ]] && directives_import="@../processes/CADENCE_DIRECTIVES.md"
+  cat > "$GEMINI_DIR/GEMINI.md" <<EOF
 # Gemini / Antigravity Runtime Projection (CADENCE SDLC)
 
-> **Reference Implementation Projection:** This directory (`.gemini/`) is projected directly off the universal primary `.agents/` directory per `docs/policies/cli-runtime-adoption-policy.md`. Do not fork files here; edit `.agents/` or `AGENTS.md`.
+> **Reference Implementation Projection:** This directory (\`.gemini/\`) is projected directly off the universal primary \`.agents/\` directory per \`docs/policies/cli-runtime-adoption-policy.md\`. Do not fork files here; edit \`.agents/\` or \`AGENTS.md\`.
 
 @../AGENTS.md
-@../CADENCE_DIRECTIVES.md
+$directives_import
 EOF
 fi
 

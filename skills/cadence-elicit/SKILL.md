@@ -23,9 +23,9 @@ Prior to presenting any prompt to the requester, verify all four preconditions i
 
 ## Steps
 
-### 0. Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `local-moe-hybrid`)
+### 0. Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `inference`)
 
-Before drafting candidate probe answers in step 3a or evaluating decomposition boundaries in step 4c, automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) once to retrieve relevant codebase symbols, adjacent system contracts, and prior insights from `docs/agentic-sdlc/intent-insights.md` and `specs/`/`archive/` without performing broad manual file reads in the primary context window. When grounding a candidate answer as `Observed` in step 3a, explicitly read the specific file coordinate surfaced by `local-moe-hybrid` in this turn.
+Before drafting candidate probe answers in step 3a or evaluating decomposition boundaries in step 4c, automatically invoke `local_semantic_embed` (`embedding` on `:11434`) and/or `offload_deep_review` (`inference` on `:11434`) / `repo-scout` once to retrieve relevant codebase symbols, adjacent system contracts, and prior insights from `docs/agentic-sdlc/intent-insights.md` and `specs/`/`archive/` without performing broad manual file reads in the primary context window. When grounding a candidate answer as `Observed` in step 3a, explicitly read the specific file coordinate surfaced during discovery in this turn.
 
 ### 1. Tier gate
 
@@ -89,7 +89,7 @@ When the count is greater than `0`, an `## Elicited Intent` section is already p
 
 For each unanswered probe identified in step 2, **prior to** displaying that probe to the requester:
 
-1. Compose **at most 3** candidate responses for the probe, grounded in `specs/$ticket_id/problem.md` and in the actual codebase state of **the repository where this skill is executing** (informed by Step 0's `local-moe-hybrid` / `local_semantic_embed` lookup plus targeted `Read` calls). Tag each draft's grounding as `Observed` or `Inferred`. **Never tag a draft `Observed` unless** the supporting fact appears in a file explicitly read during this turn.
+1. Compose **at most 3** candidate responses for the probe, grounded in `specs/$ticket_id/problem.md` and in the actual codebase state of **the repository where this skill is executing** (informed by Step 0's `local_semantic_embed` / `repo-scout` lookup plus targeted `Read` calls). Tag each draft's grounding as `Observed` or `Inferred`. **Never tag a draft `Observed` unless** the supporting fact appears in a file explicitly read during this turn.
 2. Evaluate each draft **independently** against the **step-4a sufficiency rubric row corresponding to that probe's section**. A candidate draft is **admitted if and only if** it explicitly names at least one concrete element from **each** of that row's two required bullets. This reuses the exact step-4a rubric at pre-display time — never a separate standard.
 3. **Discard** any draft that fails either bullet. Never soften, generalize, or rewrite a failing draft to help it pass — **a candidate rewritten to clear a rubric bullet did not pass**.
 4. When a probe's section has **no corresponding rubric row, admit zero candidates**: without an admission test, no candidate can be admitted.
@@ -178,7 +178,7 @@ Whenever a probe response still fails its section's rubric after the depth-1 fol
 
 Underspecification (steps 4a/4b) and **concern plurality** require different remedies. When the elicited responses describe multiple independent problems bundled into a single ticket, asking more follow-ups will not make them converge — the right remedy is proposing a ticket split.
 
-Evaluate the **bidirectional split test** across candidate clusters (grouping the elicited Q&A blocks alongside `## Acceptance Criteria` items in `problem.md`), using context from Step 0's `local_semantic_embed` / `local-moe-hybrid` pass to check whether candidate clusters touch overlapping code paths:
+Evaluate the **bidirectional split test** across candidate clusters (grouping the elicited Q&A blocks alongside `## Acceptance Criteria` items in `problem.md`), using context from Step 0's `local_semantic_embed` / `repo-scout` pass to check whether candidate clusters touch overlapping code paths:
 
 - **Propose a decomposition split if and only if** the candidate halves share **zero acceptance criteria AND zero mutation targets** (no shared file or surface modified by both).
 - **Keep unified whenever** the halves share **any precondition OR any mutation target.** This deliberate asymmetry (splitting requires both absent; keeping unified requires either present) biases strongly against premature decomposition.
@@ -284,7 +284,7 @@ Where `{U}` is the count of probes terminated after two consecutive ambiguous re
 
 Execute this step **only when this run modified repository files** — writing `## Elicited Intent` (step 5), appending a decomposition-rejection comment (step 4d.3), or recording `decomposed_into` on the parent (step 4d.6). Bypass this step completely (no effort entry, no tracker sync) whenever the run exited without writes (step 1 tier-gate refusal, step 3 overwrite declined, or mid-run abort).
 
-**Log elicitation effort.** Update `specs/$ticket_id/metadata.yaml` in accordance with `docs/agentic-sdlc/CADENCE_ORG.md` "Actual Effort Accumulation": append a `stage_effort` item tagged **`stage: triage`** (`at` = exact UTC completion time from `date -u +%Y-%m-%dT%H:%M:%SZ`, never rounded, midnight, or date-only) with `effort` computed via `ci-templates/scripts/stage-effort.sh --stage triage --observed <minutes>` — the script resolves the configured stage multiplier (including per-operator overrides), multiplies, and rounds up to a 15-minute increment (minimum `15m` for non-zero work; `0m` when the multiplier is `0`). **Verify before writing:** the rounded `effort` string MUST be `0m` or an exact multiple of 15 minutes; if not, emit a diagnostic naming the bad value, recompute, and continue without halting. Add the increment to `actual_effort`. Because requirement elicitation is part of intake elaboration under the `cadence-triage` lifecycle stage, its effort entry uses `stage: triage`; `/cadence-triage` logs its classification entry in step 3 *prior* to offering `/cadence-elicit`, so this elicitation entry is *additive* and `stage: triage` legitimately holds multiple entries. Log this effort strictly on the **parent** `$ticket_id` — decomposition children receive no separate elicitation effort entry.
+**Log elicitation effort.** Update `specs/$ticket_id/metadata.yaml` in accordance with `docs/agentic-sdlc/CADENCE_ORG.md` "Actual Effort Accumulation": append a `stage_effort` item tagged **`stage: triage`** (`at` = exact UTC completion time from `date -u +%Y-%m-%dT%H:%M:%SZ`, never rounded, midnight, or date-only) with `effort` computed via `([ -x ci-templates/scripts/stage-effort.sh ] && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage triage --observed <minutes>` — the script resolves the configured stage multiplier (including per-operator overrides), multiplies, and rounds up to a 15-minute increment (minimum `15m` for non-zero work; `0m` when the multiplier is `0`). **Verify before writing:** the rounded `effort` string MUST be `0m` or an exact multiple of 15 minutes; if not, emit a diagnostic naming the bad value, recompute, and continue without halting. Add the increment to `actual_effort`. Because requirement elicitation is part of intake elaboration under the `cadence-triage` lifecycle stage, its effort entry uses `stage: triage`; `/cadence-triage` logs its classification entry in step 3 *prior* to offering `/cadence-elicit`, so this elicitation entry is *additive* and `stage: triage` legitimately holds multiple entries. Log this effort strictly on the **parent** `$ticket_id` — decomposition children receive no separate elicitation effort entry.
 
 **Project to the bound tracker.** Invoke the repository's **designated tracker sync skill** (resolved from `CADENCE_ORG.md` §9, Tracker Binding) once for `$ticket_id` at the conclusion of the operation to project the updated `problem.md`/`metadata.yaml` and post the new `stage_effort` worklog (`CADENCE_ORG.md` §9, Projection triggers & sync discipline).
 
@@ -322,6 +322,6 @@ When `PI-006` is Trivial or Low tier, halts immediately citing the tier and `doc
 
 When `specs/PI-007/problem.md` already contains `## Elicited Intent`, displays a 1–2 line summary of the existing section and prompts for confirmation before overwriting.
 
-## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 0 automatically calls `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and/or `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) to gather codebase context and prior insights before candidate composition (step 3a) and plurality split analysis (step 4c).
-- Candidate rubric filtering, interactive elicitation, and verbatim capture remain 100% owned by Gemini.
+## Local Model Offload Integration (:11434)
+- Step 0 automatically calls `local_semantic_embed` (`embedding` on `:11434`) and/or `repo-scout` (`inference` on `:11434`) to gather codebase context and prior insights before candidate composition (step 3a) and plurality split analysis (step 4c).
+- Candidate rubric filtering, interactive elicitation, and verbatim capture remain 100% owned by the primary orchestrating tier.

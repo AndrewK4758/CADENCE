@@ -31,6 +31,16 @@ REMOVAL_MANIFEST=(
   # removed on the clean-apply path; an adopter-modified copy is surfaced as
   # an ordinary conflict and never clobbered (S-4.3/S-4.4).
   docs/agentic-sdlc/prism-reference.md
+  # Consolidated lifecycle verbs: cadence-prep -> cadence-define, cadence-cycle -> cadence-build
+  .agents/skills/cadence-prep/SKILL.md
+  .agents/skills/cadence-prep/evals/evals.json
+  .agents/skills/cadence-prep/scripts/read_state.py
+  .agents/skills/cadence-prep/scripts/ready_mr.sh
+  .agents/skills/cadence-cycle/SKILL.md
+  .agents/skills/cadence-cycle/evals/evals.json
+  .agents/skills/cadence-cycle/references/worktree-and-ledger.md
+  .agents/skills/cadence-cycle/scripts/read_state.py
+  .agents/skills/cadence-cycle/scripts/ready_mr.sh
 )
 
 # removals_classify <base_commit> <base_empty>

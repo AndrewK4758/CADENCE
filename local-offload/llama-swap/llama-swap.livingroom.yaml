@@ -1,0 +1,90 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mostlygeek/llama-swap/refs/heads/main/config-schema.json
+#
+# Living-Room Headless Server Unified AI Service (RTX 3050 Ti 4GB Laptop GPU + LAN RTX 5080 / 5070 Ti):
+#   - Local RTX 3050 Ti (4 GB VRAM, sm_86):
+#       embedding       Google EmbeddingGemma 2 BF16 (100% in 3050 Ti VRAM, 262,144 total ctx / 32 parallel 8K slots)
+#                       Managed by llama-3050-embed-gate: adaptive L2-cache-optimal micro-batch pipelining (3-item
+#                       slices across 2 persistent keep-alive workers -> 42.6 emb/s / 17,428 tok/s), automatically
+#                       unloads when any other local GPU app uses the 3050 Ti, queues embedding requests, and
+#                       reloads after 60s of GPU idle.
+#   - Laptop / Office Machine RTX 5080 eGPU + RTX 5070 Ti over Wired Switch (`192.168.50.155:11434`, 0.11ms):
+#       3-home-gpus     Proxies the 4 inference setups transparently to 192.168.50.155:11434.
+
+healthCheckTimeout: 600
+logLevel: info
+startPort: 11440
+
+macros:
+  models: ${env.LLM_MODELS_DIR}
+  office_url: ${env.OFFICE_LLAMA_SWAP_URL}
+
+models:
+  # ----------------------------------------------------------------------------
+  # 1. Max-Capacity RTX 3050 Ti 4GB Embedding Service (Google EmbeddingGemma 2 BF16)
+  # ----------------------------------------------------------------------------
+  embeddinggemma-2:
+    aliases:
+      - embedding
+    ttl: 0
+    env:
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - CUDA_VISIBLE_DEVICES=${env.IGPU_CUDA_DEVICE}
+    cmd: |
+      /home/ak/.local/bin/llama-3050-embed-gate --port ${PORT} --
+      llama-server-dropcache --port __BACKEND_PORT__
+      --model ${models}/embeddinggemma-2-BF16.gguf
+      --embedding --pooling mean --n-gpu-layers 99 --fit off --flash-attn on
+      --no-cache-prompt -sps 0
+      --ctx-size 262144 --parallel 32 --batch-size 34816 --ubatch-size 17408
+      --threads 8 --threads-batch 8 --threads-http 16
+
+  # ----------------------------------------------------------------------------
+  # 2. Remote RTX 5080 eGPU + RTX 5070 Ti Models over 0.11ms LAN Switch (192.168.50.155:11434)
+  # ----------------------------------------------------------------------------
+  3-home-gpus:
+    aliases:
+      - work-gpu
+      - laptop-gpu
+      - laptop-egpu
+      - laptop-egpu-text
+      - 26b
+      - 26b-text
+      - gemma-coder
+      - gemma-coder-text
+      - 31b
+      - 31b-text
+    ttl: 0
+    checkEndpoint: /health
+    cmd: /home/ak/.local/bin/llama-lan-proxy --port ${PORT} --upstream ${office_url}
+
+  _mcp-compat:
+    unlisted: true
+    aliases:
+      - inference
+      - inference-dual
+      - local-moe-hybrid
+      - local-fast-cpu
+      - local-embed-cpu
+    ttl: 0
+    checkEndpoint: /health
+    cmd: /home/ak/.local/bin/llama-lan-proxy --port ${PORT} --upstream ${office_url}
+
+hooks:
+  on_startup:
+    preload: [embeddinggemma-2]
+
+routing:
+  router:
+    use: group
+    settings:
+      groups:
+        local_3050:
+          persistent: true
+          swap: false
+          exclusive: false
+          members: [embeddinggemma-2]
+        remote_5080:
+          persistent: true
+          swap: false
+          exclusive: false
+          members: [3-home-gpus, _mcp-compat]

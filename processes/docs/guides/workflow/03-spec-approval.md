@@ -26,9 +26,9 @@ Only **Medium-** and **High-tier** changes pass through Gate 1 Spec Approval. Tr
 
 Before the specification reaches your review queue, CADENCE's local coprocessor and gate scripts have already cleared the mechanical checks:
 
-- `repo-scout` and `local_semantic_embed` (`local-embed-cpu` at 0 MB VRAM) surfaced relevant historical ADRs, `production-insights.md` (`PROD-NNN`), and `intent-insights.md` (`II-NNN`) entries during spec authoring so prior lessons are already cited in `spec.md`.
+- `repo-scout` and `local_semantic_embed` (`embedding` on `:11434`) surfaced relevant historical ADRs, `production-insights.md` (`PROD-NNN`), and `intent-insights.md` (`II-NNN`) entries during spec authoring so prior lessons are already cited in `spec.md`.
 - `.agents/skills/cadence-spec/verify-spec.sh` (or `.gemini/skills/cadence-spec/verify-spec.sh`) verified that all Contextual Grounding Matrix (6W×4L) rows, CHORD decompositions, Engineering Pillar evaluations, and Gherkin scenarios are structurally complete and that zero unresolved template placeholders remain.
-- When you want a quick mechanical pre-scan of a large `spec.md` + `test-plan.md` diff before your human review, `offload_deep_review` (`local-moe-hybrid` / `local-12b-gpu`) can audit CHORD-to-Gherkin scenario coverage and seam completeness in seconds — leaving your review bandwidth 100% focused on architectural judgment.
+- When you want a quick mechanical pre-scan of a large `spec.md` + `test-plan.md` diff before your human review, `offload_deep_review` (`inference` on `:11434`) can audit CHORD-to-Gherkin scenario coverage and seam completeness in seconds — leaving your review bandwidth 100% focused on architectural judgment.
 
 ## The non-negotiable: maintain your mental model
 

@@ -1,0 +1,337 @@
+{
+  "skill_name": "cadence-define",
+  "notes": "Evals run read-only against a throwaway CADENCE-shaped fixture repo built by tests/fixtures/build_cadence_fixture.sh (ACME-101..121). The fixture's integration branch is `trunk`, not `main`, so any answer naming `main` has hardcoded it. LIMIT \u2014 the fixture has no git remote and no forge, so evals grade the DECISION (admit / decline / record / open / stop) and stated sequence. ACME-105 has `spec_mr` empty AND `spec.md` committed on `trunk` (reconcile URL rather than opening a duplicate MR). ACME-103 (Trivial, committed) and ACME-109 (Low, untracked) exercise opposite arms of the capture hand-off.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "groom-and-propose",
+      "prompt": "acme-107's spec has been sitting half-finished for a week. i'd like it groomed and put up for approval. before you actually start doing anything, walk me through the sequence you'd follow and tell me exactly where you'd stop",
+      "expected_output": "Identifies status `spec-in-review` with `spec_mr` empty, so the spec needs grooming first. Presents the spec's three open questions as menus of concrete choices rather than open prompts. Records the answers, sets status `spec-approved` and `spec_approved_at` in the commit the MR will carry, pushes, opens the MR as a draft against `trunk`, writes the URL to `spec_mr`, then publishes it with ready_mr.sh and stops. No implementation, no monitoring.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `spec-in-review`",
+        "Notes that `spec_mr` is empty, so no spec MR exists yet",
+        "Presents the spec's open questions as menus of concrete choices rather than as open-ended questions",
+        "States that status `spec-approved` is set in the commit the MR carries, not after the merge",
+        "Opens the spec MR as a draft",
+        "Names `trunk` as the branch the MR targets",
+        "Does NOT claim the MR targets `main`",
+        "Records the MR URL in `spec_mr` in metadata.yaml",
+        "Marks the MR ready for review as the final act",
+        "States that the run stops there and does NOT monitor or wait for the merge",
+        "Prefers this over /cadence-build when the goal ends at spec approval",
+        "Does NOT propose invoking /cadence-implement, /cadence-review, /cadence-maintain, or /cadence-archive",
+        "Does NOT report worktree/session topology as an unresolved contradiction needing the user to arbitrate"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-define/scripts/read_state.py\" ACME-107 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "status=spec-in-review",
+          "spec_mr=$"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "spec-approved-unrecorded",
+      "prompt": "acme-105 claims spec-approved but i can't find a spec MR link anywhere in its metadata. what's actually going on there and what should happen next? don't push anything yet",
+      "expected_output": "Recognises that an empty `spec_mr` has two opposite causes -- never proposed, or proposed and never recorded -- and that the field is not evidence for either. Checks the forge for a PR on the spec branch (`spec/bug/acme-105`, derived from the {phase}/{type}/{id} convention) and checks whether spec.md is already on `trunk`, BEFORE opening anything. Since the spec is already committed, the remedy is to record the existing MR's URL in `spec_mr`, not to open a new one.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `spec-approved` with `spec_mr` empty",
+        "Does NOT conclude from the empty field alone that the MR was never created",
+        "Checks the forge and/or the integration branch for an already-existing spec MR before proposing to open one",
+        "Warns that opening one blindly risks a second spec MR carrying an empty diff",
+        "Names the spec branch derived from the {phase}/{type}/{id} convention (e.g. spec/bug/acme-105)",
+        "Identifies recording the discovered URL in `spec_mr` as the remedy when the spec has already landed",
+        "Does NOT claim the branch or diff base is `main`"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-define/scripts/read_state.py\" ACME-105 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "status=spec-approved",
+          "spec_mr=$"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "spec-approved-recorded",
+      "prompt": "can you prep acme-106 for me",
+      "expected_output": "Identifies status `spec-approved` with `spec_mr` already recorded (pull/77). The spec MR exists and is recorded, so there is nothing for this skill to do. Reports that cleanly and names what owns the ticket from here.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `spec-approved`",
+        "Notes that the spec MR is already recorded in metadata (pull/77)",
+        "Concludes there is nothing for this skill to do",
+        "Frames that as a normal successful outcome rather than an error or failure",
+        "Does NOT open another spec MR",
+        "Does NOT invoke /cadence-spec, /cadence-triage, or /cadence-implement",
+        "Names what carries the ticket from here (e.g. /cadence-build or the next phase)",
+        "Does NOT halt solely because the forge could not be reached",
+        "Falls back to local evidence (metadata plus whether the spec is on the integration branch) to reach a verdict",
+        "Names explicitly which part it could not verify and what would settle it"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-define/scripts/read_state.py\" ACME-106 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "status=spec-approved",
+          "spec_mr=https://github\\.com/acme/repo/pull/77"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "out-of-window-in-review",
+      "prompt": "prep acme-102 for me please",
+      "expected_output": "Identifies status `in-review`, which is past this skill's window. Declines cleanly, naming the status and what owns the ticket now. Does not start maintainer review, does not touch the spec.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `in-review`",
+        "States that the ticket is past this skill's window and declines to act on it",
+        "Frames the decline as a normal successful outcome rather than an error",
+        "Does NOT invoke /cadence-maintain",
+        "Does NOT re-open, re-write, or re-propose the spec",
+        "Names /cadence-build, /cadence-maintain, or the appropriate downstream phase skill as what owns it now"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-define/scripts/read_state.py\" ACME-102 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "status=in-review"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "trivial-stops-at-triage",
+      "prompt": "acme-103 is that broken runbook link in CONTRIBUTING.md. can you prep it?",
+      "expected_output": "Identifies tier Trivial. No spec is produced at this tier, so there is no spec to groom and no spec MR to prepare -- cadence-define's remaining work is already done. Must NOT make the fix itself (that belongs to /cadence-build's Trivial ad-hoc path) and must NOT write a spec anyway. Before ending, puts the hand-off decision to the operator: implement it now, or land a capture MR so the triage is durable. Here ACME-103's artifacts are ALREADY committed on trunk, so there is nothing to capture and offering a capture MR would propose an empty diff. At Trivial the implementation hand-off is /cadence-build or a direct ad-hoc edit -- NOT /cadence-implement, which refuses the tier.",
+      "files": [],
+      "assertions": [
+        "Identifies the tier as Trivial",
+        "States that no spec is produced at this tier, so there is no spec MR to prepare",
+        "Stops rather than continuing, and frames stopping as a complete outcome rather than a failure",
+        "Does NOT edit CONTRIBUTING.md or otherwise make the link fix in this run",
+        "Does NOT invoke /cadence-spec for this ticket",
+        "Raises the hand-off decision with the user rather than just announcing the tier and exiting",
+        "Checks whether the triage artifacts are already on the integration branch before offering to capture them",
+        "Recognises that ACME-103's artifacts are already committed, so there is nothing to capture",
+        "Does NOT propose a capture MR that would carry an empty diff",
+        "Does NOT name /cadence-implement as the hand-off for a Trivial ticket (it refuses the tier)"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-define/scripts/read_state.py\" ACME-103 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "tier=Trivial",
+          "status=triaged"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "high-tier-full-path",
+      "prompt": "we're picking acme-101 back up. i want it specced and a spec PR up for review. walk me through what that involves \u2014 including what branch things get compared against and where exactly you'd stop. don't kick it off yet",
+      "expected_output": "Identifies status `triaged`, tier High, so the next phase is /cadence-spec. Then grooming, approval, a draft MR against `trunk` recorded in `spec_mr`, published for review, and stop. Explicitly does not continue into implementation and does not monitor the MR.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `triaged` and the tier as High",
+        "Names /cadence-spec as the next phase",
+        "Names `trunk` as the branch the work is compared against",
+        "Does NOT claim the diff base is `main`",
+        "Describes the run ending with the spec MR open and ready for review",
+        "States explicitly that it does NOT continue into /cadence-implement or /cadence-review",
+        "States that it does NOT monitor or wait for the spec MR to merge"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-define/scripts/read_state.py\" ACME-101 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "tier=High",
+          "status=triaged"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "name": "no-monitoring-boundary",
+      "prompt": "on acme-107 \u2014 once the spec PR is up and marked ready, what does the run actually do? does it sit there waiting for me to approve it, or is that it?",
+      "expected_output": "That is it. Marking the MR ready is the terminal act; the run stops immediately and does not poll or wait. The flip is performed and confirmed by ready_mr.sh, whose summary line is the evidence, and which re-reads the MR because `gh pr ready` exiting 0 is not proof the draft state actually changed. The ticket is proposed, not approved or merged.",
+      "files": [],
+      "assertions": [
+        "States that the run stops as soon as the MR is ready and does not monitor, poll, or wait for the merge",
+        "Identifies marking the MR ready as the run's terminal act",
+        "Names ready_mr.sh (or the skill's ready step) as what performs the flip",
+        "Mentions that the publish is confirmed by re-reading the MR rather than trusting the command's exit code",
+        "Points to the ready_mr: summary line as the evidence for the claim",
+        "Does NOT describe the ticket as approved or merged at that point",
+        "Names /cadence-build (or the human merge gate) as what happens next"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-define/SKILL.md",
+            "regex": "terminal act"
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "name": "raw-problem-statement",
+      "prompt": "our nightly export job silently drops rows when a tenant has more than about 200k of them \u2014 nobody notices until someone reconciles by hand. can you get this worked up into a spec for review?",
+      "expected_output": "No ticket id, so this is a raw problem statement: admissible by definition, since there is no ticket that could be further along. Invokes /cadence-triage with the statement verbatim, reads back the id triage created, and continues from there. Does not invent an id and does not paraphrase the statement.",
+      "files": [],
+      "assertions": [
+        "Treats the input as a problem statement rather than looking for an existing ticket id",
+        "Routes it to /cadence-triage as the first step",
+        "Passes the requester's statement through verbatim rather than paraphrasing or summarising it",
+        "States that the ticket id is read back from what /cadence-triage created",
+        "Does NOT invent or assume a ticket id",
+        "Describes continuing on to the spec and the spec MR after triage"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-define/SKILL.md",
+            "regex": "Raw problem statement"
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "name": "tracker-first-absent",
+      "prompt": "kick off acme-311 \u2014 it's filed in the tracker, there's nothing local for it yet",
+      "expected_output": "A ticket-id-shaped argument with no specs/ or archive/ directory is the tracker-first case: admissible, and the normal starting point for tracker-originated work. Route it to /cadence-triage ACME-311 and continue. Not an error, and not a 'nothing to do'.",
+      "files": [],
+      "assertions": [
+        "Recognises that no local artifacts exist for the ticket",
+        "Identifies this as the tracker-first case rather than an error",
+        "Resolves the CADENCE_ORG.md \u00a79 Tracker Binding before routing the id to /cadence-triage",
+        "Does NOT treat the missing specs/ directory itself as the failure",
+        "Does NOT report this as 'nothing to do' or as being outside the skill's window",
+        "Identifies `Bound tracker(s): None` in \u00a79 as the actual blocker, by name",
+        "States that a problem statement rather than a ticket id is the way in for a repo with no bound tracker"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "bash ci-templates/scripts/org-binding-resolve.sh --tracker ACME",
+        "stdout_regex": [
+          "tracker=inner-source"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "name": "low-tier-capture-offer",
+      "prompt": "acme-109 just came out of triage \u2014 the export filename thing. can you prep it and get it somewhere i can pick up later this sprint?",
+      "expected_output": "Identifies tier Low: no spec is produced, so cadence-define's remaining work is done. The triage artifacts are NOT on trunk yet, so the loose end is real -- without a capture MR the classification lives only on a local branch. Offers the two options as a menu: implement now via /cadence-implement ACME-109 (whose contract at Low is problem.md's acceptance criteria), or land a capture MR now. Given the user said 'pick up later', the capture MR is the fit: push, open as a draft, publish it, stop. Its URL is recorded in NO metadata field, and status stays `triaged`.",
+      "files": [],
+      "assertions": [
+        "Identifies the ticket's current status as `triaged` and the tier as Low",
+        "States that no spec is produced at Low, so there is no spec MR to prepare",
+        "Checks whether the triage artifacts are already on the integration branch",
+        "Recognises that ACME-109's artifacts are NOT yet on trunk, so the triage would otherwise be stranded",
+        "Offers a capture MR that lands the triage artifacts for later pick-up",
+        "Names /cadence-implement ACME-109 as the implement-now option, which is correct at Low",
+        "Does NOT implement the change itself in this run",
+        "States that the capture MR's URL is not recorded in `spec_mr` or `merge_request`",
+        "Leaves status as `triaged` rather than advancing it",
+        "Ends with the MR ready for review and does NOT monitor or wait for it",
+        "Names the capture branch with the `triage` phase (e.g. triage/bug/ACME-109)",
+        "Does NOT name the capture branch with the `implement` phase",
+        "Acts on the user's stated preference rather than re-asking, while still naming the alternative and what switching would cost"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-define/scripts/read_state.py\" ACME-109 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "tier=Low",
+          "status=triaged"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "triaged-elicits-before-spec",
+      "fixture_ticket": "ACME-120",
+      "prompt": "Prep ACME-120.",
+      "expected_output": "The elicit gate fires, or correctly does not.",
+      "assertions": [
+        "Recognises ACME-120 as triaged at High tier with a spec still to be written",
+        "Detects that problem.md carries unanswered probes rather than assuming either way",
+        "Invokes /cadence-elicit ACME-120 BEFORE invoking /cadence-spec",
+        "Does NOT gate the elicit attempt on whether the session is a background agent -- attendance and worktree isolation are different questions",
+        "If the probe questions cannot be answered in this run, proceeds to /cadence-spec rather than stalling, and says so",
+        "Reports how many probes went unanswered into the spec, if any did",
+        "Records no stage_effort increment of its own for the elicitation (/cadence-elicit owns that)"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-define/SKILL.md",
+            "regex": "not yet answered"
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "name": "no-elicit-when-probes-answered",
+      "fixture_ticket": "ACME-121",
+      "prompt": "Prep ACME-121.",
+      "expected_output": "The elicit gate fires, or correctly does not.",
+      "assertions": [
+        "Recognises ACME-121 as triaged at Medium tier with no spec yet",
+        "Checks problem.md and finds no unanswered probes remaining",
+        "Does NOT invoke /cadence-elicit -- there is nothing left to ask",
+        "Proceeds directly to /cadence-spec ACME-121",
+        "Does not re-ask or overwrite the answers already recorded in problem.md"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-define/SKILL.md",
+            "regex": "cadence-elicit"
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "name": "propose-fit-handoff",
+      "prompt": "Define `--propose` nightly export deduplication problem check before triaging",
+      "expected_output": "Runs `/cadence-propose` Step 00 (`PROJECT_INTENT.md` fit check + `local_semantic_embed` duplicate scan -> `specs/drafts/<slug>.md`) before minting a ticket via `/cadence-triage`.",
+      "assertions": [
+        "Mentions optional `--propose` Step 00 fit and semantic duplicate check",
+        "Does not invent or reserve an ID prior to `/cadence-triage`"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-define/SKILL.md",
+            "regex": "--propose"
+          }
+        ]
+      }
+    }
+  ]
+}

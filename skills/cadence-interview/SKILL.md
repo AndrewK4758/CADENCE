@@ -37,7 +37,7 @@ In **default mode**, select only rows whose value cell currently holds a placeho
 
 ### 3. Gather repository evidence via local offload and offer candidates per selected row
 
-Before formulating candidates for the selected rows, **automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) / `local-moe-hybrid` (`:11434`)** to gather concrete repository evidence (scanning CI/CD workflows, deployment manifests, VCS/remote configuration, authentication/IdP references, branch protection rules, and already-populated cells in `CADENCE_ORG.md` and `PROJECT_INTENT.md`).
+Before formulating candidates for the selected rows, **automatically invoke `local_semantic_embed` (`embedding` on `:11434`) / `repo-scout` (`inference` on `:11434`)** to gather concrete repository evidence (scanning CI/CD workflows, deployment manifests, VCS/remote configuration, authentication/IdP references, branch protection rules, and already-populated cells in `CADENCE_ORG.md` and `PROJECT_INTENT.md`).
 
 Using that gathered evidence, derive **3** candidate answers per selected row, explicitly tagging each candidate as **Observed**, **Inferred**, or **Unknown** (following the architect evidence discipline — never invent false-confident citations). Present the following options for each selected row:
 
@@ -58,7 +58,7 @@ If a **malformed row** is encountered (a table line lacking a second data column
 When invoked with `--re-interview`, the table scan in Step 2 selects **every data row** across the Where, Who, and Why tables — regardless of whether a row currently holds a concrete value or a placeholder — and prompts the operator for each one. For each row in re-interview mode, present:
 
 - the **current value** as an explicit option — included **only** when the current value is **not a `<placeholder>`**;
-- **2** repository-evidenced candidates (via `local_semantic_embed` / `local-moe-hybrid`) when the current value is offered, or **3** repository-evidenced candidates when the current value **is a placeholder** (and therefore omitted as a keep option) — keeping the total choices per row consistent at ~5;
+- **2** repository-evidenced candidates (via `local_semantic_embed` / `repo-scout` on `:11434`) when the current value is offered, or **3** repository-evidenced candidates when the current value **is a placeholder** (and therefore omitted as a keep option) — keeping the total choices per row consistent at ~5;
 - **`N/A`**;
 - **`Type my own`**.
 

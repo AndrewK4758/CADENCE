@@ -50,7 +50,7 @@ The `/cadence-implement` skill owns **lifecycle status transitions and external 
 
 Running full test suites and builds across dozens of red-green-accumulate cycles generates massive terminal output that would rapidly saturate an LLM's context window if ingested raw. During Step 04, `cadence-implementer` automatically delegates test and build log analysis to CADENCE's read-only local log-triage coprocessor (`enable_write_tools: false`):
 
-1. **Test & Compiler Log Compaction (`offload_log_triage` / `log-triage` on `local-fast-cpu`):** On every **RED**, **GREEN**, and **ACCUMULATE** test execution (as well as migration `apply → rollback → reapply` verification), test runner output is routed through `offload_log_triage` (`gemma-4-e2b` / `gemma-4-26b-a4b` running on the Ryzen 9 9955HX3D 3D V-Cache CPU server, port `11434`, at **0 MB VRAM**).
+1. **Test & Compiler Log Compaction (`offload_log_triage` / `log-triage` via `inference`):** On every **RED**, **GREEN**, and **ACCUMULATE** test execution (as well as migration `apply → rollback → reapply` verification), test runner output is routed through `offload_log_triage` (`inference` on port `11434`).
 2. **Verbatim Evidence Preservation:** `offload_log_triage` never paraphrases compiler errors or failing assertions — it returns the exact test runner command evidence, verbatim compiler/assertion error messages, pass/fail/skip counts, test coverage metrics, linter warnings, and exact `file:line` coordinates.
 3. **Raw Escape Hatch (`/tmp/agy-last-triage.log`):** Every invocation simultaneously writes the complete, unedited terminal output with line numbers to `/tmp/agy-last-triage.log`, allowing `cadence-implementer` to inspect raw surrounding lines whenever a subtle failure warrants deeper inspection.
 
@@ -81,7 +81,7 @@ Unit-level scenarios execute first, followed by full-stack integration scenarios
 - **CHORD observability seams** — implement and test `OS-{N}` scenarios (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`) per [`observability-patterns.md`](../../policies/observability-patterns.md) using the exact same red-green-accumulate-commit loop.
 
 ### Phase 3.5–4 — Final verification & `submission.md` drafting
-Run the complete test suite and linter/formatter one final time (via `offload_log_triage`), verify `run-gates.sh` passes if `artifacts/` were touched, record `branch: impl/{type}/{id}` in `metadata.yaml`, and instantiate **`specs/{ticket-id}/submission.md`** from [`specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) (populating `## Description` and `## Forge metadata` while leaving `## Discussion` and `## Resolution` for the review and maintainer gates).
+Run the complete test suite, linter/formatter, and post-implementation traceability gate (`verify-facts.sh --trace <ticket-id>`) one final time (via `offload_log_triage`), verify `run-gates.sh` passes if `artifacts/` were touched, record `branch: impl/{type}/{id}` in `metadata.yaml`, and instantiate **`specs/{ticket-id}/submission.md`** from [`specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) (populating `## Description` and `## Forge metadata` while leaving `## Discussion` and `## Resolution` for the review and maintainer gates).
 
 ## Boundary & Comment Discipline (`C1`–`C8`)
 

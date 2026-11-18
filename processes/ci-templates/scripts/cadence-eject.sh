@@ -33,11 +33,20 @@
 set -u
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SELF_DIR/../.." && pwd)"
+_UP2="$(cd "$SELF_DIR/../.." && pwd)"
+if [[ "$(basename "$_UP2")" == "processes" && -d "$_UP2/../skills/cadence-adopt" ]]; then
+  REPO_ROOT="$(cd "$_UP2/.." && pwd)"
+else
+  REPO_ROOT="$_UP2"
+fi
 
-# The committed footprint descriptor travels with the framework (installed by
-# adopt-cadence alongside this script). Override with EJECT_FOOTPRINT for tests.
-FOOTPRINT="${EJECT_FOOTPRINT:-$REPO_ROOT/artifacts/footprint.generated}"
+if [[ -n "${EJECT_FOOTPRINT:-}" ]]; then
+  FOOTPRINT="$EJECT_FOOTPRINT"
+elif [[ -f "$REPO_ROOT/processes/artifacts/footprint.generated" ]]; then
+  FOOTPRINT="$REPO_ROOT/processes/artifacts/footprint.generated"
+else
+  FOOTPRINT="$REPO_ROOT/artifacts/footprint.generated"
+fi
 
 # ---------------------------------------------------------------------------
 # The footprint-descriptor + strip-set concern lives in a sourced module so each
@@ -262,13 +271,16 @@ case "${1:-}" in
     # a confidentiality-relevant omission is legible rather than one line in a
     # wall of diff output a reader skims past (DELTA_AUDIT_GAP
     # eject.footprint.context_row_missing).
-    for _ctx_row in "kind=seed path=CLAUDE.md" "kind=installed path=CADENCE_DIRECTIVES.md"; do
-      if ! grep -qFx "$_ctx_row" "$FOOTPRINT"; then
-        emit_seam DELTA_AUDIT_GAP eject.footprint.context_row_missing "$_ctx_row"
-        echo "FAILED: the committed descriptor is missing the context row: $_ctx_row" >&2
-        echo "        Without it, eject stops stripping that file from a client deliverable." >&2
-      fi
-    done
+    if ! grep -qFx "kind=seed path=AGENTS.md" "$FOOTPRINT" && ! grep -qFx "kind=seed path=CLAUDE.md" "$FOOTPRINT"; then
+      emit_seam DELTA_AUDIT_GAP eject.footprint.context_row_missing "kind=seed path=AGENTS.md"
+      echo "FAILED: the committed descriptor is missing the context row: kind=seed path=AGENTS.md" >&2
+      echo "        Without it, eject stops stripping the context file from a client deliverable." >&2
+    fi
+    if ! grep -qFx "kind=installed path=CADENCE_DIRECTIVES.md" "$FOOTPRINT"; then
+      emit_seam DELTA_AUDIT_GAP eject.footprint.context_row_missing "kind=installed path=CADENCE_DIRECTIVES.md"
+      echo "FAILED: the committed descriptor is missing the context row: kind=installed path=CADENCE_DIRECTIVES.md" >&2
+      echo "        Without it, eject stops stripping that file from a client deliverable." >&2
+    fi
     diff "$FOOTPRINT" <(derive_footprint) >&2
     exit 1
     ;;

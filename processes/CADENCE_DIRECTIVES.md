@@ -21,7 +21,7 @@
 
 6. **A fact modified in one place must be reconciled everywhere.** Whenever a fact is represented across multiple artifacts — specification, template, instance, role definition, summary document, or code comment — the work is incomplete until every representation agrees within the same change. Sweep all occurrences together; a drifted copy is a defect, not follow-up maintenance. This explicitly governs code comments: any comment rendered stale by a change must be updated or removed in that same change (`docs/policies/comment-discipline.md`).
 
-7. **Direct execution vs. governed CADENCE skill — when ambiguous, ask; never choose silently.** Most engineering requests can be fulfilled in two distinct ways: executed **directly/natively** (ad-hoc edits in the active session) or routed through the governed **CADENCE skill** for that lifecycle stage (`/cadence-triage`, `/cadence-elicit`, `/cadence-spec`, `/cadence-implement`, `/cadence-review`, `/cadence-maintain`, `/cadence-migrate`, `/cadence-archive`). These paths are not interchangeable — the governed skill path enforces human review gates, strict TDD cycles, specification artifacts, stage-effort accounting, and external tracker projection, whereas the native path bypasses all of them. Whenever a user's verb overlaps a governed phase and the intended path is not explicit, **pause and ask the user to choose** instead of defaulting to either. For instance, "implement XYZ" is ambiguous between an immediate ad-hoc edit and the governed `/cadence-implement XYZ` red-green-refactor workflow — always ask. **"File an issue for X", "file a ticket", "open a ticket", and "file a follow-up ticket" are `/cadence-triage`-stage verbs and fall squarely under this directive** — they overlap `/cadence-triage`'s domain without naming the command. Executed natively, such a request can invoke a tracker `reserve` directly and leave an allocated identifier without a paired `specs/<id>/` directory (`idalloc.reserve.unpaired_artifact_creation`). Prompt the user for the intended path and name the sanctioned command: **`/cadence-triage --file-only <draft-path>`** files a ticket — write the problem text to a file first (`specs/drafts/` is the recommended location) and pass the bare file path; the identifier is allocated, both artifacts are created at `status: draft`, and classification is deferred — matching what "just file it" intends. The file-path form is required because free-form text does not reliably survive the skill argument channel (`artifacts/SCHEMA.md`, *What `arguments:` is, and what it is not*), whereas a mangled path fails to open cleanly rather than filing a truncated ticket. The legacy inline form **`/cadence-triage --file-only "<description>"`** remains functional but is **DEPRECATED** and sunsets in 2 release cycles; see `docs/migrations/triage-file-only-draft-path.md`. This directive is procedural signage rather than a mechanical lock: see `CADENCE_ORG.md#id-allocation-binding` (*Reservation pairing*) for the underlying invariant. A request is unambiguous (requiring no prompt) only when the user names the skill explicitly (`/cadence-implement XYZ`) or explicitly requests ad-hoc execution ("make a quick direct edit", "skip the workflow", "prototype this inline"). This applies [Behavior 1](#behaviors) directly to workflow routing.
+7. **Direct execution vs. governed CADENCE skill — when ambiguous, ask; never choose silently.** Most engineering requests can be fulfilled in two distinct ways: executed **directly/natively** (ad-hoc edits in the active session) or routed through the governed **CADENCE skill** for that lifecycle stage (`/cadence-triage`, `/cadence-elicit`, `/cadence-spec`, `/cadence-implement`, `/cadence-review`, `/cadence-maintain`, `/cadence-migrate`, `/cadence-archive`). These paths are not interchangeable — the governed skill path enforces human review gates, strict TDD cycles, specification artifacts, stage-effort accounting, and external tracker projection, whereas the native path bypasses all of them. Whenever a user's verb overlaps a governed phase and the intended path is not explicit, **pause and ask the user to choose** instead of defaulting to either. For instance, "implement XYZ" is ambiguous between an immediate ad-hoc edit and the governed `/cadence-implement XYZ` red-green-refactor workflow — always ask. **"File an issue for X", "file a ticket", "open a ticket", and "file a follow-up ticket" are `/cadence-triage`-stage verbs and fall squarely under this directive** — they overlap `/cadence-triage`'s domain without naming the command. Executed natively, such a request can invoke a tracker `reserve` directly and leave an allocated identifier without a paired `specs/<id>/` directory (`idalloc.reserve.unpaired_artifact_creation`). Prompt the user for the intended path and name the sanctioned command: **`/cadence-triage --file-only <draft-path>`** files a ticket — write the problem text to a file first (`specs/drafts/` is the recommended location) and pass the bare file path; the identifier is allocated, both artifacts are created at `status: draft`, and classification is deferred — matching what "just file it" intends. The file-path form is required because free-form text does not reliably survive the skill argument channel, whereas a mangled path fails to open cleanly rather than filing a truncated ticket. The legacy inline form **`/cadence-triage --file-only "<description>"`** remains functional but is **DEPRECATED** and sunsets in 2 release cycles; see `docs/migrations/triage-file-only-draft-path.md`. This directive is procedural signage rather than a mechanical lock: see `CADENCE_ORG.md#id-allocation-binding` (*Reservation pairing*) for the underlying invariant. A request is unambiguous (requiring no prompt) only when the user names the skill explicitly (`/cadence-implement XYZ`) or explicitly requests ad-hoc execution ("make a quick direct edit", "skip the workflow", "prototype this inline"). This applies [Behavior 1](#behaviors) directly to workflow routing.
 
 8. **Tests target application runtime behavior, never the governance prose that describes it.** Automated tests verify what the repository's software product does when executed; no test may read, parse, or assert against the governance markdown documents describing how the product is built. The prohibited targets, the permitted scope, the applicability binding, and each agent role's obligations are defined **once** in [`docs/policies/test-scope.md`](docs/policies/test-scope.md) -- this directive delegates to that policy without duplicating its clauses.
 
@@ -71,42 +71,43 @@ Organization configuration: `docs/agentic-sdlc/CADENCE_ORG.md`
 
 ## Agents & Model Routing
 
-Agents are specialized subagents compiled into `.agents/agents/` (with `.gemini/` serving as the Gemini/Antigravity reference runtime and `.claude/` or other CLI directories projected off `.agents/` per `docs/policies/cli-runtime-adoption-policy.md`). Each agent operates under a constrained role, tool allowlist, and capability tier.
+Agents are specialized subagents stored directly under `.agents/agents/<role>/agent.md` (with `.gemini/` serving as the Antigravity/Gemini reference runtime and `.claude/`, `.opencode/`, or `.blitz/` projected off `.agents/` per `docs/policies/cli-runtime-adoption-policy.md`). Each agent operates under a constrained role, tool allowlist, and capability tier.
 
-> **Source of record:** `.agents/agents/*/AGENT.md` are **generated build outputs**, compiled from the runtime-neutral source under `artifacts/roles/` by `ci-templates/scripts/cadence-compile.sh`. Edit the neutral source under `artifacts/roles/` and recompile — **never edit `.agents/agents/` directly**, or your changes will be overwritten on the next compile. (PI-012 / ADR_CADENCE-0008)
+> **Source of record:** `.agents/agents/<role>/agent.md` (in `sdlc`, symlinked to `agents/<role>/agent.md`) is the canonical source of record. Never fork changes inside `.gemini/` or `.claude/`. Each agent declares a provider-neutral capability tier and reasoning effort (`Deep-reasoning` with `effort: xhigh`, or `Fast-mechanical` with `effort: high`), while concrete model IDs resolve via `docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping` and `ci-templates/scripts/adapters/`. `default_model` in `agent.md` provides Blitz local fallback compatibility.
 
-| Agent | Purpose | Phase | Primary Model Tier |
+| Agent | Purpose | Phase | Capability Tier & Effort |
 |---|---|---|---|
-| `cadence-triage-agent` | Classify incoming issue, assess scope, scan duplicates, create spec stub | Classify (Triage) | Fast-mechanical (`gemini-3.8-flash` / `flash`) |
-| `cadence-architect` | High-tier pre-flight (opt-in at Medium): surface implicit cross-boundary contracts and draft Gherkin specs before spec authoring | Architect & Explore | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-explorer` | Independently produce 2-3 structurally distinct, steelmanned design options — without ranking | Architect & Explore | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-spec-author` | Ground solution via Contextual Grounding Matrix + CHORD, author spec and test plan | Decompose & Specify | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-implementer` | Execute the ticket's tier contract (spec at Medium/High, `problem.md` ACs at Low) via strict BDD red-green-refactor TDD | Execute via TDD | Deep-reasoning / Fast-mechanical (`gemini-4-argon` / `pro`) |
-| `cadence-migration-author` | Author EF Core schema and data migrations using the expand/contract pattern | Execute via TDD (Migration) | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-reviewer` | Review MR against its tier contract (spec at Medium/High, `problem.md` ACs at Low) — criteria, coverage, security | Navigate Gates (Code Review) | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-maintainer` | Evaluate MR for project-level acceptance — compatibility, architecture, charter alignment | Navigate Gates (Maintainer Review) | Deep-reasoning (`gemini-4-argon` / `pro`) |
-| `cadence-archivist` | Enshrine completed work in `archive/`, update CHANGELOG, sync the repo's bound tracker | Consolidate & Enshrine (Archive) | Fast-mechanical (`gemini-3.8-flash` / `flash`) |
+| `cadence-triage-agent` | Classify incoming issue, assess scope, scan duplicates, create spec stub | Classify (Triage) | `Fast-mechanical` (`effort: high`) |
+| `cadence-architect` | High-tier pre-flight (opt-in at Medium): surface implicit cross-boundary contracts and draft Gherkin specs before spec authoring | Architect & Explore | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-explorer` | Independently produce 2-3 structurally distinct, steelmanned design options — without ranking | Architect & Explore | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-spec-author` | Ground solution via Contextual Grounding Matrix + CHORD, author spec and test plan | Decompose & Specify | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-implementer` | Execute the ticket's tier contract (spec at Medium/High, `problem.md` ACs at Low) via strict BDD red-green-refactor TDD | Execute via TDD | `Deep-reasoning` (`effort: xhigh`, all tiers) |
+| `cadence-migration-author` | Author reversible, idempotent schema/data migrations across stacks using the expand/contract pattern | Execute via TDD (Migration) | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-reviewer` | Review MR against its tier contract (spec at Medium/High, `problem.md` ACs at Low) — independent test verification + Section 10 adversarial falsification | Navigate Gates (Code Review) | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-security-auditor` | Adversarial security and concurrency audit (authz, secrets/PII, injection, TOCTOU/locking races, transactions, fail-open paths) — always High tier, signal-triggered on Low/Medium via `security-trigger.sh` | Navigate Gates (Code Review) | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-maintainer` | Evaluate MR for project-level acceptance — compatibility, architecture, charter alignment | Navigate Gates (Maintainer Review) | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-archivist` | Enshrine completed work in `archive/`, update CHANGELOG, sync the repo's bound tracker | Consolidate & Enshrine (Archive) | `Fast-mechanical` (`effort: high`) |
 
 Key constraints:
-- Read-only agents (`cadence-architect`, `cadence-reviewer`) cannot write or modify repository files
+- Read-only agents (`cadence-architect`, `cadence-reviewer`, `cadence-security-auditor`, `log-triage`, `repo-scout`) cannot write or modify repository files
 - `cadence-implementer` writes application source and test files plus the ticket's `specs/` execution artifacts (`submission.md` draft, `test-plan.md` infrastructure discovery fields)
 - All agents enforce the core behaviors above
 
 ### Automatic 2-Tier Local Hardware Coprocessor Offload (`127.0.0.1:11434`)
 
-Alongside the cloud reasoning tiers (`gemini-4-argon` / `pro` and `gemini-3.8-flash` / `flash`), CADENCE integrates an automatic **2-Tier Local Hardware Coprocessor Offload** pipeline served by the unified `llama-swap` gateway (`local-ai-offload.service` on `127.0.0.1:11434`) via the `local-offload` MCP server (`offload_log_triage`, `offload_deep_review`, `local_semantic_embed`) and read-only helper subagents (`log-triage`, `repo-scout`) across **both general/ad-hoc prompts and governed `/cadence-*` workflows**:
+Alongside the primary capability tiers (`Deep-reasoning` at `xhigh` effort and `Fast-mechanical` at `high` effort), CADENCE integrates an automatic **Local Hardware Coprocessor Offload** pipeline served by the unified `llama-swap` gateway (`local-ai-offload.service` on `127.0.0.1:11434`) via the `local-offload` MCP server (`offload_log_triage`, `offload_deep_review`, `local_semantic_embed`) and read-only helper subagents (`log-triage`, `repo-scout`):
 
-- **Tier 1 — Always-On Zero-VRAM CPU (`embedding` / `local-embed-cpu` on `127.0.0.1:11434`)**: Runs `nomic-embed-text` (768-dim embeddings, 128MB 3D V-Cache, 0 MB GPU VRAM). Automatically handles Step 0 semantic file, symbol, insight, and duplicate discovery (`local_semantic_embed` / `repo-scout`) before broad repository file reads on every prompt.
-- **Tier 2 — Warm Dual-GPU / Hybrid Inference (`inference` / `local-moe-hybrid` on `127.0.0.1:11434`)**: Runs `gemma-4-26b-a4b-it` (Dual-GPU RTX 5080 + RTX 5070 Ti when docked) or `gemma-4-12b-it` (RTX 5070 Ti when undocked). Automatically handles noisy test/build/compiler/diagnostic log compaction (`offload_log_triage`, writing full raw output with line numbers to `/tmp/agy-last-triage.log`) and advisory pre-commit / pre-PR / gate mechanical sweeps (`offload_deep_review`) checking the `<400`-line file ceiling, comment discipline, and CHORD seam completeness.
+- **Semantic Discovery (`embedding` on `:11434`, `top_k=6`, ~36-line AST/section slices):** Handles Step 0 file, symbol (`sym@L<line>`), insight, and duplicate discovery before broad file reads; reports a warning if `max_files` caps a directory walk.
+- **Inference Triage & Diff Pre-Review (`inference` on `:11434`):** Compacts noisy test/build/compiler/gate logs `>30` lines or failing (`offload_log_triage` with explicit `cwd` and `/tmp/agy-triage/<repo_name>/<pid>.log` raw escape hatch) and runs diff-aware mechanical pre-scans (`offload_deep_review` with `diff_range` + `cwd`, `<400`-line check, comment discipline, and CHORD seams).
 - **Strict Read-Only Guardrail**: Local models act exclusively as read-only analytical and retrieval coprocessors (`enable_write_tools: false`) and never author or edit project files.
 
 ---
 
 ## Skills
 
-Skills are user-invokable slash-command workflows compiled into `.agents/skills/` (and projected to `.gemini/` or `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`).
+Skills are user-invokable slash-command workflows stored directly in `.agents/skills/<skill>/SKILL.md` (and projected to `.gemini/` or `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`).
 
-> **Source of record:** `.agents/skills/*/SKILL.md` are **generated** from `artifacts/commands/` by `cadence-compile.sh`. Edit the neutral source and recompile — **never edit `.agents/skills/` directly**. (PI-012 / ADR_CADENCE-0008)
+> **Source of record:** `.agents/skills/<skill>/SKILL.md` (in `sdlc`, symlinked to `skills/<skill>/SKILL.md`) is the canonical source of record. Never fork files into `.gemini/` or `.claude/`.
 
 | Command | What It Does |
 |---|---|
@@ -114,6 +115,7 @@ Skills are user-invokable slash-command workflows compiled into `.agents/skills/
 | `/cadence-upgrade` | Merge a newer CADENCE core release into an adopter's customized tree using `.cadence-version` as the 3-way merge base — clean diffs apply automatically, conflicts surface for human resolution (never a silent merge), application is atomic, and the version stamp advances only on a completely clean apply |
 | `/cadence-interview` | Guide an adopter through populating `<placeholder>` cells in `CADENCE_ORG.md`'s Contextual Grounding Where/Who/Why tables — offering 3 codebase-evidenced candidates + N/A + custom entry per row; `--re-interview` re-opens every row. N/A is non-destructive (retains the row); scope is strictly the Where/Who/Why tables. Invoked automatically by `/cadence-upgrade`'s post-upgrade flow when the org-fold produces no staged conflict |
 | `/cadence-triage` | Classify an incoming issue — assess scope/tier, check duplicates, and create the spec stub. With `--file-only`, it **files** without classifying: `/cadence-triage --file-only <draft-path>` (write the problem description to a file first and pass the bare path) allocates an id and writes `specs/<id>/problem.md` + `metadata.yaml` at `status: draft` with an empty tier; a subsequent `/cadence-triage <id>` classifies it. The inline `--file-only "<description>"` form is deprecated for 2 release cycles (`docs/migrations/triage-file-only-draft-path.md`) |
+| `/cadence-propose` | Mechanize Workflow Step 00 (Problem) — check `PROJECT_INTENT.md` fit and surface registries, scan semantic duplicates/prior insights (`:11434`), draft a 3–5 sentence 4-part proposal into `specs/drafts/<slug>.md`, and hand off to `/cadence-triage` |
 | `/cadence-elicit` | Walk a human requester through unanswered probe questions in `problem.md` and append verbatim responses under `## Elicited Intent` |
 | `/cadence-spec` | Author a complete specification and test plan from a triaged issue using Contextual Grounding + CHORD |
 | `/cadence-implement` | Execute a ticket's tier contract via strict BDD red-green-refactor TDD — approved spec (Medium/High) or `problem.md` ACs (Low) |
@@ -125,7 +127,12 @@ Skills are user-invokable slash-command workflows compiled into `.agents/skills/
 | `/cadence-mint` | Reserve (or peek) the next collision-safe identifier for a prefix (PI/ADR/II/PROD/custom) against the shared, flock-atomic reserve ledger — invoked internally by `/cadence-triage`, `/cadence-archive`, `/cadence-adopt`, and `/cadence-upgrade` |
 | `/cadence-sync-jira` | Project spec metadata and lifecycle status to on-prem Jira Server/DC (PAT authentication) |
 | `/cadence-bump-model` | Update the concrete model identifier in agent YAML frontmatter and `CADENCE_ORG.md#model-tier-mapping` within a single capability tier |
+| `/cadence-refactor` | Execute wide, deterministic, behavior-preserving refactors under `Fast-mechanical` (`high` effort) against an exhaustive manifest, halting to `/cadence-spec` whenever registered surfaces or contracts change |
+| `/cadence-merge` | Mechanize Workflow Step 07 (Merge) — validate tier-required gates and `#branch-strategy-binding`, rebase and re-test via `:11434` offload, update `status: merged` + `merged_at`, sync bound tracker, prune worktree, and hand off to `/cadence-archive` |
+| `/cadence-doctor` | Run a strictly read-only audit of CADENCE governance files, org bindings, `<400L` compliance, footprint freshness, allocator health, installed gates, and optional `--ticket` artifacts |
+| `/cadence-eject` | Safely wrap `cadence-eject.sh` to validate eject footprint descriptors (`--check-footprint`) or export a CADENCE-stripped deliverable copy after preview confirmation and verification |
 | `/cadence-release` | Cut a governed release — compute the major/minor/patch version bump from `[Unreleased]` changelog entries (with operator confirmation), finalize CHANGELOG, update README, draft release notes, commit, create an annotated git tag, and push |
+| `/cadence-retro` | Run a read-only cross-ticket retrospective across `archive/*/` via `retro_scan.py` and `:11434` semantic clustering, surfacing rework hotspots, effort variance, deferred follow-ups, and confirmation-gated `II-NNN`/`PROD-NNN` insight candidates |
 
 ---
 
@@ -155,12 +162,10 @@ PROJECT_INTENT.md                   — Repository charter: mission, scope, non-
                                       quality stance, architecture invariants, contribution posture.
                                       Grounds every maintainer accept/reject decision.
 
-artifacts/                          — RUNTIME-NEUTRAL SOURCE OF RECORD for agents + skills
-├── roles/                          — neutral source per agent  (→ .agents/agents/, generated)
-├── commands/                       — neutral source per skill   (→ .agents/skills/, generated)
-├── SCHEMA.md                       — neutral-source field schema (capability vocabulary only)
-├── manifest.generated              — derived canonical manifest (committed, CI-checked)
-└── footprint.generated             — derived framework↔project boundary (committed, CI-checked)
+.agents/                            — CANONICAL CLI-NEUTRAL AGENTS, SKILLS & HOOKS
+├── agents/<role>/agent.md          — role definition (projected to .gemini/.claude/.blitz)
+├── skills/<skill>/SKILL.md         — skill definition + co-located scripts/references/evals
+└── hooks/                          — lifecycle hooks (hooks.json, offload, tracker reminders)
 
 specs/{ticket-id}/
 ├── problem.md        — Problem statement, business context, and acceptance criteria
@@ -188,7 +193,7 @@ Templates: `specs/TEMPLATE/` and `docs/agentic-sdlc/PROJECT_INTENT_TEMPLATE.md`
 Enshrined work: `archive/{ticket-id}/`
 System documentation: `docs/SYSTEM_OVERVIEW.md` and `docs/flows/`
 Project charter: `PROJECT_INTENT.md` at repository root — evaluated by `cadence-maintainer` and consulted by `cadence-spec-author` and `cadence-triage-agent` when grounding scope
-Generated runtime trees: `.agents/agents/` and `.agents/skills/` are compiled from `artifacts/` by `ci-templates/scripts/cadence-compile.sh` (with `.gemini/` or `.claude/` projected per `docs/policies/cli-runtime-adoption-policy.md`) — always edit the neutral source under `artifacts/` and recompile, never edit `.agents/` directly (PI-012 / ADR_CADENCE-0008)
+Canonical agent/skill trees: `.agents/agents/<role>/agent.md` and `.agents/skills/<skill>/SKILL.md` are the single source of record (projected to `.gemini/`, `.claude/`, or `.blitz/` per `docs/policies/cli-runtime-adoption-policy.md`).
 
 ---
 

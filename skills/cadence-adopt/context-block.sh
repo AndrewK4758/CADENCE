@@ -46,7 +46,7 @@ CONTEXT_END='<!-- <<< CADENCE directives <<< -->'
 # described in ci-templates/scripts/neutral-vocabulary.sh, not reproduced in this
 # comment -- writing it here would make the compiler expand the prose too).
 CONTEXT_SIDECAR='CADENCE_DIRECTIVES.md'
-CONTEXT_FILE='CLAUDE.md'
+CONTEXT_FILE="${CADENCE_CONTEXT_FILE:-AGENTS.md}"
 
 # Set by write_context_wiring to "stub" | "written" | "replaced" -- the three
 # branches of the adopt.context.block_action decision seam. "stub" means the
@@ -131,7 +131,7 @@ write_context_wiring() {
   # target. The COPY_PATHS loop already fails loud on the first and copies for
   # the second, but this module is called unconditionally and DISTRUSTS that
   # loop rather than assuming it ran -- checking, never re-installing.
-  if [[ ! -f "$src/$CONTEXT_SIDECAR" ]]; then
+  if [[ ! -f "$src/$CONTEXT_SIDECAR" && ! -f "$src/processes/$CONTEXT_SIDECAR" ]]; then
     echo >&2
     echo "ERROR: missing in source: $CONTEXT_SIDECAR" >&2
     echo "Adoption aborted -- refusing to report success without the CADENCE directives sidecar (II-014)." >&2

@@ -1,0 +1,159 @@
+#!/usr/bin/env zsh
+# ==============================================================================
+# llama-server-dropcache
+#
+# Drop-in launcher for llama-server that evicts the model files from the Linux
+# page cache once the weights are resident in VRAM.
+#
+# Why: llama.cpp mmaps the GGUF, uploads every offloaded layer to the GPU and
+# unmaps the regions it no longer needs on the host. The kernel still keeps the
+# whole file (16 GB for Gemma 4 26B A4B) in the page cache as "recently used"
+# and, with MGLRU, pushes the idle desktop (kwin_wayland, plasmashell, WebStorm,
+# Chrome, node) out to swap to make room. Result: multi-second UI freezes while
+# those pages fault back in, and ~130 GB/day of swap churn on the QLC root NVMe.
+#
+# How: posix_fadvise(POSIX_FADV_DONTNEED) via GNU coreutils
+# `dd if=<file> iflag=nocache count=0` on every --model / --model-draft /
+# --mmproj / --lora file. Only clean, unmapped pages are dropped, so tensors still mapped on the
+# CPU (partial offload) are untouched. No root required. While the model is
+# still loading the drop runs every few seconds, so regions llama.cpp has
+# already uploaded and unmapped never accumulate; a final drop runs once
+# /health answers 200.
+#
+# Usage (llama-swap `cmd:`): replace `llama-server` with `llama-server-dropcache`
+#   llama-server-dropcache --port ${PORT} --model ... --mmproj ... [llama-server args]
+#
+# Process model: the page-cache watcher is forked as a background subshell and
+# the launcher then `exec`s llama-server, so llama-server keeps the PID (and
+# process-group leadership) that llama-swap tracks. No signal forwarding is
+# done on purpose: llama-swap stops a model with SIGTERM to the *whole process
+# group* (Setpgid + kill(-pid)), so a forwarding wrapper that is itself in that
+# group delivers a second SIGTERM to llama-server. llama-server treats a second
+# signal as "terminate immediately" and calls exit() from the signal handler
+# while the main thread is still freeing CUDA buffers, which races the CUDA /
+# cuBLAS teardown and ends in `ggml_cuda_error` -> SIGABRT + a ~1.3 GB core
+# dump on every swap. With exec there is exactly one SIGTERM, llama-server's
+# own exit status is what llama-swap sees, and the watcher (same process group)
+# is terminated by the same group signal.
+#
+# Environment:
+#   LLAMA_DROPCACHE_DISABLE=1       behave exactly like `exec llama-server "$@"`
+#   LLAMA_DROPCACHE_DURING_LOAD=0   drop only once after /health is ready
+#   LLAMA_DROPCACHE_INTERVAL=2      seconds between health polls / drops while loading
+#   LLAMA_DROPCACHE_TIMEOUT=600     give up polling after this many seconds
+#                                   (match llama-swap healthCheckTimeout)
+#   LLAMA_DROPCACHE_HOST=127.0.0.1  address llama-server listens on
+#   LLAMA_SERVER_BIN=llama-server   binary to launch
+# ==============================================================================
+emulate -L zsh
+setopt pipe_fail no_unset extended_glob
+
+typeset -g DROPCACHE_TAG='[dropcache]'
+
+function _dropcache_log() {
+    print -u2 -- "$DROPCACHE_TAG $*"
+}
+
+# "RES/SIZE" of a file in the page cache (util-linux fincore), or "?" if unavailable.
+function _dropcache_resident() {
+    local res size
+    whence -p fincore >/dev/null 2>&1 || { print -- "?"; return 0 }
+    read -r res size < <(fincore --noheadings --output RES,SIZE -- "$1" 2>/dev/null) || true
+    print -- "${res:-?}/${size:-?}"
+}
+
+# Evict clean, unmapped page-cache pages of each file (posix_fadvise DONTNEED).
+function _dropcache_drop() {
+    local f
+    for f in "$@"; do
+        [[ -r "$f" ]] || continue
+        dd if="$f" iflag=nocache count=0 status=none 2>/dev/null \
+            || _dropcache_log "warn: could not drop page cache for $f"
+    done
+}
+
+# Background watcher: poll /health of llama-server (pid $1), trim the page cache
+# while it loads, do a final drop once ready, then exit. Runs in the same
+# process group as llama-server, so llama-swap's group SIGTERM ends it too.
+function _dropcache_watch() {
+    local -i server_pid=$1 interval=$2 timeout=$3
+    local during_load=$4 host=$5 port=$6
+    shift 6
+    local -a files=("$@")
+    local f
+    local -i elapsed=0 ready=0
+
+    while kill -0 $server_pid 2>/dev/null && (( elapsed < timeout )); do
+        if curl -sf -m 2 -o /dev/null "http://$host:$port/health"; then
+            ready=1
+            break
+        fi
+        [[ "$during_load" == 1 ]] && _dropcache_drop "${files[@]}"
+        sleep $interval
+        (( elapsed += interval ))
+    done
+
+    if (( ready )); then
+        _dropcache_drop "${files[@]}"
+        for f in "${files[@]}"; do
+            _dropcache_log "  after:  $(_dropcache_resident "$f") resident  $f"
+        done
+        _dropcache_log "ready after ${elapsed}s; page cache released"
+    elif kill -0 $server_pid 2>/dev/null; then
+        _dropcache_log "warn: /health not ready after ${timeout}s; leaving page cache alone"
+    fi
+}
+
+function _dropcache_main() {
+    local bin="${LLAMA_SERVER_BIN:-llama-server}"
+
+    if [[ "${LLAMA_DROPCACHE_DISABLE:-0}" == 1 ]]; then
+        exec "$bin" "$@"
+    fi
+
+    # ---- Parse the llama-server arguments we care about -----------------------
+    local port="" host="${LLAMA_DROPCACHE_HOST:-127.0.0.1}" arg
+    local -a files
+    local -i i
+    for (( i = 1; i <= $#; i++ )); do
+        arg="${argv[i]}"
+        case "$arg" in
+            --port|-p)                      port="${argv[i+1]:-}" ;;
+            --port=*)                       port="${arg#*=}" ;;
+            --host)                         host="${argv[i+1]:-$host}" ;;
+            --host=*)                       host="${arg#*=}" ;;
+            --model|-m|--model-draft|-md|--spec-draft-model|--mmproj|--lora)     files+=("${argv[i+1]:-}") ;;
+            --model=*|--model-draft=*|--spec-draft-model=*|--mmproj=*|--lora=*)  files+=("${arg#*=}") ;;
+        esac
+    done
+    [[ "$host" == "0.0.0.0" || "$host" == "::" ]] && host="127.0.0.1"
+    files=(${files:#})   # drop empties
+
+    local -i interval=${LLAMA_DROPCACHE_INTERVAL:-2}
+    local -i timeout=${LLAMA_DROPCACHE_TIMEOUT:-600}
+    local during_load="${LLAMA_DROPCACHE_DURING_LOAD:-1}"
+
+    # $$ is this shell's pid; after `exec` below it is llama-server's pid.
+    local -i server_pid=$$
+    local f
+
+    if (( ${#files} == 0 )); then
+        _dropcache_log "no --model/--model-draft/--mmproj/--lora argument found; running $bin pid $server_pid without cache eviction"
+    elif [[ -z "$port" ]]; then
+        _dropcache_log "no --port argument found; running $bin pid $server_pid without cache eviction"
+    elif ! whence -p curl >/dev/null 2>&1; then
+        _dropcache_log "curl not found; running $bin pid $server_pid without cache eviction"
+    else
+        _dropcache_log "launching $bin as pid $server_pid; evicting ${#files} file(s) from page cache once http://$host:$port/health is ready"
+        for f in "${files[@]}"; do
+            _dropcache_log "  before: $(_dropcache_resident "$f") resident  $f"
+        done
+        # Fork the watcher; stdin detached, stderr kept so its lines reach llama-swap's log.
+        _dropcache_watch $server_pid $interval $timeout "$during_load" "$host" "$port" "${files[@]}" </dev/null &
+    fi
+
+    # ---- Become llama-server (same pid, same process group) -------------------
+    exec "$bin" "$@"
+}
+
+_dropcache_main "$@"

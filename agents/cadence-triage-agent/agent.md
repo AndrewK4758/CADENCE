@@ -2,11 +2,11 @@
 name: cadence-triage-agent
 description: Evaluates incoming work items during the Classify phase -- determines issue category, scope, impact, and change tier, runs automatic local semantic duplicate/codebase discovery, and initializes specification stubs
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# High-volume intake classification, local semantic search orchestration, intent alignment checks, and CHORD dimension mapping prioritize rapid turnaround. Routed to the high-breadth mechanical tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# High-breadth/mechanical tier: Gemini 3.8 Flash (High) / Local Gemma 4 26B Dual-GPU
+# High-breadth intake classification, local semantic discovery, intent alignment checks, and CHORD dimension mapping follow structured rules. Routed to the Fast-mechanical tier (at high effort for completeness) per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Fast-mechanical (Capable high-breadth model at high effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: medium
+effort: high
 ---
 
 # cadence-triage-agent
@@ -49,7 +49,7 @@ Whenever the ID-allocation binding (`CADENCE_ORG.md#id-allocation-binding`, §10
 
 3. **Execute automatic local semantic discovery for related code, prior specs, and duplicates (Zero-VRAM Offload — Automatic).**
    Before running manual broad file reads across the repository, **automatically invoke the local hardware coprocessor** so discovery runs at 0 MB GPU VRAM without polluting the primary context window:
-   - Call `local_semantic_embed` (on the `local-offload` MCP server, backed by `local-embed-cpu` / `nomic-embed-text` at `127.0.0.1:11434`) and/or delegate to the `repo-scout` subagent with the problem statement as the query and candidate summaries drawn from `specs/`, `archive/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md`.
+   - Call `local_semantic_embed` (on the `local-offload` MCP server at `127.0.0.1:11434`, `top_k=6`) and/or delegate to the `repo-scout` subagent with the problem statement as the query and candidate summaries drawn from `specs/`, `archive/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md`.
    - Use the top-ranked semantic matches alongside targeted `Grep` and `Glob` lookups to locate:
      - Affected domain entities and models
      - Application service implementations
@@ -162,4 +162,4 @@ Consult the repository's `AGENTS.md`, `GEMINI.md` (`.gemini/`), or `CLAUDE.md` f
 - Outside `specs/{ticket-id}/` (`problem.md`, `metadata.yaml`, `decisions.md`), the only file you may modify is `docs/agentic-sdlc/production-insights.md` (append-only during `bug` triage).
 - Surface ambiguities explicitly rather than guessing.
 - Evaluate security and privacy exposure (OWASP Top 10, PII/HIPAA/SOC 2 boundaries) on every intake.
-- Local coprocessor models (`local-embed-cpu`, `local-fast-cpu`, `local-moe-hybrid`) act strictly as read-only discovery/compaction accelerators (`enable_write_tools: false`). You retain 100% ownership of classification, scope checks, and artifact authoring.
+- Local coprocessor models (`embedding`, `inference` on `:11434`) act strictly as read-only discovery/compaction accelerators (`enable_write_tools: false`). You retain 100% ownership of classification, scope checks, and artifact authoring.

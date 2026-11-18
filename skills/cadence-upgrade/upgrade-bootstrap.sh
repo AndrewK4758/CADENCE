@@ -90,9 +90,10 @@ version_cmp() {
 # the merge loop can fire the directory_as_file_path anomaly seam (DEC-004).
 # Returns 0 if <ip> was a directory (and was expanded), 1 if it was NOT a directory.
 expand_dir_row() {
-  local ip="$1" ours_commit="$2" f rel
+  local ip="$1" ours_commit="$2" f rel core_ip
+  core_ip="$(_core_git_path "$ours_commit" "$ip" || echo "$ip")"
   if [[ ! -d "$TARGET/$ip" ]] \
-     && ! git -C "$CORE" ls-tree -d "$ours_commit" -- "$ip" 2>/dev/null | grep -q .; then
+     && ! git -C "$CORE" ls-tree -d "$ours_commit" -- "$core_ip" 2>/dev/null | grep -q .; then
     return 1   # not a directory -> caller treats it as a single file target
   fi
   if [[ -d "$TARGET/$ip" ]]; then
@@ -100,22 +101,37 @@ expand_dir_row() {
       rel="${f#"$TARGET"/}"; SEENMAP["$rel"]=1; DIR_EXPANDED["$rel"]="$ip"
     done < <(find "$TARGET/$ip" -type f 2>/dev/null)
   fi
-  # KNOWN LIMITATION (PI-031 review #3): git ls-tree C-QUOTES pathnames containing
-  # a tab/newline/non-ASCII byte (spaces are fine). Such a constituent would
-  # enumerate as a quoted string and mismatch the adopter `find` path. Out of
-  # practical scope -- footprint-declared directory paths make it extremely
-  # unlikely. See specs/PI-031/test-plan.md "Known Limitations".
   while IFS= read -r rel; do
-    [[ -n "$rel" ]] && { SEENMAP["$rel"]=1; DIR_EXPANDED["$rel"]="$ip"; }
-  done < <(git -C "$CORE" ls-tree -r --name-only "$ours_commit" -- "$ip" 2>/dev/null)
+    [[ -n "$rel" ]] || continue
+    rel="${rel#processes/}"
+    SEENMAP["$rel"]=1; DIR_EXPANDED["$rel"]="$ip"
+  done < <(git -C "$CORE" ls-tree -r --name-only "$ours_commit" -- "$core_ip" 2>/dev/null)
   return 0
+}
+
+# Resolve target-relative path inside $CORE git history (handles processes/, agents/, skills/, hooks/).
+_core_git_path() {
+  local commit="$1" rel="$2" alt=""
+  if git -C "$CORE" cat-file -e "$commit:$rel" 2>/dev/null; then
+    echo "$rel"; return 0
+  fi
+  case "$rel" in
+    .agents/agents/*) alt="agents/${rel#.agents/agents/}" ;;
+    .agents/skills/*) alt="skills/${rel#.agents/skills/}" ;;
+    .agents/hooks/*)  alt="hooks/${rel#.agents/hooks/}" ;;
+    *)                alt="processes/$rel" ;;
+  esac
+  if [[ -n "$alt" ]] && git -C "$CORE" cat-file -e "$commit:$alt" 2>/dev/null; then
+    echo "$alt"; return 0
+  fi
+  return 1
 }
 
 # Fetch <path> from core@<commit> into <dest_file>; empty file if absent there.
 core_file() {
-  local commit="$1" path="$2" dest="$3"
-  if git -C "$CORE" cat-file -e "$commit:$path" 2>/dev/null; then
-    git -C "$CORE" show "$commit:$path" > "$dest" 2>/dev/null
+  local commit="$1" path="$2" dest="$3" resolved
+  if resolved="$(_core_git_path "$commit" "$path")"; then
+    git -C "$CORE" show "$commit:$resolved" > "$dest" 2>/dev/null
   else
     : > "$dest"
   fi
@@ -140,7 +156,7 @@ merge_one_file() {
   # so it never double-fires under BASE_EMPTY (R-2).
   if [[ "$BASE_EMPTY" -eq 1 ]]; then
     : > "$b"                                   # global 2-way fallback (unchanged)
-  elif [[ ! -f "$TARGET/$rel" ]] && ! git -C "$CORE" cat-file -e "$base_commit:$rel" 2>/dev/null; then
+  elif [[ ! -f "$TARGET/$rel" ]] && ! _core_git_path "$base_commit" "$rel" >/dev/null 2>&1; then
     emit_seam DRIFT_SIGNAL upgrade.bootstrap.never_installed_classified_as_deleted "$rel"
     : > "$b"                                   # never installed -> empty base
   # >>> BTG-100 backfill-base-anchor-start: BACKFILL-BASE-BRANCH (DEC-002) >>>
@@ -193,18 +209,12 @@ merge_one_file() {
   # commands: a command may now declare a capability_tier, so a compiled command
   # carries a config-derived model: line for exactly the same reason a role does.
   local kept_model=""
-  if [[ "$rel" == *.agents/agents/*/AGENT.md    || "$rel" == .agents/agents/*/AGENT.md || \
-        "$rel" == *.agents/skills/*/SKILL.md || "$rel" == .agents/skills/*/SKILL.md ]]; then
-    kept_model="$(sed -nE 's/^(model:[[:space:]].*)$/\1/p' "$t" | head -n1)"
-    # Fall back to OURS when theirs has none. Theirs still wins when present, so
-    # the DEC-006 "the adopter's pin survives" contract is untouched -- but on
-    # the upgrade ACROSS the tier boundary (BTG-134) the adopter's compiled
-    # command legitimately has NO model: line yet while core's brand-new one
-    # does. Reading theirs only would leave kept_model empty, the strip below
-    # would delete core's line from ours too, and the re-insertion would be
-    # skipped: a CLEAN-SUCCESS report that silently withholds the feature.
-    [[ -z "$kept_model" ]] && kept_model="$(sed -nE 's/^(model:[[:space:]].*)$/\1/p' "$o" | head -n1)"
-    sed -i '/^model:[[:space:]]/d' "$b" "$t" "$o"
+  if [[ "$rel" == *.agents/agents/*/agent.md    || "$rel" == .agents/agents/*/agent.md || \
+        "$rel" == *.agents/agents/*/AGENT.md    || "$rel" == .agents/agents/*/AGENT.md || \
+        "$rel" == *.agents/skills/*/SKILL.md    || "$rel" == .agents/skills/*/SKILL.md ]]; then
+    kept_model="$(sed -nE 's/^((default_)?model:[[:space:]].*)$/\1/p' "$t" | head -n1)"
+    [[ -z "$kept_model" ]] && kept_model="$(sed -nE 's/^((default_)?model:[[:space:]].*)$/\1/p' "$o" | head -n1)"
+    sed -i -E '/^(default_)?model:[[:space:]]/d' "$b" "$t" "$o"
   fi
   # git merge-file -p: exit 0 clean / >0 = conflict-hunk count. The apply gate keys
   # off this EXIT STATUS, never the report text (AC-3 edge). --diff3 -L-labels make
@@ -322,23 +332,17 @@ bootstrap_if_no_stamp() {
   # never-adopted repo carrying its own CLAUDE.md still passes here and is then
   # halted by the footprint-absent precheck below, which remains the only
   # complete classifier.
-  if [[ ! -f "$TARGET/CLAUDE.md" && ! -f "$TARGET/CADENCE_DIRECTIVES.md" ]]; then
-    echo "upgrade-cadence: no .cadence-version and no CADENCE surface (CLAUDE.md and CADENCE_DIRECTIVES.md both absent)." >&2
+  if [[ ! -f "$TARGET/AGENTS.md" && ! -f "$TARGET/CLAUDE.md" && ! -f "$TARGET/CADENCE_DIRECTIVES.md" ]]; then
+    echo "upgrade-cadence: no .cadence-version and no CADENCE surface (AGENTS.md, CLAUDE.md, CADENCE_DIRECTIVES.md all absent)." >&2
     echo "upgrade-cadence: this is not a CADENCE adopter -- run /cadence-adopt first." >&2
     return 10
   fi
-  # AC-1 pre-check (PI-032 / G-1): the footprint descriptor is a HARD precondition
-  # for the merge (consumed, never re-derived -- DEC-008/ADR_CADENCE-0009). Surface its
-  # absence to the operator BEFORE the confirm-base interaction and BEFORE any
-  # stamp write, so a pre-PI-021 adopter never wastes a confirm-base cycle nor
-  # ends up with a stamp-without-merge partial state. Placed at the function head
-  # so it stands INDEPENDENTLY of PI-031's G-2 stamp-ordering fix (DEC-002).
   if [[ ! -f "$FOOTPRINT" ]]; then
     emit_seam DELTA_AUDIT_GAP upgrade.boundary.descriptor_missing "$FOOTPRINT"
     echo "upgrade-cadence: required footprint descriptor is absent: $FOOTPRINT" >&2
     echo "upgrade-cadence: it is the merge boundary (consumed, never re-derived)." >&2
     echo "upgrade-cadence: generate it first (Step 0), with explicit confirmation -- this derives it atomically (temp-then-move, never a truncating redirect):" >&2
-    echo "upgrade-cadence:   AUTOGEN_CONFIRM=1 UPGRADE_TARGET=\"$TARGET\" UPGRADE_CORE=<core> bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh --autogen-footprint" >&2
+    echo "upgrade-cadence:   AUTOGEN_CONFIRM=1 UPGRADE_TARGET=\"$TARGET\" UPGRADE_CORE=<core> bash <core>/skills/cadence-upgrade/upgrade-cadence.sh --autogen-footprint" >&2
     return 10   # handled, stop -- NO stamp written
   fi
   # Pre-PI-021 adopter (surface present, no stamp): infer + human-confirm a base

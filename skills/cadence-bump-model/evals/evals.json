@@ -1,0 +1,60 @@
+{
+  "skill_name": "cadence-bump-model",
+  "notes": "Evaluates /cadence-bump-model guarantees: in-tier substitution across adapters, CADENCE_ORG.md#model-tier-mapping, and agent.md default_model; strict cross-tier refusal; mandatory preview diff + confirmation; and zero-drift post-verify.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "refuses-cross-tier-substitution",
+      "prompt": "Run /cadence-bump-model gemini-4-hydrogen gemini-3.8-flash",
+      "expected_output": "Detects that gemini-4-hydrogen belongs to Deep-reasoning and gemini-3.8-flash belongs to Fast-mechanical (different capability tiers), refuses without modifying files, and directs the operator to open an intent ticket for tier reassignments.",
+      "assertions": [
+        "Resolves capability tiers from CADENCE_ORG.md#model-tier-mapping",
+        "Refuses cross-tier substitution between Deep-reasoning and Fast-mechanical",
+        "Performs zero edits to adapters, agent.md, or CADENCE_ORG.md"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-bump-model/SKILL.md",
+          "processes/docs/agentic-sdlc/CADENCE_ORG_TEMPLATE.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-bump-model/SKILL.md",
+            "regex": "cross-tier",
+            "flags": "i"
+          },
+          {
+            "file": "skills/cadence-bump-model/SKILL.md",
+            "regex": "model-tier-mapping"
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "in-tier-atomic-bump-with-preview-and-verify",
+      "prompt": "Run /cadence-bump-model claude-opus-5-0 claude-opus-5-5",
+      "expected_output": "Locates all concrete references across adapters, CADENCE_ORG.md#model-tier-mapping, and agent.md default_model lines, displays proposed diff before editing, obtains explicit confirmation, applies edits + syncs runtime projections, verifies zero remaining stale references outside historical prose, and leaves prose/ADRs untouched.",
+      "assertions": [
+        "Searches adapters, CADENCE_ORG.md, and agent.md default_model for all concrete occurrences",
+        "Displays exact diff and awaits operator confirmation before writing",
+        "Re-greps post-apply (failing on bump-model.reference_search.incomplete_representation_set if drift remains)",
+        "Leaves narrative release notes, ADRs, and external gateways untouched"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-bump-model/SKILL.md",
+            "regex": "adapters"
+          },
+          {
+            "file": "processes/docs/policies/change-tiers.md",
+            "regex": "Trivial"
+          }
+        ]
+      }
+    }
+  ]
+}

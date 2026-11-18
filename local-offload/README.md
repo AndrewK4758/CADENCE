@@ -11,10 +11,13 @@ This directory contains the complete local AI coprocessor infrastructure that po
 | `llama-swap/llamaswap-server` | `~/.local/bin/llamaswap-server` | Global CLI entrypoint for `llama-swap` |
 | `llama-swap/llamaswap-server.plugin.zsh` | `~/.config/llama-swap/llamaswap-server.plugin.zsh` | ZSH function & completions; auto-detects Dual-GPU (RTX 5080 eGPU + RTX 5070 Ti) vs. Single-GPU by NVIDIA UUID |
 | `llama-swap/local-ai-offload-serve` | `~/.local/bin/local-ai-offload-serve` | Systemd `ExecStart` wrapper; waits for NVIDIA/eGPU initialization at boot and execs `llamaswap-server` |
-| `llama-swap/llama-swap.egpu.yaml` | `~/.config/llama-swap/llama-swap.egpu.yaml` | Dual-GPU config: persistent `embedding` (`nomic-embed-text-v1.5.f16`) + warm `inference` (`Gemma 4 26B A4B IT + Vision`, 56/44 tensor split across 5080 + 5070 Ti, 96K ctx, `ttl: 0`) + `inference-12b` + `coder` + diffusion `image-*` models |
-| `llama-swap/llama-swap.single.yaml` | `~/.config/llama-swap/llama-swap.single.yaml` | Single-GPU laptop fallback config: persistent `embedding` + warm `inference` (`Gemma 4 12B IT + Vision`, 32K ctx, `ttl: 0`) + diffusion `image-*` models |
+| `llama-swap/llama-lan-proxy` | `~/.local/bin/llama-lan-proxy` | Zero-dependency HTTP/SSE reverse proxy with fast LAN probe & upstream/local fallback |
+| `llama-swap/llama-server-dropcache` | `~/.local/bin/llama-server-dropcache` | Wrapper that evicts GGUF weights from Linux page cache once VRAM-resident via `posix_fadvise` |
+| `llama-swap/llama-swap.egpu.yaml` | `~/.config/llama-swap/llama-swap.egpu.yaml` | Dual-GPU / 4-setup config (`embeddinggemma-2` + `work-gpu` / `3-home-gpus` / `laptop-gpu` / `laptop-egpu` / `31b`) |
+| `llama-swap/llama-swap.single.yaml` | `~/.config/llama-swap/llama-swap.single.yaml` | Single-GPU laptop fallback config (`embeddinggemma-2` + `laptop-gpu` 128K `q4_0` KV) |
+| `llama-swap/llama-swap.livingroom.yaml` | `~/.config/llama-swap/llama-swap.livingroom.yaml` | Living-Room headless server config (RTX 3050 Ti `embeddinggemma-2` + LAN `5080` proxy) |
 | `systemd/local-ai-offload.service` | `~/.config/systemd/user/local-ai-offload.service` | Systemd user unit managing `local-ai-offload-serve` on `127.0.0.1:11434` |
-| `mcp/antigravity-local-offload-mcp` | `~/.local/bin/antigravity-local-offload-mcp` | `uv`-powered FastMCP server exposing `local_semantic_embed` (`top_k=6`, AST-aligned 58-line Pinned Context Slices, full File Symbol Maps `sym@L<line>`, CamelCase symbol boost, test-file demotion), `offload_log_triage` (per-`<repo_name>/<PID>` raw logs in `/tmp/agy-triage/`), and `offload_deep_review` |
+| `mcp/antigravity-local-offload-mcp` & `mcp/offload_core.py` | `~/.local/bin/antigravity-local-offload-mcp` | `uv`-powered FastMCP server exposing `local_semantic_embed` (`top_k=6`, ~36-line Pinned Context Slices, truncation alerts, C#/Kotlin/TS/Py/Go/Rust symbol maps), `offload_log_triage` (`cwd`-aware, per-`<repo_name>/<PID>` raw logs), and diff-aware `offload_deep_review` |
 | `mcp/agy` | `~/.local/bin/agy` | Global Antigravity launcher wrapper ensuring `~/.gemini/config/hooks.json` is always synced from `~/.agents/hooks.json` before `exec /usr/bin/agy "$@"` |
 | `mcp/schemas/*.json` | `~/.gemini/antigravity-cli/mcp/local-offload/*.json` | Lazy-loaded tool schemas required by Antigravity CLI (`top_k=6` default) |
 | `mcp/mcp_config.example.json` | `~/.gemini/config/mcp_config.json` | Sanitized MCP server configuration template |
@@ -31,10 +34,10 @@ This directory contains the complete local AI coprocessor infrastructure that po
 `llamaswap-server.plugin.zsh` queries `nvidia-smi --query-gpu=uuid,name --format=csv,noheader` at startup:
 - **UUID-Based Pinning**: Instead of fragile PCI bus indices (`0`, `1`) that can flip on hotplug or reboot, `llamaswap-server` exports `IGPU_CUDA_DEVICE=<uuid>` and `EGPU_CUDA_DEVICE=<uuid>` into `llama-swap`.
 - **Automatic Mode Selection**:
-  - When an external GPU (`5080` or second GPU) is detected, it automatically selects `llama-swap.egpu.yaml` (Dual-GPU 26B A4B at 96K context).
-  - When undocked (only internal GPU detected), it automatically selects `llama-swap.single.yaml` (Single-GPU 12B at 32K context).
+  - When an external GPU (`5080` or second GPU) is detected, it automatically selects `llama-swap.egpu.yaml` (Dual-GPU 26B-A4B Coder at 64K Vision / 128K Text `q8_0` KV, plus `31b`/`31b-text` preserved).
+  - When undocked (only internal GPU detected), it automatically selects `llama-swap.single.yaml` (Single-GPU 12B at 128K `q4_0` KV).
 - **Config Validation Before Swap**: Before stopping any running server, `llamaswap-server` runs `llama-swap -config <yaml> -validate` with all environment variables populated so a broken edit never takes down the active service.
-- **Model Aliases**: Both `llama-swap.egpu.yaml` and `llama-swap.single.yaml` map all CADENCE and LiteRT model aliases (`inference`, `inference-dual`, `local-moe-hybrid`, `gemma-4-26b-a4b`, `gemma-4-12b`, `local-fast-cpu`, `gemma-4-e2b`, `litert`, `litert-gemma`) to the warm `inference` model (`ttl: 0`) so tool calls never trigger cold model swaps.
+- **Model Aliases**: Both `llama-swap.egpu.yaml` and `llama-swap.single.yaml` map all CADENCE compatibility aliases (`inference`, `inference-dual`, `local-moe-hybrid`, `local-fast-cpu`, `local-12b-gpu`) via `_mcp-inference` (ttl: 0 proxy) and `embedding` / `local-embed-cpu` to `embeddinggemma-2`.
 
 ### CLI Usage
 
@@ -49,22 +52,22 @@ llamaswap-server -m /path/to/models   # Override GGUF models directory
 
 ---
 
-## 3. FastMCP Server (`antigravity-local-offload-mcp`)
+## 3. FastMCP Server (`antigravity-local-offload-mcp` + `offload_core.py`)
 
-The MCP server runs via `uv run --script ~/.local/bin/antigravity-local-offload-mcp` (`<400` lines) and exposes three tools backed by `http://127.0.0.1:11434/v1`:
+The MCP server runs via `uv run --script ~/.local/bin/antigravity-local-offload-mcp` (`<400` lines per file) and exposes three tools backed by `http://127.0.0.1:11434/v1` (with thread-local connection pooling for concurrent calls):
 
 1. **`local_semantic_embed(texts, query, top_k=6)`**:
-   - Accepts file paths, directory paths, glob patterns, or inline text snippets.
-   - Splits source files on AST/symbol boundaries (`def`, `class`, `fn`, `func (recv) Name`, `type Name`, `interface`, `struct`, `enum`, markdown headings) into ~58-line (`160`-char width) numbered slices with up to 48-symbol File Maps (`sym@L<line>`) and CHORD seam tags (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`), sized to stay inline below Antigravity's `output.txt` spill threshold.
-   - Embeds all chunks via `nomic-embed-text` (`POST /v1/embeddings`), applies CamelCase/identifier symbol-matching boost (`+0.10` / `+0.08`) and test-file demotion (`_test.` / `.test.` `-0.08` vs. production `+0.04`), and returns **all `top_k` Pinned Context Slices & File Structural Maps** ready for immediate execution.
-2. **`offload_log_triage(log_text_or_command, model="inference")`**:
-   - Accepts `"cmd:<shell command>"`, a log file path, or raw log text.
-   - Captures the child OS `PID` and repository name (`_detect_repo_name`) and writes the complete, unedited 1-indexed log to `/tmp/agy-triage/<repo_name>/<pid>.log` (`0600`), updating `/tmp/agy-triage/<repo_name>/latest.log` and atomically mirroring `/tmp/agy-last-triage.log` so concurrent parent and subagent runs never collide.
-   - Fast-paths clean outputs (`<=30` lines, exit `0`, zero error signals) in `0 ms` without LLM overhead.
-   - Compacts duplicate error/warning signals and delegates root-cause + `file:line` extraction to warm `inference`.
-3. **`offload_deep_review(prompt, context_files, model="inference")`**:
-   - Computes static ergonomics telemetry (line counts vs. `<400`-line ceiling, symbol index, CHORD seams) and ranks top semantic slices for large files (`>160` lines).
-   - Delegates an advisory CADENCE Engineering Pillar pre-review to warm `inference`.
+   - Accepts file paths, directory paths (including `.agents/`, `.gemini/`, `.github/`), glob patterns, or inline text snippets.
+   - Splits source files on AST/symbol boundaries (`def`, `class`, C# `public/private/...`, Kotlin `fun`/`data class`, `fn`, `func (recv) Name`, `type Name`, `interface`, `struct`, `enum`, markdown headings) into ~36-line numbered slices with File Maps (`sym@L<line>`), CHORD seam tags, and an explicit truncation warning whenever more than `max_files=80` files match.
+   - Embeds all chunks via `embedding` (`POST /v1/embeddings`), applies CamelCase/identifier symbol-matching boost (`+0.10` / `+0.08`) and test-file demotion (`-0.08` vs. `+0.04`), and returns up to `min(top_k, 8)` inline-bounded Pinned Context Slices.
+2. **`offload_log_triage(log_text_or_command, model="inference", cwd=None)`**:
+   - Accepts `"cmd:<shell command>"` (executed inside `cwd` when supplied), a log file path, or raw log text.
+   - Captures the child OS `PID` and repository name (`detect_repo_name`) and writes the complete, unedited 1-indexed log to `/tmp/agy-triage/<repo_name>/<pid>.log` (`0600`), updating `/tmp/agy-triage/<repo_name>/latest.log` and atomically mirroring `/tmp/agy-last-triage.log` so concurrent parent and subagent runs never collide.
+   - Fast-paths clean outputs (`<=30` lines, or clean exit `0` `<=55` lines with zero error signals) in `0 ms` without LLM overhead.
+   - Compacts duplicate error/warning/exception signals (including `*Error` / `*Exception` compound names, `FAIL\t`, `● `) and delegates root-cause + `file:line` extraction to warm `inference`.
+3. **`offload_deep_review(prompt, context_files=None, model="inference", diff_range=None, cwd=None)`**:
+   - Collects unified git diff hunks (`diff_range`) and static ergonomics telemetry (exact line counts vs. `<400`-line ceiling, comment/TODO smells, symbol index, CHORD seams) rather than relying solely on semantic chunk subsets of large files.
+   - Delegates an advisory CADENCE Engineering Pillar pre-review (`max_tokens=900`) to warm `inference`.
 
 ---
 

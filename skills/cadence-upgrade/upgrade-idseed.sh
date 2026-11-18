@@ -19,7 +19,16 @@
 #
 # References: specs/PI-039/{spec,decisions}.md (DEC-006) ; PROD_CADENCE-001 (PI-031).
 
-idseed_mint() { echo "${CORE}/artifacts/commands/cadence-mint/mint-id.sh"; }
+idseed_mint() {
+  local c
+  for c in \
+    "${CORE}/skills/cadence-mint/mint-id.sh" \
+    "${CORE}/.agents/skills/cadence-mint/mint-id.sh" \
+    "${CORE}/artifacts/commands/cadence-mint/mint-id.sh"; do
+    [[ -f "$c" ]] && { echo "$c"; return 0; }
+  done
+  echo "${CORE}/skills/cadence-mint/mint-id.sh"
+}
 
 # A build-time seam fires as a stderr line + the caller's non-zero exit.
 idseed_seam() { echo "seam_type=$1 event_name=$2 subject=${3:-}" >&2; }

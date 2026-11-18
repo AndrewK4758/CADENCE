@@ -1,0 +1,89 @@
+{
+  "skill_name": "cadence-merge",
+  "notes": "Evaluates Workflow Step 07 (Merge) enforcement: tier-conditional gate checks (Gate 2 + Gate 3 at Medium/High vs Gate 2 only at Low), #branch-strategy-binding integration branch resolution, rebase + test re-run, --no-verify prohibition, and archive handoff.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "blocks-medium-high-without-maintainer-approval",
+      "prompt": "Merge High-tier ticket ACME-105 whose code review passed with 0 blockers, but maintainer_approved_at is still empty.",
+      "expected_output": "Halts fail-closed because High-tier changes require Gate 3 Maintainer Acceptance (maintainer_approved_at set) in addition to Gate 2 code review; directs operator to /cadence-maintain.",
+      "assertions": [
+        "Normalizes tier=High from metadata.yaml and resolves integration branch from #branch-strategy-binding",
+        "Refuses merge when maintainer_approved_at is missing at Medium/High tier",
+        "Directs operator to run /cadence-maintain without bypassing hooks or gates"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-merge/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-merge/SKILL.md",
+            "regex": "maintainer_approved_at"
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "low-tier-skips-gate3-and-resolves-bound-branch",
+      "prompt": "Merge Low-tier ticket ACME-109 after Gate 2 code review approved with 0 blocking findings.",
+      "expected_output": "Verifies Gate 2 approval and resolves integration branch dynamically from #branch-strategy-binding (e.g. trunk or develop), rebases/verifies tests via offload_log_triage if behind, confirms merge, sets status: merged + UTC merged_at, syncs tracker, cleans worktree, and hands off to /cadence-archive.",
+      "assertions": [
+        "Does NOT block Low-tier merge for missing maintainer_approved_at",
+        "Resolves integration-branch dynamically from CADENCE_ORG.md#branch-strategy-binding without hardcoding main or develop",
+        "Never uses --no-verify",
+        "Updates status: merged with exact UTC second-precision merged_at and chains /cadence-archive unless --no-archive is set"
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "cmd": "bash ci-templates/scripts/org-binding-resolve.sh --tracker ACME",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "tracker=inner-source"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-merge/SKILL.md",
+              "regex": "branch-strategy-binding"
+            },
+            {
+              "file": "skills/cadence-merge/SKILL.md",
+              "regex": "--no-verify"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "conflict-resolution-escalates-deep-reasoning-and-retests",
+      "prompt": "While merging BTG-142, its branch is behind the integration branch and hits a non-trivial code merge conflict.",
+      "expected_output": "Delegates code conflict resolution to cadence-implementer (Deep-reasoning, xhigh effort) in the ticket worktree rather than blindly using --ours/--theirs, re-runs canonical tests through offload_log_triage, and runs offload_deep_review before merging.",
+      "assertions": [
+        "Delegates non-trivial code conflict resolution to Deep-reasoning (xhigh effort)",
+        "Re-runs tests with offload_log_triage and runs offload_deep_review after conflict resolution"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-merge/SKILL.md",
+            "regex": "cadence-implementer"
+          },
+          {
+            "file": "skills/cadence-merge/SKILL.md",
+            "regex": "Deep-reasoning"
+          }
+        ]
+      }
+    }
+  ]
+}

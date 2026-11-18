@@ -1,0 +1,50 @@
+{
+  "skill_name": "cadence-mint",
+  "notes": "Evaluates /cadence-mint atomic ID allocation guarantees: delegates strictly to mint-id.sh, flock serialization over git-common-dir shared across worktrees, zero gap backfill, ADR 4-digit vs PI 3-digit zero-padding, --seed single-init refusal, and strict no-directory-scan-fallback fail-loud contract.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "monotonic-flock-reservation-no-scan-fallback",
+      "prompt": "Reserve the next PI identifier when flock is unavailable in PATH.",
+      "expected_output": "Delegates to .agents/skills/cadence-mint/mint-id.sh --reserve PI, fails loud on missing flock emitting UNSOUND_CONDITION idalloc.reserve.lock_unavailable without printing an ID, and refuses to fall back to scanning specs/, archive/, or docs/ADR/.",
+      "assertions": [
+        "Delegates directly to .agents/skills/cadence-mint/mint-id.sh",
+        "Fails loud with non-zero exit when flock or ledger lock is unavailable",
+        "Never falls back to scanning specs/, archive/, or docs/ADR/ directories"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "empty_git",
+        "cmd": "CADENCE_FLOCK_CMD=nonexistent_flock bash \"$ROOT/skills/cadence-mint/mint-id.sh\" --reserve PI",
+        "expect_exit": "nonzero",
+        "stderr_regex": [
+          "UNSOUND_CONDITION",
+          "idalloc\\.reserve\\.lock_unavailable"
+        ],
+        "not_stdout_regex": [
+          "^PI-"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "width-formatting-and-seed-guard",
+      "prompt": "Peek ADR vs PI formats and run --seed ADR 5 when ADR already has ledger rows.",
+      "expected_output": "Formats ADR with 4-digit zero-padding (ADR-0001) and PI/other prefixes with 3 digits (PI-001), shares ledger across linked worktrees via git-common-dir, never reuses gaps, and refuses --seed when prefix already has ledger entries.",
+      "assertions": [
+        "Zero-pads ADR / ADR_CADENCE to 4 digits and other prefixes to 3 digits",
+        "Refuses --seed on an already-seeded prefix cleanly",
+        "Never reuses deleted/skipped numeric gaps"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "empty_git",
+        "cmd": "p_adr=$(bash \"$ROOT/skills/cadence-mint/mint-id.sh\" --peek ADR) && r1=$(bash \"$ROOT/skills/cadence-mint/mint-id.sh\" --reserve PI note1) && r2=$(bash \"$ROOT/skills/cadence-mint/mint-id.sh\" --reserve PI note2) && echo \"$p_adr $r1 $r2\" && ! bash \"$ROOT/skills/cadence-mint/mint-id.sh\" --seed PI 5 dup >/dev/null 2>&1",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "^ADR-0001 PI-001 PI-002$"
+        ]
+      }
+    }
+  ]
+}

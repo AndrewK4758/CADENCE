@@ -1,0 +1,102 @@
+{
+  "skill_name": "cadence-review",
+  "notes": "Evaluates review integrity: diff-aware offload_deep_review pre-scan, tier-conditional contract (Low uses problem.md, Medium/High uses spec.md + test-plan.md unless qualified escalation ruling exists), Pass 1 independent verification + Pass 2 Section 10 4-position adversarial lens, and Step 6 followup-disposition compliance.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "adversarial-four-position-review",
+      "prompt": "Review ACME-105 where the author states 'pagination limit 100 is safe because seed data only has 50 rows'.",
+      "expected_output": "Does not accept the scale assumption unverified. Runs offload_deep_review(diff_range=...) first, executes tests independently with offload_log_triage, falsifies the 50-row premise against real seed/query data, checks sibling writers/callers across Positions 1-4, and flags blocking defects in submission.md.",
+      "assertions": [
+        "Invokes offload_deep_review with diff_range and cwd before delegating to cadence-reviewer",
+        "Refuses to accept 'out of scope / cannot occur at current scale' unverified",
+        "Applies all four Section 10 structural positions across diff, upstream, downstream, and untouched siblings",
+        "Persists verdict to specs/<id>/submission.md before forge comment publication"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-review/SKILL.md",
+          "agents/cadence-reviewer/agent.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "offload_deep_review"
+          },
+          {
+            "file": "agents/cadence-reviewer/agent.md",
+            "regex": "Adversarial"
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "low-tier-review-without-spec",
+      "prompt": "Review ACME-109 (tier Low) even though spec.md and test-plan.md do not exist.",
+      "expected_output": "Normalizes tier=Low from metadata.yaml prior to checking artifacts, reviews against problem.md Acceptance Criteria without flagging missing spec.md, and dispositions all out-of-scope-defect findings at Step 6.",
+      "assertions": [
+        "Normalizes tier=Low from metadata.yaml first",
+        "Does NOT flag missing spec.md or test-plan.md as a defect at Low tier",
+        "Executes Step 6 follow-up disposition via followup-disposition.md"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "tier: Low"
+          },
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "followup-disposition\\.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "unlabelled-nonblocking-halt",
+      "prompt": "A non-blocking finding in ## Discussion has no valid finding class token and no prior Follow-ups created disposition.",
+      "expected_output": "Halts enumeration immediately, emits finding.class.unlabelled citing /cadence-review, and prompts operator (never silently assigns a default class).",
+      "assertions": [
+        "Emits finding.class.unlabelled and halts enumeration",
+        "Does NOT assign a silent default class token"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-review/references/followup-disposition.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "finding\\.class\\.unlabelled"
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "hybrid-security-auditor-trigger",
+      "prompt": "Review Low-tier ticket ACME-301 whose diff modifies token verification / flock locking vs ACME-302 whose diff only adjusts UI currency text.",
+      "expected_output": "Runs security-trigger.sh: returns decision=TRIGGER (auth/concurrency signals) on ACME-301 to dispatch cadence-security-auditor alongside cadence-reviewer, and returns decision=SKIP on benign ACME-302.",
+      "assertions": [
+        "Evaluates security-trigger.sh before dispatching cadence-security-auditor",
+        "Always triggers cadence-security-auditor on High tier and on Low/Medium diffs with security or concurrency signals",
+        "Skips extra cadence-security-auditor pass on Trivial or signal-free Low/Medium diffs"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "git checkout -q -b impl/fix/ACME-TRIG && mkdir -p specs/ACME-301 specs/ACME-302 && printf \"id: ACME-301\\ntier: Low\\nstatus: in-review\\n\" > specs/ACME-301/metadata.yaml && printf \"id: ACME-302\\ntier: Low\\nstatus: in-review\\n\" > specs/ACME-302/metadata.yaml && printf \"import fcntl\\ndef check_jwt(): fcntl.flock(0, 2)\\n\" > src/guard.py",
+        "cmd": "out1=$(bash \"$ROOT/skills/cadence-review/security-trigger.sh\" --root \"$FIX\" --base trunk ACME-301) && echo \"$out1\" && rm -f src/guard.py && out2=$(bash \"$ROOT/skills/cadence-review/security-trigger.sh\" --root \"$FIX\" --base trunk ACME-302) && echo \"$out2\"",
+        "stdout_regex": [
+          "decision=TRIGGER tier=low .*auth",
+          "decision=SKIP tier=low signals=none"
+        ]
+      }
+    }
+  ]
+}

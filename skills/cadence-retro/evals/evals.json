@@ -1,0 +1,105 @@
+{
+  "skill_name": "cadence-retro",
+  "notes": "Evaluates /cadence-retro cross-ticket synthesis: empty-archive clean no-op, rework/effort/deferred-followup aggregation preserving unresolved tiers and existing II-NNN/PROD-NNN dedupe, and confirmation-gated atomic promotion.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "empty-archive-clean-noop-read-only",
+      "prompt": "Run /cadence-retro in an adopted repository whose archive/ directory is empty.",
+      "expected_output": "Runs retro_scan.py, observes status=empty_archive and archived_tickets=0, exits 0 reporting nothing to synthesize without creating files or reserving IDs.",
+      "assertions": [
+        "Runs retro_scan.py cleanly against an empty archive/",
+        "Reports status=empty_archive and exits 0 without creating or modifying files"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "adopted_repo",
+        "cmd": "python3 \"$ROOT/skills/cadence-retro/retro_scan.py\" --root \"$FIX\"",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "status=empty_archive",
+          "archived_tickets=0"
+        ],
+        "check_unchanged": [
+          "docs/agentic-sdlc/CADENCE_ORG.md",
+          "CHANGELOG.md"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "synthesizes-metrics-rework-and-deferred-followups",
+      "prompt": "Run retro_scan.py across archived tickets with >=2 review cycles, over-estimate effort, Deferred follow-ups, an unguarded citation sweep, an existing II-001 entry, and a ticket with empty tier.",
+      "expected_output": "Aggregates exact rework hotspots, stage_effort sums from metadata.yaml (never git timestamps), Deferred follow-ups, DEAD-CITATION-SWEEP warnings, existing II/PROD counts, and counts missing/empty tier as unresolved rather than Low.",
+      "assertions": [
+        "Flags review rework hotspots (>=2 cycles), over-estimate tickets, Deferred follow-ups, and SKIPPED citation sweeps",
+        "Preserves empty tier under unresolved rather than defaulting to Low",
+        "Reads recorded stage_effort/actual_effort cleanly and deduplicates existing insights"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "empty_git",
+        "setup_sh": "mkdir -p \"$FIX/archive/ACME-10\" \"$FIX/archive/ACME-11\" \"$FIX/archive/ACME-12\" \"$FIX/docs/agentic-sdlc\"\nprintf 'id: ACME-10\\ntier: High\\nstatus: archived\\narchived_at: 2026-10-01T10:00:00Z\\nestimated_effort: 1h\\nactual_effort: 2h\\nstage_effort:\\n  - stage: implementation\\n    effort: 1h 30m\\n  - stage: code-review\\n    effort: 30m\\n' > \"$FIX/archive/ACME-10/metadata.yaml\"\nprintf '# Sub\\n## Discussion\\n<!-- cadence-run:cycle n=1 phase=code-review blocking=2 nonblocking=1 -->\\n<!-- cadence-run:cycle n=2 phase=code-review blocking=0 nonblocking=0 -->\\n## Resolution\\nFollow-ups created: Deferred -- see discussion\\n' > \"$FIX/archive/ACME-10/submission.md\"\nprintf '# Summary\\nDEAD-CITATION-SWEEP: SKIPPED\\n' > \"$FIX/archive/ACME-10/summary.md\"\nprintf 'id: ACME-11\\ntier: \"\"\\nstatus: archived\\narchived_at: 2026-10-02T10:00:00Z\\n' > \"$FIX/archive/ACME-11/metadata.yaml\"\nprintf 'id: ACME-12\\ntier: Low\\nstatus: archived\\narchived_at: 2026-10-03T10:00:00Z\\n' > \"$FIX/archive/ACME-12/metadata.yaml\"\nprintf '# Summary\\nNone -- no inbound citations.\\n' > \"$FIX/archive/ACME-12/summary.md\"\nprintf '### II-001: Existing\\n| Source Ticket | `ACME-12` |\\n' > \"$FIX/docs/agentic-sdlc/intent-insights.md\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-retro/retro_scan.py\" --root \"$FIX\" --since 2",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "archived_tickets=2",
+          "unresolved:missing:1"
+        ],
+        "not_stdout_regex": [
+          "ACME-10"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "full-scan-and-confirmation-gated-promotion",
+      "prompt": "Run full retro_scan.py across all archived tickets and verify promotion rules use mint-id.sh --reserve II|PROD without editing immutable archive specs.",
+      "expected_output": "Full scan reports ACME-10 rework, over-estimate, Deferred follow-ups, unguarded citation sweep, missing summary for ACME-11; promotion rules require explicit confirmation, mint-id.sh --reserve II|PROD, authored-doc-gate.sh, and immutability under archive/<id>/.",
+      "assertions": [
+        "Full scan catches ACME-10 rework_hotspots, deferred_followups, unguarded_citation_sweeps, over_estimate_tickets, and missing_summary",
+        "Requires explicit operator confirmation before reserving II/PROD IDs via mint-id.sh or editing insight registers",
+        "Forbids mutating immutable archived files under archive/<id>/"
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "empty_git",
+          "setup_sh": "mkdir -p \"$FIX/archive/ACME-10\" \"$FIX/archive/ACME-11\" \"$FIX/docs/agentic-sdlc\"\nprintf 'id: ACME-10\\ntier: High\\nstatus: archived\\narchived_at: 2026-10-01T10:00:00Z\\nestimated_effort: 1h\\nactual_effort: 2h\\nstage_effort:\\n  - stage: implementation\\n    effort: 2h\\n' > \"$FIX/archive/ACME-10/metadata.yaml\"\nprintf '<!-- cadence-run:cycle n=1 blocking=1 -->\\n<!-- cadence-run:cycle n=2 blocking=0 -->\\nFollow-ups created: Deferred\\n' > \"$FIX/archive/ACME-10/submission.md\"\nprintf 'DEAD-CITATION-SWEEP: SKIPPED\\n' > \"$FIX/archive/ACME-10/summary.md\"\nprintf 'id: ACME-11\\ntier: Low\\nstatus: archived\\n' > \"$FIX/archive/ACME-11/metadata.yaml\"\nprintf '### II-001: Existing\\n' > \"$FIX/docs/agentic-sdlc/intent-insights.md\"",
+          "cmd": "python3 \"$ROOT/skills/cadence-retro/retro_scan.py\" --root \"$FIX\"",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "rework_hotspots=ACME-10",
+            "deferred_followups=ACME-10",
+            "unguarded_citation_sweeps=ACME-10",
+            "missing_summary=ACME-11",
+            "over_estimate_tickets=ACME-10",
+            "existing_insights=II:1,PROD:0"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "must_exist": [
+            "skills/cadence-retro/SKILL.md",
+            "skills/cadence-retro/retro_scan.py"
+          ],
+          "patterns": [
+            {
+              "file": "skills/cadence-retro/SKILL.md",
+              "regex": "mint-id\\.sh --reserve (II|PROD)"
+            },
+            {
+              "file": "skills/cadence-retro/SKILL.md",
+              "regex": "authored-doc-gate\\.sh"
+            },
+            {
+              "file": "skills/cadence-retro/SKILL.md",
+              "regex": "Never alter immutable files inside `archive/"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

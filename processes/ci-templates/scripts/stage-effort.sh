@@ -56,7 +56,7 @@
 
 set -u
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || pwd)"
 STAGE=""
 OBSERVED=""
 
@@ -70,6 +70,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 ORG_FILE="$ROOT/docs/agentic-sdlc/CADENCE_ORG.md"
+[[ -f "$ORG_FILE" ]] || ORG_FILE="$ROOT/processes/docs/agentic-sdlc/CADENCE_ORG.md"
 
 # --- Fail-loud caller validation --------------------------------------------
 # An unknown stage and an unparseable table both leave the multiplier

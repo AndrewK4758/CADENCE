@@ -1,0 +1,63 @@
+{
+  "skill_name": "cadence-sync-youtrack",
+  "notes": "Evaluates /cadence-sync-youtrack contracts: self-hosted YouTrack Server direct REST (curl -K- token, never argv/logs or signed attachment URL leaks), \u00a79 syncyt.resolve.tracker + inner-source 0-call skip, 2xx read-back verification (syncyt.write.field_not_applied), internal issue_id from Step 5 onward, append-only worklog_watermark_at, and yt-import ceiling fail-closed.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "inner-source-skip-and-2xx-readback-contract",
+      "prompt": "Sync ticket BTG-15 when \u00a79 binds youtrack (and separately when \u00a79 resolves to None -- inner-source), verifying a custom field write after HTTP 200.",
+      "expected_output": "Emits syncyt.resolve.tracker before contacting YouTrack (or logs inner-source skip with zero network calls when \u00a79 is None); uses native Markdown with no AC custom field or umbrella flow; verifies field writes via immediate read-back emitting syncyt.write.field_not_applied if dropped despite HTTP 200.",
+      "assertions": [
+        "Resolves CADENCE_ORG.md#tracker-binding and emits syncyt.resolve.tracker prior to network calls (0 calls for inner-source)",
+        "Verifies custom-field updates via read-back rather than trusting HTTP 200 alone",
+        "Uses internal issue_id from Step 5 onward and renders native Markdown without wiki conversion"
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "cmd": "bash \"$ROOT/skills/cadence-sync-youtrack/yt-resolve.sh\" --ticket ACME-101",
+          "expect_exit": 4,
+          "stderr_regex": [
+            "syncyt\\.config\\."
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-sync-youtrack/SKILL.md",
+              "regex": "syncyt\\.resolve\\.tracker"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "name": "token-url-redaction-watermark-and-single-metadata-write",
+      "prompt": "Import attachment and sync worklogs while guarding against signed URL leaks and partial halts.",
+      "expected_output": "Redacts YOUTRACK_TOKEN and pre-signed sign= attachment URLs from logs/errors, fails closed on missing attachment_size_ceiling_mib, treats work items as immutable via worklog_watermark_at, writes metadata.yaml once in yt_apply_metadata_writes on full success, and warns on Step 4 create -> Step 5 halt duplicate-issue window.",
+      "assertions": [
+        "Never logs YOUTRACK_TOKEN or pre-signed attachment download URLs",
+        "Fails closed downloading zero attachments when attachment_size_ceiling_mib is absent or invalid",
+        "Posts work items append-only using worklog_watermark_at without mutating existing tracker entries",
+        "Leaves metadata.yaml un-written on mid-sequence halt while reporting created youtrack_url= in partial report"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-sync-youtrack/SKILL.md",
+            "regex": "YOUTRACK_TOKEN"
+          },
+          {
+            "file": "skills/cadence-sync-youtrack/SKILL.md",
+            "regex": "sign="
+          }
+        ]
+      }
+    }
+  ]
+}

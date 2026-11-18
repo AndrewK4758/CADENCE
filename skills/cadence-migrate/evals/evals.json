@@ -1,0 +1,58 @@
+{
+  "skill_name": "cadence-migrate",
+  "notes": "Evaluates /cadence-migrate contracts: expand default vs --contract mode, prerequisites (spec schema changes or entity diff + executable tooling), Deep-reasoning xhigh delegation to cadence-migration-author, apply -> rollback -> reapply cycle, deferred contract logging in decisions.md, offload_log_triage, and offload_deep_review.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "requires-spec-or-schema-diff-and-verifies-rollback",
+      "prompt": "Run /cadence-migrate BTG-142 for newly added ORM columns in expand mode.",
+      "expected_output": "Checks spec.md schema section or entity model diff against integration branch and stack tooling, delegates to cadence-migration-author (Deep-reasoning, xhigh effort) separating DDL from DML in expand mode, runs apply -> rollback -> reapply piping noisy logs through offload_log_triage, and executes offload_deep_review on the migration diff.",
+      "assertions": [
+        "Defaults to expand mode separating DDL from DML when --contract is absent",
+        "Delegates to cadence-migration-author at Deep-reasoning tier (xhigh effort)",
+        "Verifies reversible apply -> rollback -> reapply cycle routing noisy logs via offload_log_triage",
+        "Executes offload_deep_review on the generated migration diff before MR creation"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-migrate/SKILL.md",
+          "agents/cadence-migration-author/agent.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-migrate/SKILL.md",
+            "regex": "cadence-migration-author"
+          },
+          {
+            "file": "skills/cadence-migrate/SKILL.md",
+            "regex": "expand"
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "contract-mode-and-missing-prerequisite-prompt",
+      "prompt": "Run /cadence-migrate BTG-142 --contract (and separately invoke without spec or schema diffs).",
+      "expected_output": "Switches to contract mode recording deferred contraction follow-up details in specs/<id>/decisions.md; prompts operator when neither spec.md schema changes nor branch entity diffs exist instead of guessing schema deltas.",
+      "assertions": [
+        "Sets mode to contract when --contract is supplied and records deferred follow-up in decisions.md",
+        "Prompts operator instead of guessing when neither spec.md nor entity diffs exist"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-migrate/SKILL.md",
+            "regex": "contract"
+          },
+          {
+            "file": "skills/cadence-migrate/SKILL.md",
+            "regex": "decisions\\.md"
+          }
+        ]
+      }
+    }
+  ]
+}

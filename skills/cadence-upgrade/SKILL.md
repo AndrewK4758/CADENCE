@@ -24,7 +24,7 @@ Before running the engine, verify:
 The `.agents/skills/cadence-upgrade/upgrade-cadence.sh` script path exists in the adopter repository only **after** adoption. A pre-PI-021, compiled-only adopter does not yet have an installed `.agents/skills/cadence-upgrade/` directory to invoke locally. For those repositories, execute the engine directly from a **local core checkout** of CADENCE (a local `git clone` of the framework repository carrying the target release), targeting the adopter repository via the `UPGRADE_TARGET` environment seam:
 
 ```bash
-UPGRADE_TARGET=<adopter-repo> bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh <ver>
+UPGRADE_TARGET=<adopter-repo> bash <core>/skills/cadence-upgrade/upgrade-cadence.sh <ver>
 ```
 
 - **When required:** the adopter lacks an installed `.agents/skills` tree (pre-adoption / pre-PI-021). Once the upgrade installs the skill tree (and projects runtime directories per `docs/policies/cli-runtime-adoption-policy.md`), subsequent upgrades use the standard `.agents/skills/cadence-upgrade/upgrade-cadence.sh` path.
@@ -42,7 +42,7 @@ When the footprint descriptor is absent, offer to **auto-generate** it from the 
 
 ```bash
 AUTOGEN_CONFIRM=1 UPGRADE_TARGET=<adopter-repo> UPGRADE_CORE=<core> \
-  bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh --autogen-footprint
+  bash <core>/skills/cadence-upgrade/upgrade-cadence.sh --autogen-footprint
 ```
 
 This operation is idempotent: re-deriving against an unchanged core commit produces a byte-identical descriptor. If derivation fails (for instance, `<core>` is unreachable or the deriver script is missing), the engine emits `DELTA_AUDIT_GAP upgrade.footprint.derive_failed`, leaves the destination untouched, and prints an actionable error — halt and repair the core checkout before continuing. Once the footprint descriptor is in place, proceed to Step 1.
@@ -55,7 +55,7 @@ Execute the canonical merge engine with the requested target version:
 .agents/skills/cadence-upgrade/upgrade-cadence.sh "<new_version>"
 ```
 
-Stream stdout and stderr to the adopter verbatim. Do not alter, condense, or paraphrase the per-file change report or conflict summary — they serve as the permanent audit trail and the operator's conflict-resolution guide. Whenever `upgrade-cadence.sh` conflict diagnostics, gate checks (`authored-doc-gate.sh`, `dead-citation-gate.sh`), or post-upgrade test outputs exceed 30 lines, automatically pass the output through `offload_log_triage` (`local-fast-cpu` on `:11434`) so the operator gets a clean verbatim failure digest while the complete raw output remains preserved in `/tmp/agy-last-triage.log`.
+Stream stdout and stderr to the adopter verbatim. Do not alter, condense, or paraphrase the per-file change report or conflict summary — they serve as the permanent audit trail and the operator's conflict-resolution guide. Whenever `upgrade-cadence.sh` conflict diagnostics, gate checks (`authored-doc-gate.sh`, `dead-citation-gate.sh`), or post-upgrade test outputs exceed 30 lines, automatically pass the output through `offload_log_triage` (`inference` on `:11434`) so the operator gets a clean verbatim failure digest while the complete raw output remains preserved in `/tmp/agy-last-triage.log`.
 
 **Vocabulary migration report (BTG-332, D1-D4).** Within the same atomic transaction, the engine also scans, classifies, and rewrites the adopter's active `specs/<id>/**/*.md` and `*.yaml` files (excluding `specs/TEMPLATE/`, `specs/drafts/`, `specs/CADENCE.md`, and any ticket directory listed in `UPGRADE_VOCAB_EXCLUDE` -- see Step 4.6 below) into **CHORD** vocabulary (Conditions, Handling/Triggers, Outcomes, Rules, Deltas; see `docs/agentic-sdlc/chord-reference.md` for the retired-term mapping). A clean apply emits one `upgrade-cadence: vocab rewrite: <path> (<N> line(s))` line per updated spec file, followed by a `upgrade-cadence: vocab retained (historical): <N> line(s) across <N> file(s).` summary whenever frozen historical lines were preserved unchanged. Stream these lines verbatim alongside the framework-file report as part of the single audit trail. Any line that mixes the legacy acronym with a dimension word outside a recognized template pattern is flagged as a **vocab conflict**: it routes into the exact same conflict staging mechanism described in Step 3 (staged under `.cadence-upgrade-staging/` with conflict markers and reported on stderr as `vocab-conflict: <path>:<line>`), blocking the entire apply just like a framework-file conflict — never auto-resolve it.
 

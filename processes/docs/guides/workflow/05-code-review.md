@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Gate** | Code Review (Gate 2) |
-| **Who** | Reviewer (a human), assisted by `cadence-reviewer` + `offload_deep_review` via `/cadence-review` |
+| **Who** | Reviewer (a human), assisted by `cadence-reviewer` (+ `cadence-security-auditor` on `High` or risk-matched diffs) + `offload_deep_review` via `/cadence-review` |
 | **You are approving** | The **implementation against its approved contract** (`spec.md` at Medium/High tier; `problem.md` ACs at Low tier) |
 | **Consumes** | The implementation MR/branch (`impl/{type}/{id}`) at `status: in-review`, its approved contract, and `submission.md` |
 | **Outcome** | **Approve**, **Request Changes**, or **Needs Discussion** |
@@ -30,8 +30,8 @@ Every change tier that modifies source code or configuration passes through Code
 
 Before `cadence-reviewer` synthesizes its formal review verdict, `/cadence-review` automatically invokes CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`) to run fast mechanical pre-scans:
 
-1. **Advisory Mechanical Pre-Scan (`offload_deep_review` on `local-moe-hybrid` / `local-12b-gpu`):** Scans the diff against `spec.md` / `test-plan.md` to check the Agentic DX `< 400`-line file ceiling, comment discipline rules `C1`–`C8` (`docs/policies/comment-discipline.md`), CHORD observability seam wiring (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`), and non-blocking finding classification (`docs/policies/finding-classes.md`).
-2. **Test & Gate Runner Verification (`offload_log_triage` / `log-triage` on `local-fast-cpu`):** Compacts test suite and `run-gates.sh` verification logs at 0 MB VRAM while preserving verbatim assertion output and `file:line` coordinates (with full raw output written to `/tmp/agy-last-triage.log`).
+1. **Advisory Mechanical Pre-Scan (`offload_deep_review` via `inference`):** Scans the diff against `spec.md` / `test-plan.md` to check Pillar 3's file-size ceiling, comment discipline rules `C1`–`C8` (`docs/policies/comment-discipline.md`), CHORD observability seam wiring (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`), and non-blocking finding classification (`docs/policies/finding-classes.md`).
+2. **Test & Gate Runner Verification (`offload_log_triage` / `log-triage` via `inference`):** Compacts test suite and `run-gates.sh` verification logs (`:11434`) while preserving verbatim assertion output and `file:line` coordinates (with full raw output written to `/tmp/agy-last-triage.log`).
 
 Every advisory finding surfaced by `offload_deep_review` is independently verified by the primary `cadence-reviewer` reasoning model before being included in the review report.
 
@@ -45,11 +45,11 @@ Launch the governed review pass from your agentic CLI runtime (`.agents/skills/c
 
 > **Always run `/cadence-review`, never a generic `/code-review` command.** Gate 2 requires the **CADENCE** `/cadence-review` skill — which resolves the integration branch from `CADENCE_ORG.md#branch-strategy-binding`, evaluates the diff against the ticket's approved contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md`'s Acceptance Criteria at Low tier), classifies every non-blocking finding under [`finding-classes.md`](../../policies/finding-classes.md), processes `out-of-scope-defect` follow-up candidates, and logs `code-review` `stage_effort` in `metadata.yaml`. A generic IDE diff checker lacks spec awareness, finding classification, and governance tracking, and **never satisfies Gate 2**.
 
-`/cadence-review` resolves the ticket ID from the final `/`-delimited segment of the branch name (`impl/{type}/{id}`), computes the diff against the bound integration branch (`CADENCE_ORG.md` §15), runs the `offload_deep_review` pre-scan, and delegates to the read-only **`cadence-reviewer`** subagent. Because its inputs are repository-resident (`git diff` and `submission.md`), it requires no proprietary forge API tokens. `cadence-reviewer` verifies:
+`/cadence-review` resolves the ticket ID from the final `/`-delimited segment of the branch name (`impl/{type}/{id}`), computes the diff against the bound integration branch (`CADENCE_ORG.md` §15), runs the `offload_deep_review` pre-scan plus mechanical `verify-facts.sh --trace <ticket-id>` and `security-trigger.sh` verification, and delegates to the read-only **`cadence-reviewer`** subagent (alongside **`cadence-security-auditor`** when `decision=TRIGGER`). Because its inputs are repository-resident (`git diff` and `submission.md`), it requires no proprietary forge API tokens. `cadence-reviewer` verifies:
 
 - **Contract compliance** — every acceptance criterion in `spec.md` (or `problem.md` at Low tier) is implemented completely.
 - **Test coverage & scope** — every Gherkin scenario in `test-plan.md` (or AC at Low tier) has a passing test tagged per `C5`, and no test reads forbidden governance paths ([`test-scope.md`](../../policies/test-scope.md)).
-- **Engineering Pillars** — Simplicity, Operability (structured JSON logs + CHORD seams), Agentic DX (`< 400`-line ceiling), Data Integrity (audit records with actor from auth context), Security Posture, and Backwards Compatibility.
+- **Engineering Pillars** — Simplicity, Operability (structured JSON logs + CHORD seams), Agentic Ergonomics (authored file-size ceiling per `CADENCE_ORG.md`), Data Integrity (audit records with actor from auth context), Security Posture, and Backwards Compatibility.
 - **Architecture & comment discipline** — Clean Architecture layer boundaries, `C7` boundary comments on cross-boundary files/functions, and `C1`–`C8` comment rules ([`comment-discipline.md`](../../policies/comment-discipline.md)).
 - **Documentation freshness** — flow/system doc updates or explicit acknowledgment, plus the two-search reconciliation sweep record (`doc-maintenance-policy.md`; an affirmative flow-doc-absence claim without a recorded search return is **blocking** per BTG-293).
 - **Migration safety** — schema/data separation, reversibility, and idempotency guards ([`migration-policy.md`](../../policies/migration-policy.md)).

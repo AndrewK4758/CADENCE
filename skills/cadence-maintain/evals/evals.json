@@ -1,0 +1,62 @@
+{
+  "skill_name": "cadence-maintain",
+  "notes": "Evaluates Gate 3 Maintainer Acceptance guarantees: code-review prerequisite, qualified tier-escalation check, Step 0 offload_deep_review before Deep-reasoning cadence-maintainer, Step 6b follow-up disposition requiring submission.md, maintainer stage_effort via stage-effort.sh across all three verdicts, and second-precision UTC maintainer_approved_at.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "requires-gate2-and-offload-prescan",
+      "prompt": "Run /cadence-maintain 142 for a Medium-tier PR whose submission.md has not yet recorded /cadence-review approval.",
+      "expected_output": "Stops at Prerequisite 1 and instructs operator to run /cadence-review 142 first; once approved, computes diff against CADENCE_ORG.md#branch-strategy-binding integration-branch, invokes offload_deep_review first, then delegates 8-dimension analysis to cadence-maintainer (Deep-reasoning, xhigh effort).",
+      "assertions": [
+        "Refuses to proceed when Gate 2 code review approval is missing",
+        "Resolves integration branch from #branch-strategy-binding rather than hardcoding main or develop",
+        "Runs offload_deep_review on diff_range prior to invoking cadence-maintainer (Deep-reasoning, xhigh effort)"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-maintain/SKILL.md",
+          "agents/cadence-maintainer/agent.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-maintain/SKILL.md",
+            "regex": "/cadence-review"
+          },
+          {
+            "file": "agents/cadence-maintainer/agent.md",
+            "regex": "offload_deep_review"
+          },
+          {
+            "file": "agents/cadence-maintainer/agent.md",
+            "regex": "local_semantic_embed"
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "records-effort-across-verdicts-and-step6b-gate",
+      "prompt": "Capture Maintainer verdict Accept (and separately Postpone) while non-blocking findings await disposition in submission.md.",
+      "expected_output": "Dispositions owed follow-ups in Step 6b (halting without allocating IDs if submission.md is absent, halting finding.class.unlabelled on unlabelled findings), computes maintainer stage effort via stage-effort.sh across Accept/Postpone/Reject, writes exact second-precision UTC maintainer_approved_at on Accept, and projects to bound tracker.",
+      "assertions": [
+        "Halts Step 6b without allocating IDs if submission.md is missing",
+        "Records stage: maintainer effort via stage-effort.sh for all three verdicts (Accept, Postpone, Reject)",
+        "Sets exact UTC second-precision maintainer_approved_at on Accept and triggers bound tracker sync"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-maintain/SKILL.md",
+            "regex": "Follow-ups created|followup-disposition"
+          },
+          {
+            "file": "skills/cadence-maintain/SKILL.md",
+            "regex": "stage_effort"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -2,11 +2,11 @@
 name: cadence-archivist
 description: Preserves completed or closed-out ticket records during the Enshrine phase -- finalizes submission.md, moves specs to archive/, enforces two-pass dead-citation sweeps with automatic local log triage, updates CHANGELOG and living flow docs, promotes ADRs and intent insights, and prepares tracker sync
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# High-breadth archival orchestration, citation sweep disposition, effort calculation, and insight/ADR promotion follow structured rules. Routed to the high-breadth mechanical tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# High-breadth/mechanical tier: Gemini 3.8 Flash (High) / Local Gemma 4 26B Dual-GPU
+# High-breadth archival orchestration, citation sweep disposition, effort calculation, and insight/ADR promotion follow structured rules. Routed to the Fast-mechanical tier (at high effort for completeness) per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Fast-mechanical (Capable high-breadth model at high effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: medium
+effort: high
 ---
 
 # cadence-archivist
@@ -117,7 +117,7 @@ Update `archive/{ticket-id}/metadata.yaml`:
 - Set `archived_at` to the **exact** current UTC wall-clock timestamp via `date -u +%Y-%m-%dT%H:%M:%SZ` (second precision).
 - **Compute and append the `archive` stage effort (`CADENCE_ORG.md` §12 *Actual Effort Accumulation*):** run:
   ```bash
-  ci-templates/scripts/stage-effort.sh --stage archive --observed <minutes>
+  ([ -x ci-templates/scripts/stage-effort.sh ] && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage archive --observed <minutes>
   ```
   Verify the printed duration is `0m` or a whole multiple of `15m` (if not, emit a diagnostic and recompute without halting), append the `{stage: archive, effort: <val>, at: <UTC-timestamp>}` entry to `stage_effort`, and add that increment to `actual_effort`.
 - Leave `released_at` and `deployed_at` untouched. Leave external tracker projection to `/cadence-archive` after this subagent returns.
@@ -162,7 +162,7 @@ Verify `CADENCE_ORG.md#tracker-binding` resolves a bound tracker and sync skill 
 
 ### Step 8: Propose Living Flow Documentation Updates (`docs/flows/` & `docs/SYSTEM_OVERVIEW.md`)
 
-**Automatically run `local_semantic_embed`** (`local-embed-cpu` on `:11434`, 0 MB VRAM) to match the archived spec's endpoints, events, queues, and bounded contexts against `docs/flows/*.md` and `docs/SYSTEM_OVERVIEW.md`:
+**Automatically run `local_semantic_embed`** (`embedding` on `:11434`) to match the archived spec's endpoints, events, queues, and bounded contexts against `docs/flows/*.md` and `docs/SYSTEM_OVERVIEW.md`:
 - Draft updates to modified `docs/flows/{flow-name}.md` files (or instantiate from `docs/flows/TEMPLATE.md` for new flows), append `- archive/{ticket-id}/ — {brief description}` under `Related Specs`, update `docs/SYSTEM_OVERVIEW.md` if topology changed, and commit for human review:
   ```bash
   git add docs/flows/ docs/SYSTEM_OVERVIEW.md

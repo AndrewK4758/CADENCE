@@ -1,0 +1,83 @@
+{
+  "skill_name": "cadence-implement",
+  "notes": "Evaluates fail-closed implementation prerequisites: empty/unrecognized tier refusal, Gate 1 rulings verification (--rulings), Low-tier ac-classify.sh placeholder rejection, \u00a714 Integration-Branch Enforcement fail-closed check, atomic review_started_at preservation, and stage-effort.sh dual-path calculation.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "empty-tier-fails-closed",
+      "prompt": "Implement ACME-200 whose metadata.yaml has `tier: \"\"`.",
+      "expected_output": "Halts fail-closed citing specs/ACME-200/metadata.yaml and stating tier cannot be resolved. Never defaults to Low.",
+      "assertions": [
+        "Halts immediately when tier is empty or missing",
+        "Does NOT default empty tier to Low",
+        "Performs zero status mutations or branch creations before halting"
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "setup_sh": "mkdir -p \"$FIX/specs/ACME-200\" && printf \"id: ACME-200\\ntier: \\\"\\\"\\nstatus: triaged\\n\" > \"$FIX/specs/ACME-200/metadata.yaml\"",
+          "cmd": "bash \"$ROOT/skills/cadence-spec/verify-facts.sh\" --root \"$FIX\" --trace ACME-200",
+          "expect_exit": "nonzero",
+          "stderr_regex": [
+            "cannot resolve tier"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-implement/SKILL.md",
+              "regex": "NEVER default to.*Low"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "name": "low-tier-placeholder-ac-halt",
+      "prompt": "Implement Low-tier ticket whose problem.md only contains the unmodified template Acceptance Criteria bullets.",
+      "expected_output": "Runs ac-classify.sh, observes exit 1 (verdict=placeholder-only), emits implement.prerequisites.ac_placeholder_only, and halts without writes or fallback grep.",
+      "assertions": [
+        "Runs .agents/skills/cadence-implement/ac-classify.sh",
+        "Halts with implement.prerequisites.ac_placeholder_only on placeholder-only criteria",
+        "Does NOT fall back to naive grep"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "empty_git",
+        "setup_sh": "cp \"$ROOT/processes/specs/TEMPLATE/problem.md\" \"$FIX/problem.md\"",
+        "cmd": "bash \"$ROOT/skills/cadence-implement/ac-classify.sh\" \"$FIX/problem.md\"",
+        "expect_exit": 1,
+        "stdout_regex": [
+          "verdict=placeholder-only"
+        ],
+        "stderr_regex": [
+          "acclassify\\.verdict\\.placeholder_only"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "preserves-existing-review-started-at",
+      "prompt": "Re-run Step 5 transition to in-review on a second cycle where review_started_at already has an earlier UTC timestamp.",
+      "expected_output": "Preserves the existing review_started_at byte-for-byte, computes implementation stage_effort via stage-effort.sh (0m or 15m multiple), updates actual_effort, and projects via the bound tracker skill.",
+      "assertions": [
+        "Preserves pre-existing non-empty review_started_at byte-for-byte",
+        "Uses stage-effort.sh supporting ci-templates/ and processes/ci-templates/ paths",
+        "Verifies stage effort is 0m or an exact multiple of 15 minutes"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "bash \"$ROOT/processes/ci-templates/scripts/stage-effort.sh\" --stage implementation --observed 7 --root \"$FIX\"",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "^15m$"
+        ]
+      }
+    }
+  ]
+}

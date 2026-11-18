@@ -41,7 +41,7 @@ There is no "small enough to push straight to the integration branch" exception.
 
 ## Automatic Local Offload during Pre-Merge Verification (`offload_log_triage`)
 
-When verifying final pre-merge CI / local gate checks (`ci-templates/scripts/run-gates.sh` or the repository's full test runner) before executing `gh pr merge` / `glab mr merge`, CADENCE automatically routes command output through the read-only `offload_log_triage` / `log-triage` coprocessor (`local-fast-cpu` at **0 MB VRAM**). This compacts multi-thousand-line build and test logs into a clean pass/fail summary with verbatim error coordinates while saving the complete unedited log to `/tmp/agy-last-triage.log`.
+When verifying final pre-merge CI / local gate checks (`ci-templates/scripts/run-gates.sh` or the repository's full test runner) before executing `gh pr merge` / `glab mr merge`, CADENCE automatically routes command output through the read-only `offload_log_triage` / `log-triage` coprocessor (`inference` on `:11434`). This compacts multi-thousand-line build and test logs into a clean pass/fail summary with verbatim error coordinates while saving the complete unedited log to `/tmp/agy-last-triage.log`.
 
 ## What to do
 

@@ -2,11 +2,11 @@
 name: cadence-spec-author
 description: Authors complete specifications during the Decompose & Specify phase -- combines Contextual Grounding Matrix (6W×4L), Engineering Pillars, CHORD behavioral decomposition, automatic local repo-scout/semantic discovery, and framework-agnostic Gherkin BDD test plans
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
-# Specification authoring synthesizes contextual grounding, CHORD behavioral contracts, edge-case derivation, and design convergence -- quality here governs every downstream phase. Routed to the deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
-# Deep-reasoning tier: Gemini 4 Argon (High) / Local Gemma 4 26B Dual-GPU
+# Specification authoring synthesizes contextual grounding, CHORD behavioral contracts, edge-case derivation, and design convergence -- quality here governs every downstream phase. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
+# Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
 default_model: openai/inference-dual
 permission_mode: accept-edits
-effort: high
+effort: xhigh
 ---
 
 # cadence-spec-author
@@ -40,10 +40,10 @@ At `Medium` and `High` tiers, inspect:
    - `docs/policies/surface-registry.md` and `docs/policies/cadence-surfaces.md` — the public surface registries cataloging APIs, events, schemas, and configuration contracts alongside their stability tiers and guarantee windows. `surface-registry.md` tracks project-owned adopter surfaces; `cadence-surfaces.md` tracks CADENCE core framework surfaces. Always resolve `"registered surface"` as the union across every registry present per `docs/policies/change-tiers.md`'s *Resolving "registered surface"* rule — an empty table in one file never proves no surface is affected.
    - `docs/policies/deprecation-policy.md` — required sunset horizons, runtime deprecation signals, and consumer migration rules.
 
-2. **Execute automatic local semantic discovery over insight registers and codebase (Zero-VRAM / Hybrid MoE Offload — Automatic).**
-   Before manually reading source trees, **automatically invoke the local hardware coprocessor** so insight matching and symbol discovery run at 0 MB GPU VRAM (`:11434`) and on-demand hybrid MoE (`:11434`):
-   - Call `local_semantic_embed` (`local-embed-cpu` on `:11434`) against `docs/agentic-sdlc/production-insights.md` and `docs/agentic-sdlc/intent-insights.md` using the ticket's `domain_entities`, `affected_layers`, and problem statement.
-   - Delegate to the `repo-scout` subagent (`local-moe-hybrid` 26B-A4B) to locate affected source files, call graphs, and existing architectural patterns. *(Fallback guard: if the local offload service is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and execute discovery directly with `Glob`/`Grep`.)*
+2. **Execute automatic local semantic discovery over insight registers and codebase (`local_semantic_embed` / `repo-scout` on `:11434`).**
+   Before manually reading source trees, **automatically invoke the local hardware coprocessor** so insight matching and symbol discovery run on `:11434`:
+   - Call `local_semantic_embed` (`embedding` on `:11434`) against `docs/agentic-sdlc/production-insights.md` and `docs/agentic-sdlc/intent-insights.md` using the ticket's `domain_entities`, `affected_layers`, and problem statement.
+   - Delegate to the `repo-scout` subagent (`inference` on `:11434`) to locate affected source files, call graphs, and existing architectural patterns. *(Fallback guard: if the local offload service is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and execute discovery directly with `Glob`/`Grep`.)*
 
    Filter `docs/agentic-sdlc/production-insights.md` for entries matching:
    - `domain_entities` in `metadata.yaml`
@@ -124,7 +124,7 @@ At `Medium` and `High` tiers, inspect:
    f. **Mandate compatibility tests.** For every touched `Stable` surface, specify golden-file snapshot tests, consumer-driven contract tests, and/or multi-version integration tests.
    g. **Optional pre-flight `cadence-architect` delegation.** For `Medium`-tier work that either (a) touches a `Stable` registered surface or (b) introduces a new cross-context integration, you may invoke `cadence-architect` before finalizing Step 8 and fold its Observed/Inferred/Unknown findings, Draft Contracts, and Open Questions into `## Compatibility Impact`.
    h. **Policy-tooling consistency enumeration (mandatory whenever modifying any tier, gate, or policy contract under `docs/policies/`, `docs/policies/cadence-surfaces.md`, or any registered binding section of `CADENCE_ORG.md` per ADR_CADENCE-0013 and ADR_CADENCE-0100):**
-      - **Enumerate via `Grep`/`Glob` (never memory):** search every skill and agent definition path in this repository (`artifacts/commands/`, `artifacts/roles/`, `.agents/skills/`, `.agents/agents/`, and the active runtime tree declared in `CADENCE_ORG.md#runtime-binding` such as `.gemini/` or `.claude/`) plus `docs/` for every script, skill, agent, or doc operationalizing the modified policy/surface/binding. **Fail loud on zero resolution:** if your searched paths resolve zero skill or agent definitions altogether, halt and name every searched path rather than claiming nothing is affected.
+      - **Enumerate via `Grep`/`Glob` (never memory):** search every skill and agent definition path in this repository (`skills/`, `agents/`, `.agents/skills/`, `.agents/agents/`, and the active runtime tree declared in `CADENCE_ORG.md#runtime-binding` such as `.gemini/` or `.claude/`) plus `docs/` (or `processes/docs/`) for every script, skill, agent, or doc operationalizing the modified policy/surface/binding. **Fail loud on zero resolution:** if your searched paths resolve zero skill or agent definitions altogether, halt and name every searched path rather than claiming nothing is affected.
       - **Confirm conformance:** verify each hit honors the updated contract; any tool or doc reflecting the prior contract is a concrete gap.
       - **Fix in-place or file a ticket — never leave as a bare risk note:** either reconcile each gap in this same change or file a tracked follow-up ticket in this same change.
       - **Record visible search evidence:** document the exact search queries, resolved paths, hits, and dispositions (`honoring` / `fixed-here` / `filed-as-<ticket-id>`) inside `spec.md`'s `## Compatibility Impact` section so Code Review and Maintainer gates can audit the enumeration. (Narrative guides under `docs/guides/`, `docs/flows/`, and the insight registers are excluded from this obligation because no tool parses them as binding values; keep this clause synchronized with `docs/policies/change-tiers.md`.)
@@ -196,11 +196,11 @@ Before returning, execute both structural verifiers:
 .agents/skills/cadence-spec/verify-spec.sh {ticket-id}
 .agents/skills/cadence-spec/verify-facts.sh {ticket-id}
 ```
-If either script exits non-zero or produces output exceeding 30 lines, **automatically route the output through `offload_log_triage`** (`local-fast-cpu` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`) and fix every reported `FAIL` before returning.
+If either script exits non-zero or produces output exceeding 30 lines, **automatically route the output through `offload_log_triage`** (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`) and fix every reported `FAIL` before returning.
 
 ## Constraints
 
 - Never write implementation code or framework-bound test code; specs contain signatures and concrete Gherkin scenarios only.
 - Every Gherkin scenario must be concrete (`Given an Order in Draft status`, never abstract placeholders) and independently executable.
 - Never write a Gherkin scenario whose subject is a governance document (`docs/policies/test-scope.md`); documentary criteria are verified at the human gate.
-- Local coprocessor models (`local-embed-cpu`, `local-fast-cpu`, `local-moe-hybrid`) are read-only accelerators (`enable_write_tools: false`). Gemini 4 Argon retains 100% ownership of specification authoring and design convergence.
+- Local coprocessor models (`embedding`, `inference` on `:11434`) are read-only accelerators (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) retains 100% ownership of specification authoring and design convergence.

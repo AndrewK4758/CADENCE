@@ -1,0 +1,103 @@
+{
+  "skill_name": "cadence-spec",
+  "notes": "Evaluates specification authoring guarantees: tier gating (High/Medium vs Low), CHORD 5-part behavioral decomposition, Step 4.5 adversarial spec challenge (falsifying placeholders, missing observability seams, and contradictory invariants via verify-spec.sh and verify-facts.sh), and non-ranked design-options exploration.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "high-tier-adversarial-spec-challenge",
+      "prompt": "Spec out ACME-101 and prepare it for Gate 1 spec approval.",
+      "expected_output": "Checks tier=High, runs cadence-architect pre-flight and cadence-explorer before cadence-spec-author, populates 6W4L and CHORD 5-row tables without placeholders, executes Step 4.5 Adversarial Spec Challenge + verify-spec.sh + verify-facts.sh prior to opening the spec PR, and records spec stage effort via stage-effort.sh.",
+      "assertions": [
+        "Runs cadence-architect and cadence-explorer before cadence-spec-author at High tier",
+        "Populates 5-row CHORD decomposition (Conditions, Handling, Outcomes, Rules, Deltas) without placeholder tokens",
+        "Executes Step 4.5 Adversarial Spec Challenge before Gate 1",
+        "Runs verify-spec.sh and verify-facts.sh cleanly before requesting spec approval",
+        "Does NOT rank options in design-options.md"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-spec/SKILL.md",
+          "agents/cadence-explorer/agent.md",
+          "agents/cadence-spec-author/agent.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-spec/SKILL.md",
+            "regex": "Adversarial Spec Challenge"
+          },
+          {
+            "file": "skills/cadence-spec/SKILL.md",
+            "regex": "cadence-explorer"
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "low-tier-spec-refusal",
+      "prompt": "Write a full spec.md and test-plan.md for ACME-109.",
+      "expected_output": "Resolves tier=Low in metadata.yaml and halts before authoring spec.md because docs/policies/change-tiers.md forbids spec.md/test-plan.md at Low tier.",
+      "assertions": [
+        "Resolves tier=Low from metadata.yaml",
+        "Declines to author spec.md or test-plan.md at Low tier",
+        "Identifies problem.md Acceptance Criteria as the Low-tier contract"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-spec/SKILL.md",
+            "regex": "tier: Low"
+          },
+          {
+            "file": "skills/cadence-spec/SKILL.md",
+            "regex": "STOP immediately"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "chord-invariant-contradiction-caught",
+      "prompt": "In ACME-105, Data Integrity is marked dormant while the CHORD table includes non-empty Deltas. Should verify-spec.sh pass?",
+      "expected_output": "Halts loudly: verify-spec-invariants.sh catches Data Integrity dormant paired with non-empty CHORD Deltas and fails closed before Gate 1.",
+      "assertions": [
+        "Flags contradiction between dormant Data Integrity pillar and non-empty CHORD Deltas",
+        "Rejects passing Gate 1 until resolved"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "sed -i \"/^### Pillar 4: Data/{n;s/.*/Dormant \u2014 none./}\" \"$FIX/specs/ACME-201/spec.md\"",
+        "cmd": "bash \"$ROOT/skills/cadence-spec/verify-spec.sh\" --root \"$FIX\" ACME-201",
+        "expect_exit": 1,
+        "output_regex": [
+          "dormant_trigger_contradicted"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "post-impl-trace-catches-missing-scenario-or-seam",
+      "prompt": "Run verify-facts.sh --trace ACME-202 when S-1.1 has no C5 test tag outside specs/ or a declared UNSOUND_CONDITION seam is missing from code.",
+      "expected_output": "Exits 1 fail-closed with FAIL scenario S-1.1 and/or FAIL seam UNSOUND_CONDITION without accepting docs/ prose matches.",
+      "assertions": [
+        "Resolves tier from metadata.yaml first (Trivial exempt; fail-closed if empty/unrecognized)",
+        "Verifies C5 scenario/AC test tags, declared Observability Seams, and Files Affected deliverables",
+        "Ignores docs/ and specs/ prose when checking runtime seam emissions"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "mkdir -p \"$FIX/specs/ACME-209\" && printf \"id: ACME-209\\ntier: High\\nstatus: in-progress\\n\" > \"$FIX/specs/ACME-209/metadata.yaml\" && printf \"# Spec\\n## Observability Seams\\n- UNSOUND_CONDITION\\n**Gate 1 rulings:** required\\n\" > \"$FIX/specs/ACME-209/spec.md\" && printf \"Feature: F\\n  Scenario: S-1.1 -- Missing tag\\n\" > \"$FIX/specs/ACME-209/test-plan.md\"",
+        "cmd": "bash \"$ROOT/skills/cadence-spec/verify-facts.sh\" --root \"$FIX\" --trace ACME-209",
+        "expect_exit": 1,
+        "stdout_regex": [
+          "FAIL scenario S-1\\.1",
+          "FAIL seam UNSOUND_CONDITION"
+        ]
+      }
+    }
+  ]
+}

@@ -34,10 +34,10 @@ Like every other governed repository change, archival itself is committed **on a
 
 ## Automatic Local Offload during Archival (`local_semantic_embed` & `repo-scout`)
 
-During archival closeout, `/cadence-archive` and `cadence-archivist` automatically use CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`) at **0 MB GPU VRAM**:
+During archival closeout, `/cadence-archive` and `cadence-archivist` automatically use CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`) on `:11434`:
 
-1. **Follow-Up Candidate Deduplication (`local_semantic_embed` on `local-embed-cpu`):** During step 2e's prior-work check ([`finding-classes.md`](../../policies/finding-classes.md) Routing step 4), queries `nomic-embed-text` (port `11434`) across `specs/` (open tickets) and `archive/` (completed tickets) to classify each remaining `out-of-scope-defect` or deferred `adr-owed` candidate as `new`, `duplicate of <id>`, or `fold into <id>` (recording the exact search terms, searched roots, and hit counts).
-2. **ADR & Intent-Insight Lineage Lookup (`repo-scout` on `local-moe-hybrid`):** Searches `docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`, and `docs/flows/` to identify the next sequential `ADR-NNN` / `II-NNN` identifiers (via `mint-id.sh`), verify whether a decision supersedes or narrows an existing ADR (`ADR_CADENCE-0073`), and check whether any `docs/flows/` document warrants a post-merge update proposal (`doc-maintenance-policy.md`).
+1. **Follow-Up Candidate Deduplication (`local_semantic_embed` via `embedding`):** During step 2e's prior-work check ([`finding-classes.md`](../../policies/finding-classes.md) Routing step 4), queries local semantic vectors (`embedding` on port `11434`) across `specs/` (open tickets) and `archive/` (completed tickets) to classify each remaining `out-of-scope-defect` or deferred `adr-owed` candidate as `new`, `duplicate of <id>`, or `fold into <id>` (recording the exact search terms, searched roots, and hit counts).
+2. **ADR & Intent-Insight Lineage Lookup (`repo-scout` via `inference`):** Searches `docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`, and `docs/flows/` to identify the next sequential `ADR-NNN` / `II-NNN` identifiers (via `mint-id.sh`), verify whether a decision supersedes or narrows an existing ADR (`ADR_CADENCE-0073`), and check whether any `docs/flows/` document warrants a post-merge update proposal (`doc-maintenance-policy.md`).
 
 All file moves, markdown authoring, and tracker syncs remain 100% owned by `/cadence-archive` and `cadence-archivist`.
 
@@ -92,5 +92,5 @@ All file moves, markdown authoring, and tracker syncs remain 100% owned by `/cad
 - [`../../policies/branch-strategy/long-lived-feature-release.md`](../../policies/branch-strategy/long-lived-feature-release.md) · [`trunk-based.md`](../../policies/branch-strategy/trunk-based.md) — how "is this merged?" and post-merge branch cleanup resolve.
 - [`../../policies/finding-classes.md`](../../policies/finding-classes.md) — `adr-owed` promotion (step 1b) and `out-of-scope-defect` follow-up filing (step 2e).
 - [`../../policies/doc-maintenance-policy.md`](../../policies/doc-maintenance-policy.md) — human approval requirement for `docs/flows/` and `docs/SYSTEM_OVERVIEW.md`.
-- [`../../ADR/`](../../ADR/) · [`../../agentic-sdlc/intent-insights.md`](../../agentic-sdlc/intent-insights.md) — destinations for promoted architectural decisions and reusable insights.
+- [`../../ADR/`](../../ADR/) · [`../../agentic-sdlc/intent-insights.md`](../../agentic-sdlc/intent-insights.md) — destinations for promoted architectural decisions and reusable insights (and use `/cadence-retro` to synthesize cross-ticket trends across `archive/*/`).
 - [`../../../specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) — the change-proposal and disposition record finalized at archival.

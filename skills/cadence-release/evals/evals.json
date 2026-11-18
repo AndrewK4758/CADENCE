@@ -1,0 +1,76 @@
+{
+  "skill_name": "cadence-release",
+  "notes": "Evaluates /cadence-release invariants: inline execution, non-empty [Unreleased] precondition, Step 1b #version-scheme-binding marker/table parity, pattern + strict monotonicity validation, Step 4b [ -s authored-doc-gate.sh ] before committing, annotated git tag -a, and two mandatory human confirmations (pre-edit version and pre-push).",
+  "evals": [
+    {
+      "id": 0,
+      "name": "fails-closed-on-empty-unreleased-or-scheme-mismatch",
+      "prompt": "Cut a release when CHANGELOG.md ## [Unreleased] is empty (or when #version-scheme-binding markers and table disagree).",
+      "expected_output": "Halts immediately without modifying any file: prints 'Nothing to release \u2014 [Unreleased] is empty.' on empty Unreleased, or halts naming CADENCE_ORG.md#version-scheme-binding on missing/mismatched scheme markers.",
+      "assertions": [
+        "Executes inline without delegating interactive confirmations to a subagent",
+        "Halts cleanly with zero file edits when ## [Unreleased] is empty",
+        "Verifies both markers and table in #version-scheme-binding and halts fail-closed on mismatch or placeholder"
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "cmd": "bash ci-templates/scripts/org-binding-resolve.sh --form",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "section9=per-prefix"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-release/SKILL.md",
+              "regex": "Unreleased"
+            },
+            {
+              "file": "skills/cadence-release/SKILL.md",
+              "regex": "version-scheme-binding"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "name": "two-gates-authored-doc-gate-and-annotated-tag",
+      "prompt": "Cut the next release from non-empty [Unreleased] entries containing new features.",
+      "expected_output": "Validates candidate version against version-pattern and strict monotonicity, prompts 'Cut vX.Y.Z as a <bump> release? (yes / a different version)' before editing any file, checks [ -s authored-doc-gate.sh ] in Step 4b before committing, creates an annotated tag (git tag -a), and prompts explicitly before git push.",
+      "assertions": [
+        "Validates candidate version against version-pattern and strict monotonicity before prompting",
+        "Requires explicit operator confirmation before modifying CHANGELOG.md, README.md, or docs/releases/",
+        "Checks non-zero [ -s ] size of authored-doc-gate.sh and passes exit 0 prior to release commit",
+        "Creates an annotated tag (git tag -a) and requires explicit yes/no confirmation before git push"
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "adopted_repo",
+          "cmd": "bash \"$FIX/ci-templates/scripts/authored-doc-gate.sh\" --root \"$FIX\"",
+          "expect_exit": 0
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-release/SKILL.md",
+              "regex": "authored-doc-gate"
+            },
+            {
+              "file": "skills/cadence-release/SKILL.md",
+              "regex": "git tag"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

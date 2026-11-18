@@ -1,0 +1,412 @@
+#!/usr/bin/env python3
+"""Zero-dependency HTTP/SSE reverse proxy for llama-swap LAN offload & fallback.
+
+Modes:
+1. Remote proxy with wait/retry (Living-Room Server -> Office 5080 `192.168.50.155:11434`):
+   Waits cleanly if the office 5080 is temporarily asleep/reconnecting so requests never
+   swap or OOM the local RTX 3050 Ti.
+2. LAN-first with local process fallback (`archlaptop` -> Living-Room 3050 Ti `192.168.50.254:11434`):
+   Probes the living-room 3050 Ti in <50ms; if reachable on the home LAN, forwards `/v1/embeddings`
+   to the 3050 Ti. When away at work (no VPN needed), transparently spawns/forwards to a local
+   `llama-server-dropcache` GPU embedding instance on `archlaptop` (RTX 5080 eGPU or RTX 5070 Ti).
+3. LAN-first with upstream URL fallback (`work-gpu` -> Office Dual-Ada `10.24.1.189:80/upstream/inference`):
+   Probes the office Dual RTX 4000 Ada server in <150ms; if off-LAN, forwards transparently to
+   `--fallback-upstream http://127.0.0.1:11434/upstream/inference` on local GPUs.
+"""
+
+from __future__ import annotations
+import argparse, http.client, os, signal, socket, subprocess, sys, threading, time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
+
+
+class ProxyConfig:
+    port: int = 11445
+    upstream: str = "http://192.168.50.155:11434"
+    fallback_upstream: str = ""
+    probe_timeout: float = 0.05
+    wait_for_upstream: bool = True
+    wait_timeout: float = 120.0
+    fallback_cmd: list[str] = []
+    fallback_port: int = 11449
+
+
+CONFIG = ProxyConfig()
+FALLBACK_LOCK = threading.Lock()
+FALLBACK_PROC: subprocess.Popen | None = None
+FALLBACK_INFLIGHT: int = 0
+LAST_FALLBACK_AT: float = 0.0
+FALLBACK_IDLE_RECLAIM_SECONDS: float = 30.0
+UPSTREAM_PROBE_INTERVAL_SECONDS: float = 15.0
+UPSTREAM_RECOVER_STREAK: int = 2
+POOL_LOCK = threading.Lock()
+UPSTREAM_POOL: dict[tuple[str, int], list[http.client.HTTPConnection]] = {}
+
+
+UPSTREAM_TIMEOUT = 900.0
+
+
+def _drop_pooled(host: str, port: int) -> None:
+    with POOL_LOCK:
+        bucket = UPSTREAM_POOL.pop((host, port), [])
+    for conn in bucket:
+        try:
+            conn.close()
+        except OSError:
+            pass
+
+
+def _configure_upstream_sock(conn: http.client.HTTPConnection, timeout: float = UPSTREAM_TIMEOUT) -> None:
+    conn.timeout = timeout
+    if conn.sock is not None:
+        conn.sock.settimeout(timeout)
+        try:
+            conn.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except OSError:
+            pass
+
+
+def _pop_pooled(host: str, port: int) -> http.client.HTTPConnection | None:
+    picked: http.client.HTTPConnection | None = None
+    with POOL_LOCK:
+        bucket = UPSTREAM_POOL.get((host, port))
+        while bucket:
+            conn = bucket.pop()
+            if conn.sock is not None:
+                picked = conn
+                break
+            conn.close()
+    if picked is not None:
+        _configure_upstream_sock(picked)
+    return picked
+
+
+def _push_pooled(host: str, port: int, conn: http.client.HTTPConnection) -> None:
+    if conn.sock is None:
+        return
+    _configure_upstream_sock(conn)
+    with POOL_LOCK:
+        bucket = UPSTREAM_POOL.setdefault((host, port), [])
+        if len(bucket) < 16:
+            bucket.append(conn)
+        else:
+            conn.close()
+
+
+def _can_reach(host: str, port: int, timeout: float, force_probe: bool = False, keep_conn: bool = True) -> bool:
+    if not force_probe:
+        with POOL_LOCK:
+            bucket = UPSTREAM_POOL.get((host, port))
+            if bucket and any(c.sock is not None for c in bucket):
+                return True
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=timeout)
+        conn.connect()
+        if keep_conn:
+            _configure_upstream_sock(conn)
+            _push_pooled(host, port, conn)
+        else:
+            conn.close()
+        return True
+    except OSError:
+        if force_probe:
+            _drop_pooled(host, port)
+        return False
+
+
+def _ensure_fallback_running_locked() -> tuple[str, int]:
+    """Start local fallback server if not running. Caller must hold FALLBACK_LOCK."""
+    global FALLBACK_PROC
+    if FALLBACK_PROC is None or FALLBACK_PROC.poll() is not None:
+        cmd = [arg.replace("__FALLBACK_PORT__", str(CONFIG.fallback_port)) for arg in CONFIG.fallback_cmd]
+        FALLBACK_PROC = subprocess.Popen(cmd)
+        for _ in range(120):
+            if FALLBACK_PROC.poll() is not None:
+                break
+            if _can_reach("127.0.0.1", CONFIG.fallback_port, 0.1, force_probe=True, keep_conn=False):
+                try:
+                    conn = http.client.HTTPConnection("127.0.0.1", CONFIG.fallback_port, timeout=1.0)
+                    conn.request("GET", "/health")
+                    resp = conn.getresponse()
+                    resp.read()
+                    conn.close()
+                    if resp.status == 200:
+                        break
+                except Exception:
+                    pass
+            time.sleep(0.25)
+    return "127.0.0.1", CONFIG.fallback_port
+
+
+def _parse_url(url: str) -> tuple[str, int, str]:
+    parsed = urlparse(url)
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    prefix = parsed.path.rstrip("/")
+    return host, port, prefix
+
+
+def _release_fallback_inflight() -> None:
+    global FALLBACK_INFLIGHT, LAST_FALLBACK_AT
+    with FALLBACK_LOCK:
+        FALLBACK_INFLIGHT = max(0, FALLBACK_INFLIGHT - 1)
+        LAST_FALLBACK_AT = time.monotonic()
+
+
+def _resolve_target(force_probe: bool = False) -> tuple[str, int, str, bool]:
+    global FALLBACK_INFLIGHT, LAST_FALLBACK_AT
+    u_host, u_port, u_prefix = _parse_url(CONFIG.upstream)
+
+    if CONFIG.fallback_cmd:
+        if _can_reach(u_host, u_port, CONFIG.probe_timeout, force_probe=force_probe, keep_conn=not force_probe):
+            return u_host, u_port, u_prefix, False
+        with FALLBACK_LOCK:
+            fb_host, fb_port = _ensure_fallback_running_locked()
+            FALLBACK_INFLIGHT += 1
+            LAST_FALLBACK_AT = time.monotonic()
+        return fb_host, fb_port, "", True
+
+    if CONFIG.fallback_upstream:
+        if _can_reach(u_host, u_port, CONFIG.probe_timeout, force_probe=force_probe, keep_conn=not force_probe):
+            return u_host, u_port, u_prefix, False
+        fb_host, fb_port, fb_prefix = _parse_url(CONFIG.fallback_upstream)
+        return fb_host, fb_port, fb_prefix, False
+
+    if CONFIG.wait_for_upstream:
+        deadline = time.monotonic() + CONFIG.wait_timeout
+        while time.monotonic() < deadline:
+            if _can_reach(u_host, u_port, 0.5, force_probe=force_probe):
+                return u_host, u_port, u_prefix, False
+            time.sleep(1.0)
+    return u_host, u_port, u_prefix, False
+
+
+def _fallback_reclaim_loop() -> None:
+    """Unload idle local fallback process once primary upstream is stably reachable again."""
+    global FALLBACK_PROC
+    u_host, u_port, _ = _parse_url(CONFIG.upstream)
+    streak = 0
+    while True:
+        time.sleep(UPSTREAM_PROBE_INTERVAL_SECONDS)
+        with FALLBACK_LOCK:
+            proc_alive = FALLBACK_PROC is not None and FALLBACK_PROC.poll() is None
+            idle_enough = (
+                FALLBACK_INFLIGHT == 0
+                and (time.monotonic() - LAST_FALLBACK_AT) >= FALLBACK_IDLE_RECLAIM_SECONDS
+            )
+        if not proc_alive or not idle_enough:
+            streak = 0
+            continue
+        if _can_reach(u_host, u_port, CONFIG.probe_timeout, force_probe=True, keep_conn=False):
+            streak += 1
+        else:
+            streak = 0
+            continue
+        if streak < UPSTREAM_RECOVER_STREAK:
+            continue
+        with FALLBACK_LOCK:
+            if (
+                FALLBACK_PROC is None
+                or FALLBACK_PROC.poll() is not None
+                or FALLBACK_INFLIGHT > 0
+                or (time.monotonic() - LAST_FALLBACK_AT) < FALLBACK_IDLE_RECLAIM_SECONDS
+            ):
+                streak = 0
+                continue
+            proc = FALLBACK_PROC
+            FALLBACK_PROC = None
+        proc.terminate()
+        try:
+            proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        _drop_pooled("127.0.0.1", CONFIG.fallback_port)
+        sys.stderr.write(f"[llama-lan-proxy] Upstream {u_host}:{u_port} reachable; unloaded idle local fallback.\n")
+        sys.stderr.flush()
+        streak = 0
+
+
+class LANProxyHandler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def setup(self) -> None:
+        super().setup()
+        try:
+            self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except OSError:
+            pass
+
+    def log_message(self, fmt: str, *args: object) -> None:
+        return
+
+    def _handle(self) -> None:
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            body = b'{"status":"ok"}\n'
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        content_len = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(content_len) if content_len > 0 else None
+        u_host, u_port, _ = _parse_url(CONFIG.upstream)
+        has_fallback = bool(CONFIG.fallback_cmd or CONFIG.fallback_upstream)
+        using_fallback_proc = False
+        target_host, target_port, target_prefix, using_fallback_proc = _resolve_target()
+        req_path = self.path
+
+        conn: http.client.HTTPConnection | None = None
+        resp: http.client.HTTPResponse | None = None
+        headers_sent = False
+        try:
+            base_headers = {
+                k: v for k, v in self.headers.items()
+                if k.lower() not in {"host", "connection", "transfer-encoding"}
+            }
+            base_headers["Connection"] = "keep-alive"
+
+            for attempt in range(2):
+                req_path = self.path
+                if target_prefix and not req_path.startswith(target_prefix):
+                    req_path = f"{target_prefix}{req_path if req_path.startswith('/') else '/' + req_path}"
+                fwd_headers = dict(base_headers)
+                fwd_headers["Host"] = target_host if target_port == 80 else f"{target_host}:{target_port}"
+
+                conn = _pop_pooled(target_host, target_port) if attempt == 0 else None
+                if conn is None:
+                    is_primary = not using_fallback_proc and has_fallback and target_host == u_host and target_port == u_port
+                    connect_timeout = CONFIG.probe_timeout if is_primary else UPSTREAM_TIMEOUT
+                    conn = http.client.HTTPConnection(target_host, target_port, timeout=connect_timeout)
+                    try:
+                        conn.connect()
+                    except (OSError, http.client.HTTPException):
+                        conn.close()
+                        conn = None
+                        if attempt == 0 and not using_fallback_proc and has_fallback:
+                            target_host, target_port, target_prefix, using_fallback_proc = _resolve_target(force_probe=True)
+                            continue
+                        raise
+                _configure_upstream_sock(conn)
+                try:
+                    conn.request(self.command, req_path, body=body, headers=fwd_headers)
+                    _configure_upstream_sock(conn)
+                    resp = conn.getresponse()
+                    break
+                except (OSError, http.client.HTTPException):
+                    conn.close()
+                    conn = None
+                    if attempt == 0 and not using_fallback_proc and has_fallback:
+                        target_host, target_port, target_prefix, using_fallback_proc = _resolve_target(force_probe=True)
+                        continue
+                    if attempt == 1:
+                        raise
+            assert conn is not None and resp is not None
+
+            self.send_response(resp.status, resp.reason)
+            is_chunked = resp.getheader("Transfer-Encoding", "").lower() == "chunked"
+            has_cl = resp.getheader("Content-Length") is not None
+            for k, v in resp.getheaders():
+                if k.lower() in {"transfer-encoding", "connection", "keep-alive"}:
+                    continue
+                self.send_header(k, v)
+            if is_chunked or not has_cl:
+                self.send_header("Connection", "close")
+            else:
+                self.send_header("Connection", "keep-alive")
+            self.end_headers()
+            headers_sent = True
+
+            read_fn = getattr(resp, "read1", resp.read)
+            while True:
+                chunk = read_fn(4096 if is_chunked else 16384)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                self.wfile.flush()
+            if resp.will_close:
+                conn.close()
+            else:
+                _push_pooled(target_host, target_port, conn)
+        except Exception as exc:
+            if resp is not None:
+                resp.close()
+            if conn is not None:
+                conn.close()
+            if headers_sent:
+                sys.stderr.write(f"[llama-lan-proxy] stream interrupted from {target_host}:{target_port}{req_path}: {exc}\n")
+                sys.stderr.flush()
+                self.close_connection = True
+                return
+            err = f'{{"error":{{"message":"Upstream {target_host}:{target_port} unavailable: {exc}","type":"lan_offload_unavailable"}}}}\n'.encode("utf-8")
+            try:
+                self.send_response(503)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(err)))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(err)
+            except OSError:
+                self.close_connection = True
+        finally:
+            if using_fallback_proc:
+                _release_fallback_inflight()
+
+    def do_GET(self) -> None:
+        self._handle()
+
+    def do_POST(self) -> None:
+        self._handle()
+
+    def do_OPTIONS(self) -> None:
+        self._handle()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="llama-swap LAN proxy & fallback")
+    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--upstream", type=str, default="http://192.168.50.155:11434")
+    parser.add_argument("--fallback-upstream", type=str, default="")
+    parser.add_argument("--probe-timeout", type=float, default=0.05)
+    parser.add_argument("--wait-timeout", type=float, default=120.0)
+    parser.add_argument("--fallback-port", type=int, default=0)
+    parser.add_argument("fallback_cmd", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+
+    CONFIG.port = args.port
+    CONFIG.upstream = args.upstream
+    CONFIG.fallback_upstream = args.fallback_upstream
+    CONFIG.probe_timeout = args.probe_timeout
+    CONFIG.wait_timeout = args.wait_timeout
+    CONFIG.fallback_port = args.fallback_port or (args.port + 100)
+    if args.fallback_cmd and args.fallback_cmd[0] == "--":
+        CONFIG.fallback_cmd = args.fallback_cmd[1:]
+    else:
+        CONFIG.fallback_cmd = args.fallback_cmd
+
+    def _cleanup(*_: object) -> None:
+        global FALLBACK_PROC
+        with FALLBACK_LOCK:
+            proc = FALLBACK_PROC
+            FALLBACK_PROC = None
+        if proc and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _cleanup)
+    signal.signal(signal.SIGINT, _cleanup)
+
+    if CONFIG.fallback_cmd:
+        threading.Thread(target=_fallback_reclaim_loop, daemon=True).start()
+
+    server = ThreadingHTTPServer(("127.0.0.1", CONFIG.port), LANProxyHandler)
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

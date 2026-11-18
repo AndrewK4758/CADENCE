@@ -45,6 +45,7 @@
 # leave the destination untouched. Returns 0 on success, 1 on decline/failure.
 derive_adopter_footprint() {
   local eject="$CORE/ci-templates/scripts/cadence-eject.sh"
+  [[ -f "$eject" ]] || eject="$CORE/processes/ci-templates/scripts/cadence-eject.sh"
   if [[ "${AUTOGEN_CONFIRM:-0}" != "1" ]]; then
     echo "upgrade-cadence: footprint auto-generate declined (no confirmation); nothing written." >&2
     echo "upgrade-cadence: the footprint is still required -- see the Step-0 guidance above." >&2

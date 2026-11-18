@@ -8,11 +8,11 @@ Slash commands in `.agents/skills/` (projected to `.gemini/skills/` or `.claude/
 
 When executing CADENCE slash commands, read-only discovery, test/build log compaction, and pre-review mechanical sweeps automatically offload to the local 2-tier hardware coprocessor pipeline (`local-offload` MCP server + `log-triage` and `repo-scout` subagents):
 
-- **Tier 1 — Always-On Zero-VRAM CPU (`127.0.0.1:11434`)**:
-  - `local-embed-cpu` (`nomic-embed-text`, 0 MB VRAM) + `repo-scout`: Activated during `/cadence-triage` and `/cadence-spec` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, and locate codebase symbols without bloating the primary model's context window.
-  - `local-fast-cpu` (`gemma-4-e2b-it`, 128MB 3D V-Cache, 0 MB VRAM) + `log-triage` (`offload_log_triage`): Activated during `/cadence-implement` TDD loops and CI verification to compact verbose test runner and compiler logs into verbatim failure lines, `file:line` coordinates, and coverage metrics while preserving the full raw log at `/tmp/agy-last-triage.log`.
-- **Tier 2 — On-Demand Hybrid MoE & GPU (`127.0.0.1:11434`)**:
-  - `local-moe-hybrid` (`gemma-4-26b-a4b-it`) & `local-12b-gpu` (`gemma-4-12b-it` on RTX 5070 Ti 12GB VRAM) via `offload_deep_review`: Activated during `/cadence-review` and `/cadence-maintain` for advisory pre-review sweeps checking Pillar 3 (`<400`-line file ceiling), comment discipline, and CHORD observability seam completeness before Gemini 4 Argon (`pro`) issues gate verdicts.
+- **Tier 1 — Always-On Embedding (`127.0.0.1:11434`)**:
+  - `embedding` (`embeddinggemma-2`) + `local_semantic_embed`: Activated during `/cadence-propose`, `/cadence-triage`, `/cadence-spec`, `/cadence-archive`, and `/cadence-retro` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, cluster cross-ticket patterns, and locate codebase symbols without bloating the primary model's context window.
+- **Tier 2 — On-Demand Inference (`127.0.0.1:11434`)**:
+  - `inference` via `offload_log_triage` / `log-triage` and `repo-scout`: Activated during `/cadence-implement`, `/cadence-refactor`, `/cadence-merge`, and `/cadence-doctor` to compact verbose test runner and compiler logs into verbatim failure lines, `file:line` coordinates, and coverage metrics while preserving the full raw log at `/tmp/agy-last-triage.log`.
+  - `inference` via `offload_deep_review`: Activated during `/cadence-review` and `/cadence-maintain` for advisory pre-review sweeps checking Pillar 3 (`<400`-line file ceiling), comment discipline, and CHORD observability seam completeness before the `Deep-reasoning` tier (`xhigh` effort) issues gate verdicts.
 
 All local coprocessor models run with `enable_write_tools: false` and never modify repository files.
 
@@ -106,7 +106,7 @@ For Medium and High tier tickets, `/cadence-spec` executes an **independent desi
 
 ## `/cadence-implement [ticket-id]`
 
-Execute a ticket's approved tier contract using strict BDD red-green-refactor TDD — one Gherkin scenario per commit cycle, database migrations via expand/contract, and journey invariant tests under chaos profiles. Delegates to `cadence-implementer`, which works sequentially through the Implementation Order (from `test-plan.md` at Medium/High tier, or derived from `problem.md` acceptance criteria at Low tier) in red-green-accumulate-commit loops while using `offload_log_triage` / `log-triage` on `:11434` to compact test output.
+Execute a ticket's approved tier contract using strict BDD red-green-refactor TDD — one Gherkin scenario per commit cycle, database migrations via expand/contract, and journey invariant tests under chaos profiles. Delegates to `cadence-implementer`, which works sequentially through the Implementation Order (from `test-plan.md` at Medium/High tier, or derived from `problem.md` acceptance criteria at Low tier) in red-green-accumulate-commit loops while using `offload_log_triage` / `log-triage` on `:11434` to compact test output and gating transition on `verify-facts.sh --trace` plus `offload_deep_review`.
 
 ```
 /cadence-implement TT-1234
@@ -118,7 +118,7 @@ Execute a ticket's approved tier contract using strict BDD red-green-refactor TD
 
 ## `/cadence-review [MR number or branch name]`
 
-Review a submitted change proposal against its governing tier contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md` acceptance criteria at Low tier). Runs an advisory local pre-review sweep (`offload_deep_review` on `:11434`) followed by `cadence-reviewer`, verifying acceptance criteria implementation, BDD test coverage, CADENCE Engineering Pillar compliance, architecture boundaries, and security posture, and applying the two-axis adversarial review lens: *verify-the-claim* (checking every safety assumption against authoritative seed/config/code sources) and *locate-the-failure* (probing inside the diff, in consumed code, in callers, and in unchanged sibling code whose assumptions were invalidated), plus silent-failure probes (silent fallbacks, broad catch blocks, multi-writer invariant gaps, state reuse across transitions, fake blind spots, and environment asset parity).
+Review a submitted change proposal against its governing tier contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md` acceptance criteria at Low tier). Runs an advisory local pre-review sweep (`offload_deep_review` on `:11434`), mechanical spec/AC traceability (`verify-facts.sh --trace`), and `security-trigger.sh`, followed by `cadence-reviewer` (plus `cadence-security-auditor` at `xhigh` effort when `High` tier or security/concurrency signals trigger), verifying acceptance criteria implementation, BDD test coverage, CADENCE Engineering Pillar compliance, architecture boundaries, and security posture, and applying the two-axis adversarial review lens: *verify-the-claim* (checking every safety assumption against authoritative seed/config/code sources) and *locate-the-failure* (probing inside the diff, in consumed code, in callers, and in unchanged sibling code whose assumptions were invalidated), plus silent-failure probes (silent fallbacks, broad catch blocks, multi-writer invariant gaps, state reuse across transitions, fake blind spots, and environment asset parity).
 
 ```
 /cadence-review 142
@@ -171,6 +171,12 @@ Enshrine a merged ticket into the permanent repository archive. Delegates to `ca
 
 ---
 
+## `/cadence-retro [--since <N|YYYY-MM-DD>] [--include-active] [--promote]`
+
+Synthesize cross-ticket metrics and recurring failure patterns across `archive/*/` via `.agents/skills/cadence-retro/retro_scan.py` and `:11434` semantic clustering (`local_semantic_embed`). Default execution is strictly read-only, reporting tier distribution, recorded `stage_effort` variance, multi-cycle code-review rework hotspots, `Deferred` follow-ups, unguarded citation sweeps, and deduplicated `II-NNN` / `PROD-NNN` insight candidates; promotions run only after explicit operator confirmation using atomic `mint-id.sh --reserve`.
+
+---
+
 ## `/cadence-sync-jira [ticket-id | all]`
 
 Project specification metadata, lifecycle status, and stage-effort worklogs from the repository to on-prem Jira Server/DC. Strictly one-directional: the Git repository is the source of truth.
@@ -190,13 +196,12 @@ Update the concrete model identifier across agent YAML frontmatter (`.agents/age
 
 **Outputs:** Preview diff across all targets, operator confirmation prompt, and post-apply verification. Review with `git diff` and commit via the standard worktree PR workflow.
 
-### Example (Gemini / Antigravity Runtime)
+### Examples (Per-Runtime Substitution)
 
-```
-/cadence-bump-model gemini-3.5-pro gemini-4-argon
-/cadence-bump-model gemini-3.5-flash gemini-3.8-flash
-
-/cadence-bump-model gemini-4-argon gemini-3.8-flash  # refused — cross-tier substitution
+```text
+/cadence-bump-model gemini-4-argon gemini-4-hydrogen      # Gemini runtime: Deep-reasoning bump
+/cadence-bump-model claude-opus-5-0 claude-opus-5-5       # Claude runtime: Deep-reasoning bump
+/cadence-bump-model gemini-4-hydrogen gemini-3.8-flash    # refused — cross-tier substitution
 ```
 
 ---
@@ -218,3 +223,49 @@ Upon confirmation, the skill finalizes `## [Unreleased]` as `## [X.Y.Z] - <YYYY-
 /cadence-release minor     # force minor bump (still displays analysis)
 /cadence-release patch     # force patch — warns if Unreleased contains features or breaking changes
 ```
+
+---
+
+## `/cadence-propose "<summary>"`
+
+Mechanize Workflow Step 00 (Problem) before IDs are allocated: validates fit against `PROJECT_INTENT.md` and registered surface registries, runs `local_semantic_embed` (`:11434`) to surface duplicate tickets or prior `PROD-*`/`II-*` insights, writes a concise 3–5 sentence 4-part outcome proposal (`Problem`, `Proposed approach`, `Surfaces affected`, `Ask`) into `specs/drafts/<slug>.md`, and hands off to `/cadence-triage --file-only specs/drafts/<slug>.md` (or full `/cadence-triage`).
+
+## `/cadence-refactor "<transform-spec>" [scope]`
+
+Execute wide, deterministic, behavior-preserving refactors inside a dedicated worktree under `Fast-mechanical` (`high` effort) over an exhaustive pre-computed manifest (`local_semantic_embed` + `rg` + dual `docs/` searches), halting and escalating to `/cadence-spec` (`Deep-reasoning`, `xhigh`) if registered surfaces, schemas, or behavioral contracts would change, and running canonical tests + `offload_deep_review` (`:11434`) post-sweep.
+
+## `/cadence-merge <ticket-id> [--no-archive]`
+
+Mechanize Workflow Step 07 (Merge): checks tier-conditional Gate 2 / Gate 3 approval (`maintainer_approved_at` for Medium/High; Gate 2 only for Low), resolves the integration branch dynamically from `CADENCE_ORG.md#branch-strategy-binding`, rebases cleanly and re-runs tests via `offload_log_triage` (`:11434`), lands the change without `--no-verify`, sets `status: merged` + exact UTC `merged_at`, syncs the bound tracker, cleans up temporary worktree state, and chains `/cadence-archive` unless `--no-archive` is passed.
+
+## `/cadence-doctor [--ticket <id>] [--check-offload] [--full]`
+
+Run a strictly read-only repository audit via `.agents/skills/cadence-doctor/doctor.sh`: verifies linkage, `#*-binding` markers, `<400`-line file ceilings, eject footprint freshness, `mint-id.sh --peek`, installed governance gates (never silently passing 0-byte scripts), optional ticket checks (`verify-spec.sh`, `verify-facts.sh --rulings/--trace`, `ac-classify.sh`), and optional `:11434` offload reachability.
+
+## `/cadence-eject <source-repo-root> <destination-dir> | --check-footprint`
+
+Wrap `cadence-eject.sh` to validate the eject footprint descriptor read-only or export a CADENCE-stripped deliverable copy after previewing strip scope (plus BL-003 history boundary), obtaining operator confirmation, and verifying CADENCE directories are absent from `<destination-dir>`.
+
+---
+
+## Consolidated Stage Workflows
+
+## `/cadence-onboard <target-repo-root> [--linked] [--gitignore-machinery] [--skip-interview]`
+
+Onboard a repository to CADENCE end-to-end: runs `adopt-cadence.sh`, optionally links `.agents/` and `.gemini/` to canonical core via `import/link-sdlc.sh --replace` when `--linked` is passed, completes `/cadence-interview` bindings in `CADENCE_ORG.md`, and verifies repository + offload health via `/cadence-doctor --check-offload`.
+
+## `/cadence-define [--propose] <ticket-id-or-problem>`
+
+Advance a ticket through the entire definition phase and stop before implementation: optionally drafts Step 00 (`--propose` -> `/cadence-propose`), then chains `/cadence-triage`, `/cadence-elicit`, and `/cadence-spec`, resolves open questions / Gate 1 rulings, and opens/publishes the spec-approval MR (`read_state.py` / `ready_mr.sh`).
+
+## `/cadence-build <ticket-id> [--with-migrations] [--max-cycles 5]`
+
+Advance an approved/triaged ticket through implementation and verification: ensures isolated worktree setup, chains `/cadence-implement` (plus `/cadence-migrate` when `--with-migrations` or schema/SQL specs trigger it), runs iterative `/cadence-review` + `security-trigger.sh`/`cadence-security-auditor` loops tracked via `<!-- cadence-run:cycle ... -->` markers, and readies the PR for Gate 3 or merge.
+
+## `/cadence-close <ticket-id> [--no-archive]`
+
+Close out a code-reviewed ticket through Gate 3 and cleanup: inspects `read_state.py`, runs tier-conditional Gate 3 `/cadence-maintain` (`Medium`/`High` when `maintainer_approved_at` is unset; skipped on `Low`/`Trivial`), lands via `/cadence-merge` + tracker sync without `--no-verify`, and chains `/cadence-archive` + post-close `doctor.sh` unless `--no-archive` is set.
+
+## `/cadence-housekeep [--since <N>] [--include-active] [--full] [--promote] [--with-release [major|minor|patch]]`
+
+Run repository hygiene in one command: executes read-only `/cadence-doctor --check-offload [--full]` and `/cadence-retro`, gates `--promote` (`II-*`/`PROD-*` ID minting) behind explicit operator confirmation, and gates optional `--with-release` behind a clean doctor pass and `/cadence-release` confirmations.
