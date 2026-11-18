@@ -224,12 +224,18 @@ if [[ -n "$TICKET" ]]; then
     fail "ticket $TICKET missing metadata.yaml"
   else
     tier="$(sed -n 's/^tier:[[:space:]]*["'\'']\{0,1\}\([A-Za-z]*\).*/\1/p' "$TDIR/metadata.yaml" | head -n 1 | tr '[:upper:]' '[:lower:]')"
+    tstatus="$(sed -n 's/^status:[[:space:]]*["'\'']\{0,1\}\([A-Za-z-]*\).*/\1/p' "$TDIR/metadata.yaml" | head -n 1 | tr '[:upper:]' '[:lower:]')"
     if [[ "$tier" == "medium" || "$tier" == "high" ]]; then
       pass "ticket $TICKET tier=$tier (${TDIR#"$ROOT/"})"
       if [[ -f "$TDIR/spec.md" ]]; then
         run_gate_check "verify-spec ($TICKET)" "$T_VERIFY_SPEC" --root "$ROOT" "$TICKET"
         run_gate_check "verify-facts ($TICKET)" "$T_VERIFY_FACTS" --root "$ROOT" "$TICKET"
         run_gate_check "verify-facts --rulings ($TICKET)" "$T_VERIFY_FACTS" --root "$ROOT" --rulings "$TICKET"
+        if [[ "$tstatus" == "in-progress" || "$tstatus" == "in-review" || "$tstatus" == "merged" || "$tstatus" == "archived" ]]; then
+          run_gate_check "verify-facts --trace ($TICKET)" "$T_VERIFY_FACTS" --root "$ROOT" --trace "$TICKET"
+        else
+          skip "verify-facts --trace ($TICKET) (status=${tstatus:-unset}, pre-implementation)"
+        fi
       else
         warn "ticket $TICKET spec.md not yet authored (${TDIR#"$ROOT/"})"
       fi
@@ -237,6 +243,11 @@ if [[ -n "$TICKET" ]]; then
       pass "ticket $TICKET tier=$tier (${TDIR#"$ROOT/"})"
       if [[ -f "$TDIR/problem.md" ]]; then
         run_gate_check "ac-classify ($TICKET)" "$T_AC_CLASSIFY" "$TDIR/problem.md"
+        if [[ "$tstatus" == "in-progress" || "$tstatus" == "in-review" || "$tstatus" == "merged" || "$tstatus" == "archived" ]]; then
+          run_gate_check "verify-facts --trace ($TICKET)" "$T_VERIFY_FACTS" --root "$ROOT" --trace "$TICKET"
+        else
+          skip "verify-facts --trace ($TICKET) (status=${tstatus:-unset}, pre-implementation)"
+        fi
       else
         fail "ticket $TICKET problem.md missing"
       fi

@@ -15,6 +15,7 @@
 # Usage:
 #   verify-facts.sh [--root <dir>] [--base <ref>] <ticket-id>    # facts mode (default HEAD)
 #   verify-facts.sh [--root <dir>] --rulings <ticket-id>         # rulings mode
+#   verify-facts.sh [--root <dir>] [--base <ref>] [--strict] --trace <ticket-id>  # trace mode
 #
 # Where it looks: resolves specs/<id>/ then archive/<id>/, same idiom as
 # verify-spec.sh -- neither present is a loud exit 1 naming both roots.
@@ -27,6 +28,8 @@
 # stdout rulings: RULING gate=<n> item=<id> value=<v> label=<diverged|examined|accepted-as-presented>
 #                 MISSING gate=1 item=<id>
 #                 SUMMARY required=<n> missing=<n> diverged=<n> examined=<n> accepted-as-presented=<n>
+# stdout trace:   PASS|FAIL|WARN|UNVERIFIABLE  <scenario|seam|files-affected|ac-coverage> <target> [-- reason]
+#                 SUMMARY pass=<n> fail=<n> warn=<n> unverifiable=<n>
 #
 # Exit codes: 0 = clean (or nothing required) ; 1 = a checked fact FAILed
 # (sentinel present), a required Gate 1 ruling is missing/malformed, an
@@ -43,19 +46,24 @@ set -u
 usage() {
   echo "Usage: $0 [--root <repo-root>] [--base <ref>] <ticket-id>" >&2
   echo "       $0 [--root <repo-root>] --rulings <ticket-id>" >&2
+  echo "       $0 [--root <repo-root>] [--base <ref>] [--strict] --trace <ticket-id>" >&2
   exit 1
 }
 
 MODE="facts"
 BASE="HEAD"
+BASE_EXPLICIT=0
+TRACE_STRICT=0
 ROOT=""
 TICKET=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --rulings) MODE="rulings"; shift ;;
+    --trace)   MODE="trace"; shift ;;
+    --strict)  TRACE_STRICT=1; shift ;;
     --base)
       [[ $# -ge 2 ]] || usage
-      BASE="$2"; shift 2 ;;
+      BASE="$2"; BASE_EXPLICIT=1; shift 2 ;;
     --root)
       [[ $# -ge 2 ]] || usage
       ROOT="$2"; shift 2 ;;
@@ -84,6 +92,15 @@ fi
 # shellcheck source=/dev/null
 . "$SELF_DIR/verify-facts-lib.sh"
 
+if [[ "$MODE" == "trace" ]]; then
+  if [[ ! -f "$SELF_DIR/verify-trace-lib.sh" ]]; then
+    echo "ERROR: required module not found: $SELF_DIR/verify-trace-lib.sh" >&2
+    exit 1
+  fi
+  # shellcheck source=/dev/null
+  . "$SELF_DIR/verify-trace-lib.sh"
+fi
+
 # Resolve the ticket's artifact root -- specs/<id> first, else archive/<id>/
 # (same two-branch, loud-miss shape as verify-spec.sh).
 if   [[ -d "$ROOT/specs/$TICKET"   ]]; then TICKET_REL="specs/$TICKET"
@@ -97,7 +114,7 @@ SPEC="$TICKET_DIR/spec.md"
 DECISIONS="$TICKET_DIR/decisions.md"
 DESIGN_OPTIONS="$TICKET_DIR/design-options.md"
 
-[[ -f "$SPEC" ]] || { echo "ERROR: spec.md missing at $TICKET_REL/spec.md" >&2; exit 1; }
+[[ "$MODE" == "trace" || -f "$SPEC" ]] || { echo "ERROR: spec.md missing at $TICKET_REL/spec.md" >&2; exit 1; }
 
 echo "verify-facts: $TICKET_REL"
 
@@ -353,4 +370,5 @@ rulings_mode() {
 case "$MODE" in
   facts)   facts_mode ;;
   rulings) rulings_mode ;;
+  trace)   trace_mode ;;
 esac

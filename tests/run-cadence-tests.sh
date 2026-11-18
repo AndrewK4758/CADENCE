@@ -138,6 +138,12 @@ t1b_syntax() {
   while IFS= read -r -d '' shf; do
     bash -n "$shf"
   done < <(find "$ROOT/hooks" "$ROOT/import" "$ROOT/skills/cadence-adopt" "$ROOT/skills/cadence-doctor" "$ROOT/skills/cadence-spec" "$ROOT/skills/cadence-implement" "$ROOT/skills/cadence-upgrade" "$ROOT/processes/ci-templates/scripts" "$ROOT/tests" -maxdepth 2 -name '*.sh' -print0)
+  python3 -B - "$ROOT" <<'PY'
+import pathlib, sys
+root = pathlib.Path(sys.argv[1])
+for p in sorted(root.glob("skills/**/*.py")):
+    compile(p.read_text(encoding="utf-8"), str(p), "exec")
+PY
 }
 
 t2_hooks() {
@@ -312,6 +318,7 @@ run_subtest "T2 hooks PreInvocation / PostToolUse / Stop continuationActive" t2_
 run_subtest "T3 local-offload core unit tests" t3_offload
 run_subtest "T4 fixtures, read_state, verify-spec/facts, ac-classify, ready_mr" t4_fixture_and_gates "$FIX_DIR"
 run_subtest "T5 adopt, .gemini projection, mint-id peek, idempotency, eject, check-footprint" t5_adopt_and_eject "$ADOPT_DST" "$EJECT_OUT"
+run_subtest "T6 verify-facts --trace spec/AC-to-code/test traceability gates" bash "$ROOT/tests/test-trace-gates.sh" "$ROOT"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]
