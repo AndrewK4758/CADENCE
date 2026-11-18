@@ -4,11 +4,37 @@
 # implementation (plus optional secondary CLI adapters per docs/policies/cli-runtime-adoption-policy.md).
 #
 # Usage:
-#   link-sdlc.sh <target-repo> [--claude] [--opencode] [--blitz]
+#   link-sdlc.sh <target-repo> [--replace] [--claude] [--opencode] [--blitz]
 #   link-sdlc.sh --global [--enable-service]   (promotes CADENCE + LiteRT/llama-swap offload globally into ~/.agents/, ~/.gemini/config/, ~/.blitz/, and ~/.local/bin/)
 set -euo pipefail
 
 SDLC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPLACE_COPIES=0
+
+# Support --replace anywhere in non-global arguments without altering positional semantics.
+FILTERED_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --replace) REPLACE_COPIES=1 ;;
+    *) FILTERED_ARGS+=("$arg") ;;
+  esac
+done
+set -- ${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}
+
+link_dir_target() {
+  local src="$1" dst="$2"
+  if [[ -e "$dst" && ! -L "$dst" ]]; then
+    if [[ -d "$dst" ]]; then
+      if (( REPLACE_COPIES )); then
+        rm -rf "$dst"
+      else
+        echo "ERROR: $dst exists as a real directory (copied files). Re-run with --replace to link to $SDLC_ROOT." >&2
+        exit 1
+      fi
+    fi
+  fi
+  ln -sfn "$src" "$dst"
+}
 
 if [[ "${1:-}" == "--global" ]]; then
   shift || true
@@ -69,12 +95,12 @@ shift || true
 
 # 1. Universal Primary Directory (.agents/)
 mkdir -p "$TARGET_REPO/.agents"
-ln -sfn "$SDLC_ROOT/agents" "$TARGET_REPO/.agents/agents"
-ln -sfn "$SDLC_ROOT/skills" "$TARGET_REPO/.agents/skills"
-ln -sfn "$SDLC_ROOT/hooks" "$TARGET_REPO/.agents/hooks"
+link_dir_target "$SDLC_ROOT/agents" "$TARGET_REPO/.agents/agents"
+link_dir_target "$SDLC_ROOT/skills" "$TARGET_REPO/.agents/skills"
+link_dir_target "$SDLC_ROOT/hooks" "$TARGET_REPO/.agents/hooks"
 printf '{"entries": [{"path": ".agents/agents"}]}\n' > "$TARGET_REPO/.agents/agents.json"
 printf '{"entries": [{"path": ".agents/skills"}]}\n' > "$TARGET_REPO/.agents/skills.json"
-cp "$SDLC_ROOT/hooks/hooks.json" "$TARGET_REPO/.agents/hooks.json"
+ln -sfn hooks/hooks.json "$TARGET_REPO/.agents/hooks.json"
 
 # 2. Canonical Reference Implementation (.gemini/ for Antigravity / Gemini CLI)
 bash "$SDLC_ROOT/processes/ci-templates/scripts/adapters/gemini-agy.sh" "$TARGET_REPO"

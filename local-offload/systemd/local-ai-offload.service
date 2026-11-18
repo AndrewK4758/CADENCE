@@ -1,11 +1,12 @@
 [Unit]
-Description=Unified Local AI & BTG Inference Service (llama-swap on :11434 — Auto Dual-GPU 5080+5070Ti 26B / Single-GPU 5070Ti 12B Fallback)
+Description=Unified Local AI & BTG Inference Service (llama-swap on :11434 — Auto Dual-GPU 5080+5070Ti 31B / Single-GPU 5070Ti 12B Fallback)
 After=network.target
 
 [Service]
 Type=simple
-Environment="PATH=/home/ak/.local/bin:/usr/local/bin:/usr/bin:/bin:/opt/cuda/bin"
-Environment="LD_LIBRARY_PATH=/usr/local/lib:/opt/cuda/lib64"
+Environment="PATH=/home/ak/.local/bin:/home/ak/.local/llama.cpp/bin:/usr/local/bin:/usr/bin:/bin:/opt/cuda/bin"
+Environment="LD_LIBRARY_PATH=/home/ak/.local/llama.cpp/lib:/opt/cuda/lib64:/usr/local/lib"
+Environment="LLAMA_SERVER_BIN=/home/ak/.local/llama.cpp/bin/llama-server"
 Environment="OMP_NUM_THREADS=16"
 Environment="LLAMASWAP_SYSTEMD_SERVICE=1"
 ExecStart=/home/ak/.local/bin/local-ai-offload-serve

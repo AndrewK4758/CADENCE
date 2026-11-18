@@ -3,16 +3,19 @@
 # llamaswap-server.plugin.zsh
 #
 # ZSH wrapper and completion for llama-swap: one address (default :11434) that
-# serves every BTG + local offload model by name and starts/stops the servers:
-#   embedding      nomic-embed-text v1.5 on the CPU (llama-server, 32K/4 slots = 8K/slot, always loaded)
-#   inference      Gemma 4 26B A4B + vision tensor-split 56/44 across RTX 5080 + RTX 5070 Ti at 96K ctx (or 12B on single GPU; ttl: 0, aliases: inference-dual, litert, local-moe-hybrid)
-#   inference-12b  Gemma 4 12B + vision on RTX 5080 eGPU (32K ctx)
-#   image          FLUX.2 klein / Z-Image / Qwen-Image (stable-diffusion.cpp sd-server)
+# serves the local GPU setups + persistent GPU embeddings:
+#   embedding        Google EmbeddingGemma 2 BF16: LAN-first to Living-Room RTX 3050 Ti (192.168.50.254:11434), fallback to local GPU
+#   work-gpu         Office Dual RTX 4000 Ada GPUs (10.24.1.189:80, 150ms probe) -> fallback to local inference
+#   3-home-gpus      3050 Ti embeddings + 5080 eGPU / 5070 Ti Gemma 4 26B-A4B Coder Q5_K_M + Vision (64K ctx, q8_0 KV, reasoning on)
+#   laptop-gpu       Internal RTX 5070 Ti 12GB only: Gemma 4 12B + Vision (128K ctx, q4_0 KV, reasoning on, fit-target 1200, ttl: 60) + EmbeddingGemma 2 BF16
+#   laptop-egpu      Dual-GPU RTX 5080 eGPU + RTX 5070 Ti (Gemma 4 26B-A4B Coder Q5_K_M + Vision, 64K ctx, q8_0 KV; 31b preserved under '31b')
+#   laptop-egpu-text Dual-GPU RTX 5080 eGPU + RTX 5070 Ti text-only Gemma 4 26B-A4B Coder Q5_K_M (128K ctx, q8_0 KV; 31b-text under '31b-text')
 #
 # Configurations:
-#   ~/projects/scripts/btg/llama-swap.egpu.yaml    Two GPUs (RTX 5080 eGPU + RTX 5070 Ti)
-#   ~/projects/scripts/btg/llama-swap.single.yaml  One GPU (Internal RTX 5070 Ti laptop fallback)
-#   apis/website/api/llama-swap.production.yaml    Production two-GPU server config
+#   ~/projects/scripts/btg/llama-swap.egpu.yaml        Docked (RTX 5080 eGPU + RTX 5070 Ti + LAN 3050 Ti / Office Ada)
+#   ~/projects/scripts/btg/llama-swap.single.yaml      Undocked (Internal RTX 5070 Ti laptop fallback)
+#   ~/projects/scripts/btg/llama-swap.livingroom.yaml  Living-Room headless server (RTX 3050 Ti 4GB + LAN 5080 proxy)
+#   apis/website/api/llama-swap.production.yaml        Production two-GPU server config (btgai1 Dual RTX 4000 Ada)
 # Never listen on 8080 (another project's container uses it).
 # ==============================================================================
 
@@ -41,12 +44,15 @@ function llamaswap-server() {
     [[ -f "$single_config" ]] || single_config="$HOME/.config/llama-swap/llama-swap.single.yaml"
     [[ -f "$single_config" ]] || single_config="$plugin_dir/llama-swap.single.yaml"
 
+    local livingroom_config="$HOME/projects/scripts/btg/llama-swap.livingroom.yaml"
+    [[ -f "$livingroom_config" ]] || livingroom_config="$plugin_dir/llama-swap.livingroom.yaml"
+
     local prod_config="$repo/apis/website/api/llama-swap.production.yaml"
-    local models_dir="$HOME/.ollama/models/symlinks"
-    local sd_bin="$HOME/stable-diffusion.cpp/build/bin/sd-server"
-    local litert_bin="$HOME/.local/bin/litert-lm"
-    local litert_config="$HOME/.litert-lm/config.json"
-    local listen_ip="127.0.0.1"
+    local models_dir="${LLM_MODELS_DIR:-$HOME/projects/models}"
+    [[ -d "$models_dir" ]] || models_dir="$HOME/.ollama/models/symlinks"
+    local office_url="${OFFICE_LLAMA_SWAP_URL:-http://192.168.50.155:11434}"
+    local sd_bin="${SD_SERVER_BIN:-$HOME/stable-diffusion.cpp/build/bin/sd-server}"
+    local listen_ip="${LLAMASWAP_LISTEN_IP:-0.0.0.0}"
     local port=11434
     local watch="on"
     local daemon="off"
@@ -54,6 +60,7 @@ function llamaswap-server() {
     # Auto-detect GPUs by UUID so PCI bus renumbering never swaps GPU assignments
     local igpu_uuid=""
     local egpu_uuid=""
+    local is_livingroom_3050=0
     local gpu_count=0
     if whence -p nvidia-smi >/dev/null 2>&1; then
         local line uuid name
@@ -66,6 +73,9 @@ function llamaswap-server() {
                 egpu_uuid="$uuid"
             elif [[ "$name" == *"5070"* ]]; then
                 igpu_uuid="$uuid"
+            elif [[ "$name" == *"3050"* ]]; then
+                igpu_uuid="$uuid"
+                is_livingroom_3050=1
             elif [[ -z "$igpu_uuid" ]]; then
                 igpu_uuid="$uuid"
             else
@@ -74,10 +84,12 @@ function llamaswap-server() {
         done < <(nvidia-smi --query-gpu=uuid,name --format=csv,noheader 2>/dev/null)
     fi
 
-    # Default config selection: auto-enable dual-GPU + LiteRT when eGPU is present
+    # Default config selection: auto-enable dual-GPU when eGPU is present, or livingroom 3050 Ti config
     local config="$single_config"
     if [[ -n "$egpu_uuid" && -f "$egpu_config" ]]; then
         config="$egpu_config"
+    elif (( is_livingroom_3050 )) && [[ -f "$livingroom_config" ]]; then
+        config="$livingroom_config"
     fi
 
     # Parse arguments using zparseopts associative array
@@ -90,29 +102,23 @@ function llamaswap-server() {
         -single \
         -production \
         m: -models: \
-        s: -sd-server: \
-        -litert: \
-        -litert-config: \
         l: -listen-ip: -host: \
         P: -port: \
         w: -watch:
 
     # Show Help
     if [[ -v "opts[-h]" || -v "opts[--help]" ]]; then
-        echo -e "\033[1;36mllamaswap-server\033[0m - llama-swap for BTG + Dual-GPU (5080 eGPU + 5070 Ti) + LiteRT-LM"
+        echo -e "\033[1;36mllamaswap-server\033[0m - Unified llama-swap (work-gpu, 3-home-gpus, laptop-gpu, laptop-egpu + 3050 Ti embeddinggemma-2)"
         echo -e "\033[1;33mUsage:\033[0m llamaswap-server [OPTIONS] [EXTRA_ARGS...]"
         echo ""
         echo -e "\033[1;33mOptions:\033[0m"
-        echo -e "  \033[1;32m-c, --config <file>\033[0m          llama-swap config (default: auto-detects eGPU vs single GPU)"
-        echo -e "  \033[1;32m--egpu, --dual\033[0m               Force dual-GPU + LiteRT config (llama-swap.egpu.yaml)"
-        echo -e "  \033[1;32m--single\033[0m                     Force single-GPU laptop config (llama-swap.yaml)"
+        echo -e "  \033[1;32m-c, --config <file>\033[0m          llama-swap config (default: auto-detects eGPU vs single GPU vs livingroom)"
+        echo -e "  \033[1;32m--egpu, --dual\033[0m               Force dual-GPU config (llama-swap.egpu.yaml)"
+        echo -e "  \033[1;32m--single\033[0m                     Force single-GPU laptop config (llama-swap.single.yaml)"
         echo -e "  \033[1;32m--production\033[0m                 Use the repo's llama-swap.production.yaml"
         echo -e "  \033[1;32m-d, --daemon\033[0m                 Run in background (/tmp/llama-swap.log) and wait for readiness"
-        echo -e "  \033[1;32m-m, --models <dir>\033[0m           Folder holding GGUF/safetensors models (default: ~/.ollama/models/symlinks)"
-        echo -e "  \033[1;32m-s, --sd-server <path>\033[0m       stable-diffusion.cpp sd-server binary"
-        echo -e "  \033[1;32m--litert <path>\033[0m              litert-lm binary (default: ~/.local/bin/litert-lm)"
-        echo -e "  \033[1;32m--litert-config <file>\033[0m       litert-lm config.json (default: ~/.litert-lm/config.json)"
-        echo -e "  \033[1;32m-l, --listen-ip, --host <ip>\033[0m Address to bind (default: 127.0.0.1, use 0.0.0.0 for LAN/VPN)"
+        echo -e "  \033[1;32m-m, --models <dir>\033[0m           Folder holding GGUF models (default: \$LLM_MODELS_DIR or ~/projects/models)"
+        echo -e "  \033[1;32m-l, --listen-ip, --host <ip>\033[0m Address to bind (default: 0.0.0.0)"
         echo -e "  \033[1;32m-P, --port <port>\033[0m            Port to listen on (default: 11434; never 8080)"
         echo -e "  \033[1;32m-w, --watch <on|off>\033[0m         Reload when the config file changes (default: on)"
         echo -e "  \033[1;32m-h, --help\033[0m                   Show this help message"
@@ -139,12 +145,6 @@ function llamaswap-server() {
     [[ -n "${opts[-m]}" ]] && models_dir="${opts[-m]}"
     [[ -n "${opts[--models]}" ]] && models_dir="${opts[--models]}"
 
-    [[ -n "${opts[-s]}" ]] && sd_bin="${opts[-s]}"
-    [[ -n "${opts[--sd-server]}" ]] && sd_bin="${opts[--sd-server]}"
-
-    [[ -n "${opts[--litert]}" ]] && litert_bin="${opts[--litert]}"
-    [[ -n "${opts[--litert-config]}" ]] && litert_config="${opts[--litert-config]}"
-
     [[ -n "${opts[-l]}" ]] && listen_ip="${opts[-l]}"
     [[ -n "${opts[--listen-ip]}" ]] && listen_ip="${opts[--listen-ip]}"
     [[ -n "${opts[--host]}" ]] && listen_ip="${opts[--host]}"
@@ -159,8 +159,6 @@ function llamaswap-server() {
     config="${config/#\~/$HOME}"
     models_dir="${models_dir/#\~/$HOME}"
     sd_bin="${sd_bin/#\~/$HOME}"
-    litert_bin="${litert_bin/#\~/$HOME}"
-    litert_config="${litert_config/#\~/$HOME}"
 
     # Fallback CUDA device identifiers if --egpu is used for validation when eGPU is unplugged
     local igpu_dev="${igpu_uuid:-0}"
@@ -178,14 +176,14 @@ function llamaswap-server() {
         echo -e "\033[1;31mError:\033[0m models folder not found: $models_dir" >&2
         return 1
     fi
-    if [[ ! -x "$sd_bin" ]]; then
+    if grep -q 'SD_SERVER_BIN' "$config" 2>/dev/null && [[ ! -x "$sd_bin" ]]; then
         echo -e "\033[1;33mWarning:\033[0m sd-server not found at $sd_bin: the image model will not start" >&2
     fi
 
     # Validate before stopping anything that is running
-    if ! LLM_MODELS_DIR="$models_dir" SD_SERVER_BIN="$sd_bin" LITERT_BIN="$litert_bin" LITERT_CONFIG="$litert_config" IGPU_CUDA_DEVICE="$igpu_dev" EGPU_CUDA_DEVICE="$egpu_dev" "$binary" -config "$config" -validate >/dev/null; then
+    if ! LLM_MODELS_DIR="$models_dir" OFFICE_LLAMA_SWAP_URL="$office_url" SD_SERVER_BIN="$sd_bin" IGPU_CUDA_DEVICE="$igpu_dev" EGPU_CUDA_DEVICE="$egpu_dev" "$binary" -config "$config" -validate >/dev/null; then
         echo -e "\033[1;31mError:\033[0m llama-swap rejected $config:" >&2
-        LLM_MODELS_DIR="$models_dir" SD_SERVER_BIN="$sd_bin" LITERT_BIN="$litert_bin" LITERT_CONFIG="$litert_config" IGPU_CUDA_DEVICE="$igpu_dev" EGPU_CUDA_DEVICE="$egpu_dev" "$binary" -config "$config" -validate >&2
+        LLM_MODELS_DIR="$models_dir" OFFICE_LLAMA_SWAP_URL="$office_url" SD_SERVER_BIN="$sd_bin" IGPU_CUDA_DEVICE="$igpu_dev" EGPU_CUDA_DEVICE="$egpu_dev" "$binary" -config "$config" -validate >&2
         return 1
     fi
 
@@ -227,7 +225,6 @@ function llamaswap-server() {
     echo -e "  \033[1mBinary:\033[0m     $binary"
     echo -e "  \033[1mConfig:\033[0m     $config"
     echo -e "  \033[1mModels:\033[0m     $models_dir"
-    echo -e "  \033[1mSD server:\033[0m  $sd_bin"
     echo -e "  \033[1miGPU (5070):\033[0m $igpu_dev"
     echo -e "  \033[1meGPU (5080):\033[0m ${egpu_uuid:-not connected (using single-GPU fallback on $igpu_dev)}"
     echo -e "  \033[1mEndpoint:\033[0m   http://${listen_ip}:${port} (UI: /ui)"
@@ -236,9 +233,8 @@ function llamaswap-server() {
     if (( is_systemd_service )); then
         exec env \
             LLM_MODELS_DIR="$models_dir" \
+            OFFICE_LLAMA_SWAP_URL="$office_url" \
             SD_SERVER_BIN="$sd_bin" \
-            LITERT_BIN="$litert_bin" \
-            LITERT_CONFIG="$litert_config" \
             IGPU_CUDA_DEVICE="$igpu_dev" \
             EGPU_CUDA_DEVICE="$egpu_dev" \
             "$binary" "${cmd_args[@]}" "$@"
@@ -247,9 +243,8 @@ function llamaswap-server() {
     if [[ "$daemon" == "on" ]]; then
         nohup env \
             LLM_MODELS_DIR="$models_dir" \
+            OFFICE_LLAMA_SWAP_URL="$office_url" \
             SD_SERVER_BIN="$sd_bin" \
-            LITERT_BIN="$litert_bin" \
-            LITERT_CONFIG="$litert_config" \
             IGPU_CUDA_DEVICE="$igpu_dev" \
             EGPU_CUDA_DEVICE="$egpu_dev" \
             "$binary" "${cmd_args[@]}" "$@" >/tmp/llama-swap.log 2>&1 &!
@@ -263,9 +258,8 @@ function llamaswap-server() {
 
     # Execute llama-swap in foreground and restore systemd user service if it was active before
     LLM_MODELS_DIR="$models_dir" \
+    OFFICE_LLAMA_SWAP_URL="$office_url" \
     SD_SERVER_BIN="$sd_bin" \
-    LITERT_BIN="$litert_bin" \
-    LITERT_CONFIG="$litert_config" \
     IGPU_CUDA_DEVICE="$igpu_dev" \
     EGPU_CUDA_DEVICE="$egpu_dev" \
     "$binary" "${cmd_args[@]}" "$@"
@@ -285,14 +279,11 @@ function _llamaswap-server() {
     local -a opts
     opts=(
         '(-c --config --egpu --dual --single --production)'{-c,--config}'[llama-swap config file]:file:_files -g "*.y(a|)ml"'
-        '(-c --config --single --production)'{--egpu,--dual}'[Force dual-GPU (RTX 5080 eGPU + RTX 5070 Ti) + LiteRT config]'
+        '(-c --config --single --production)'{--egpu,--dual}'[Force dual-GPU (RTX 5080 eGPU + RTX 5070 Ti) config]'
         '(-c --config --egpu --dual --production)--single[Force single-GPU laptop config]'
         '(-c --config --egpu --dual --single)--production[Use the repo llama-swap.production.yaml]'
         '(-m --models)'{-m,--models}'[Folder holding the model files]:directory:_directories'
-        '(-s --sd-server)'{-s,--sd-server}'[stable-diffusion.cpp sd-server binary]:file:_files'
-        '--litert[litert-lm binary]:file:_files'
-        '--litert-config[litert-lm config.json file]:file:_files -g "*.json"'
-        '(-l --listen-ip --host)'{-l,--listen-ip,--host}'[Address to bind (default 127.0.0.1)]:ip:(127.0.0.1 0.0.0.0)'
+        '(-l --listen-ip --host)'{-l,--listen-ip,--host}'[Address to bind (default 0.0.0.0)]:ip:(127.0.0.1 0.0.0.0)'
         '(-P --port)'{-P,--port}'[Port to listen on (default 11434)]:port:(11434 11437 11438)'
         '(-w --watch)'{-w,--watch}'[Reload when the config changes (default on)]:status:(on off)'
         '(-h --help)'{-h,--help}'[Show help message]'

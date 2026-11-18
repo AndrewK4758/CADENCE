@@ -13,17 +13,19 @@
 #   5. Systemd user service (`~/.config/systemd/user/local-ai-offload.service`)
 #
 # Usage:
-#   ./local-offload/install-local-offload.sh [--enable-service]
+#   ./local-offload/install-local-offload.sh [--enable-service] [--sync-configs]
 # ==============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENABLE_SERVICE=0
+SYNC_CONFIGS=0
 
 for arg in "$@"; do
   case "$arg" in
     --enable-service) ENABLE_SERVICE=1 ;;
+    --sync-configs) SYNC_CONFIGS=1 ;;
   esac
 done
 
@@ -55,20 +57,26 @@ if [[ -f "$SCRIPT_DIR/mcp/agy" && -x /usr/bin/agy ]]; then
   chmod +x "$HOME/.local/bin/agy"
 fi
 
-# 2. Install llamaswap-server, local-ai-offload-serve, and llama-swap configs
+# 2. Install llamaswap-server, local-ai-offload-serve, llama-lan-proxy, llama-server-dropcache, and llama-swap configs
 sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/llama-swap/llamaswap-server" > "$HOME/.local/bin/llamaswap-server"
 chmod +x "$HOME/.local/bin/llamaswap-server"
 
 sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/llama-swap/local-ai-offload-serve" > "$HOME/.local/bin/local-ai-offload-serve"
 chmod +x "$HOME/.local/bin/local-ai-offload-serve"
 
+for helper in llama-lan-proxy llama-server-dropcache; do
+  if [[ -f "$SCRIPT_DIR/llama-swap/$helper" ]]; then
+    sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/llama-swap/$helper" > "$HOME/.local/bin/$helper"
+    chmod +x "$HOME/.local/bin/$helper"
+  fi
+done
+
 cp "$SCRIPT_DIR/llama-swap/llamaswap-server.plugin.zsh" "$HOME/.config/llama-swap/llamaswap-server.plugin.zsh"
-if [[ ! -f "$HOME/.config/llama-swap/llama-swap.egpu.yaml" ]]; then
-  cp "$SCRIPT_DIR/llama-swap/llama-swap.egpu.yaml" "$HOME/.config/llama-swap/llama-swap.egpu.yaml"
-fi
-if [[ ! -f "$HOME/.config/llama-swap/llama-swap.single.yaml" ]]; then
-  cp "$SCRIPT_DIR/llama-swap/llama-swap.single.yaml" "$HOME/.config/llama-swap/llama-swap.single.yaml"
-fi
+for yml in llama-swap.egpu.yaml llama-swap.single.yaml llama-swap.livingroom.yaml; do
+  if [[ -f "$SCRIPT_DIR/llama-swap/$yml" ]] && { (( SYNC_CONFIGS )) || [[ ! -f "$HOME/.config/llama-swap/$yml" ]]; }; then
+    sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/llama-swap/$yml" > "$HOME/.config/llama-swap/$yml"
+  fi
+done
 
 # 3. Install LiteRT-LM config if not already present
 if [[ ! -f "$HOME/.litert-lm/config.json" ]]; then
@@ -120,7 +128,7 @@ echo "Installed CADENCE LiteRT / Local Offload stack:"
 echo "  - MCP Server:      $HOME/.local/bin/antigravity-local-offload-mcp"
 echo "  - MCP Schemas:     $HOME/.gemini/antigravity-cli/mcp/local-offload/*.json"
 echo "  - Lifecycle Hook:  $HOME/.local/bin/antigravity-local-offload-hook"
-echo "  - llama-swap CLI:  $HOME/.local/bin/llamaswap-server & $HOME/.local/bin/local-ai-offload-serve"
-echo "  - llama-swap YAML: $HOME/.config/llama-swap/{llama-swap.egpu.yaml,llama-swap.single.yaml}"
+echo "  - llama-swap CLI:  $HOME/.local/bin/{llamaswap-server,local-ai-offload-serve,llama-lan-proxy,llama-server-dropcache}"
+echo "  - llama-swap YAML: $HOME/.config/llama-swap/{llama-swap.egpu.yaml,llama-swap.single.yaml,llama-swap.livingroom.yaml}"
 echo "  - LiteRT Config:   $HOME/.litert-lm/config.json"
 echo "  - Systemd Unit:    $HOME/.config/systemd/user/local-ai-offload.service"

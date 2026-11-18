@@ -11,8 +11,11 @@ This directory contains the complete local AI coprocessor infrastructure that po
 | `llama-swap/llamaswap-server` | `~/.local/bin/llamaswap-server` | Global CLI entrypoint for `llama-swap` |
 | `llama-swap/llamaswap-server.plugin.zsh` | `~/.config/llama-swap/llamaswap-server.plugin.zsh` | ZSH function & completions; auto-detects Dual-GPU (RTX 5080 eGPU + RTX 5070 Ti) vs. Single-GPU by NVIDIA UUID |
 | `llama-swap/local-ai-offload-serve` | `~/.local/bin/local-ai-offload-serve` | Systemd `ExecStart` wrapper; waits for NVIDIA/eGPU initialization at boot and execs `llamaswap-server` |
-| `llama-swap/llama-swap.egpu.yaml` | `~/.config/llama-swap/llama-swap.egpu.yaml` | Dual-GPU / multi-setup config (`embedding` + `laptop-egpu` / `laptop-gpu` / LAN fallbacks) |
-| `llama-swap/llama-swap.single.yaml` | `~/.config/llama-swap/llama-swap.single.yaml` | Single-GPU laptop fallback config (`embedding` + `laptop-gpu`) |
+| `llama-swap/llama-lan-proxy` | `~/.local/bin/llama-lan-proxy` | Zero-dependency HTTP/SSE reverse proxy with fast LAN probe & upstream/local fallback |
+| `llama-swap/llama-server-dropcache` | `~/.local/bin/llama-server-dropcache` | Wrapper that evicts GGUF weights from Linux page cache once VRAM-resident via `posix_fadvise` |
+| `llama-swap/llama-swap.egpu.yaml` | `~/.config/llama-swap/llama-swap.egpu.yaml` | Dual-GPU / 4-setup config (`embeddinggemma-2` + `work-gpu` / `3-home-gpus` / `laptop-gpu` / `laptop-egpu` / `31b`) |
+| `llama-swap/llama-swap.single.yaml` | `~/.config/llama-swap/llama-swap.single.yaml` | Single-GPU laptop fallback config (`embeddinggemma-2` + `laptop-gpu` 128K `q4_0` KV) |
+| `llama-swap/llama-swap.livingroom.yaml` | `~/.config/llama-swap/llama-swap.livingroom.yaml` | Living-Room headless server config (RTX 3050 Ti `embeddinggemma-2` + LAN `5080` proxy) |
 | `systemd/local-ai-offload.service` | `~/.config/systemd/user/local-ai-offload.service` | Systemd user unit managing `local-ai-offload-serve` on `127.0.0.1:11434` |
 | `mcp/antigravity-local-offload-mcp` & `mcp/offload_core.py` | `~/.local/bin/antigravity-local-offload-mcp` | `uv`-powered FastMCP server exposing `local_semantic_embed` (`top_k=6`, ~36-line Pinned Context Slices, truncation alerts, C#/Kotlin/TS/Py/Go/Rust symbol maps), `offload_log_triage` (`cwd`-aware, per-`<repo_name>/<PID>` raw logs), and diff-aware `offload_deep_review` |
 | `mcp/agy` | `~/.local/bin/agy` | Global Antigravity launcher wrapper ensuring `~/.gemini/config/hooks.json` is always synced from `~/.agents/hooks.json` before `exec /usr/bin/agy "$@"` |
@@ -31,10 +34,10 @@ This directory contains the complete local AI coprocessor infrastructure that po
 `llamaswap-server.plugin.zsh` queries `nvidia-smi --query-gpu=uuid,name --format=csv,noheader` at startup:
 - **UUID-Based Pinning**: Instead of fragile PCI bus indices (`0`, `1`) that can flip on hotplug or reboot, `llamaswap-server` exports `IGPU_CUDA_DEVICE=<uuid>` and `EGPU_CUDA_DEVICE=<uuid>` into `llama-swap`.
 - **Automatic Mode Selection**:
-  - When an external GPU (`5080` or second GPU) is detected, it automatically selects `llama-swap.egpu.yaml` (Dual-GPU 26B A4B at 96K context).
-  - When undocked (only internal GPU detected), it automatically selects `llama-swap.single.yaml` (Single-GPU 12B at 32K context).
+  - When an external GPU (`5080` or second GPU) is detected, it automatically selects `llama-swap.egpu.yaml` (Dual-GPU 26B-A4B Coder at 64K Vision / 128K Text `q8_0` KV, plus `31b`/`31b-text` preserved).
+  - When undocked (only internal GPU detected), it automatically selects `llama-swap.single.yaml` (Single-GPU 12B at 128K `q4_0` KV).
 - **Config Validation Before Swap**: Before stopping any running server, `llamaswap-server` runs `llama-swap -config <yaml> -validate` with all environment variables populated so a broken edit never takes down the active service.
-- **Model Aliases**: Both `llama-swap.egpu.yaml` and `llama-swap.single.yaml` map all CADENCE and LiteRT model aliases (`inference`, `inference-dual`, `local-moe-hybrid`, `gemma-4-26b-a4b`, `gemma-4-12b`, `local-fast-cpu`, `gemma-4-e2b`, `litert`, `litert-gemma`) to the warm `inference` model (`ttl: 0`) so tool calls never trigger cold model swaps.
+- **Model Aliases**: Both `llama-swap.egpu.yaml` and `llama-swap.single.yaml` map all CADENCE compatibility aliases (`inference`, `inference-dual`, `local-moe-hybrid`, `local-fast-cpu`, `local-12b-gpu`) via `_mcp-inference` (ttl: 0 proxy) and `embedding` / `local-embed-cpu` to `embeddinggemma-2`.
 
 ### CLI Usage
 

@@ -133,8 +133,8 @@ flowchart LR
     end
 
     subgraph Gateway["llama-swap Unified Gateway (127.0.0.1:11434)"]
-        E["Group: always (Persistent)\nembedding: nomic-embed-text-v1.5.f16"]
-        I["Group: gpu (Warm Preloaded, ttl: 0)\ninference: Gemma 4 26B A4B (Dual-GPU 56/44)\nor Gemma 4 12B (Single-GPU Fallback)"]
+        E["Group: always (Persistent)\nembeddinggemma-2: LAN 3050 Ti / local GPU BF16"]
+        I["Group: proxies/gpu (_mcp-inference, ttl: 0)\nGemma 4 26B-A4B Coder (64K/128K q8_0)\nor Gemma 4 12B (Single-GPU 128K q4_0)"]
     end
 
     H -->|"Injects Step 0 & Triage Reminders"| A
@@ -187,12 +187,11 @@ By default, `llamaswap-server` reads models from `~/.ollama/models/symlinks` (ov
 mkdir -p ~/.ollama/models/symlinks
 cd ~/.ollama/models/symlinks
 
-# 1. Always-On Embedding Model: nomic-embed-text v1.5 (f16, 262 MiB)
-curl -fL -O https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.f16.gguf
+# 1. Always-On GPU Embedding Model: Google EmbeddingGemma 2 BF16
+curl -fL -O https://huggingface.co/ggml-org/embeddinggemma-300M-qat-q8_0-GGUF/resolve/main/embeddinggemma-2-BF16.gguf
 
-# 2a. Dual-GPU Inference Model (28 GB combined VRAM: RTX 5080 16GB + RTX 5070 Ti 12GB):
-#     Gemma 4 26B A4B IT (UD-Q4_K_M + Vision mmproj)
-curl -fL -O https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+# 2a. Dual-GPU Inference Models (28 GB combined VRAM: RTX 5080 16GB + RTX 5070 Ti 12GB):
+#     Gemma 4 26B-A4B Coder Q5_K_M-imatrix (+ Vision mmproj)
 curl -fL -O https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/gemma-4-26B-A4B-it-mmproj-F16.gguf
 
 # 2b. Single-GPU Fallback Inference Model (12 GB VRAM: Internal RTX 5070 Ti):
