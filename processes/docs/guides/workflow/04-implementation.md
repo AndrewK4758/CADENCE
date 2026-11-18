@@ -81,7 +81,7 @@ Unit-level scenarios execute first, followed by full-stack integration scenarios
 - **CHORD observability seams** — implement and test `OS-{N}` scenarios (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`) per [`observability-patterns.md`](../../policies/observability-patterns.md) using the exact same red-green-accumulate-commit loop.
 
 ### Phase 3.5–4 — Final verification & `submission.md` drafting
-Run the complete test suite and linter/formatter one final time (via `offload_log_triage`), verify `run-gates.sh` passes if `artifacts/` were touched, record `branch: impl/{type}/{id}` in `metadata.yaml`, and instantiate **`specs/{ticket-id}/submission.md`** from [`specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) (populating `## Description` and `## Forge metadata` while leaving `## Discussion` and `## Resolution` for the review and maintainer gates).
+Run the complete test suite, linter/formatter, and post-implementation traceability gate (`verify-facts.sh --trace <ticket-id>`) one final time (via `offload_log_triage`), verify `run-gates.sh` passes if `artifacts/` were touched, record `branch: impl/{type}/{id}` in `metadata.yaml`, and instantiate **`specs/{ticket-id}/submission.md`** from [`specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) (populating `## Description` and `## Forge metadata` while leaving `## Discussion` and `## Resolution` for the review and maintainer gates).
 
 ## Boundary & Comment Discipline (`C1`–`C8`)
 

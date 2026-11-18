@@ -35,6 +35,17 @@
         "Flags contradiction between dormant Data Integrity pillar and non-empty CHORD Deltas",
         "Rejects passing Gate 1 until resolved"
       ]
+    },
+    {
+      "id": 3,
+      "name": "post-impl-trace-catches-missing-scenario-or-seam",
+      "prompt": "Run verify-facts.sh --trace ACME-202 when S-1.1 has no C5 test tag outside specs/ or a declared UNSOUND_CONDITION seam is missing from code.",
+      "expected_output": "Exits 1 fail-closed with FAIL scenario S-1.1 and/or FAIL seam UNSOUND_CONDITION without accepting docs/ prose matches.",
+      "assertions": [
+        "Resolves tier from metadata.yaml first (Trivial exempt; fail-closed if empty/unrecognized)",
+        "Verifies C5 scenario/AC test tags, declared Observability Seams, and Files Affected deliverables",
+        "Ignores docs/ and specs/ prose when checking runtime seam emissions"
+      ]
     }
   ]
 }

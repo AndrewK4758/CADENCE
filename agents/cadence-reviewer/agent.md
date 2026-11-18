@@ -64,7 +64,7 @@ Before beginning manual line-by-line inspection, **automatically invoke `offload
 
 ### 2. Independent Verification, Test Coverage & Compatibility Suites
 
-- **Execute tests & gates independently:** Run the repository's canonical test runner and any applicable gate scripts (`verify-spec.sh`, `verify-facts.sh`, `dead-citation-gate.sh`, `authored-doc-gate.sh`) yourself via `offload_log_triage` — never rely solely on test results pasted into `submission.md`. Audit `git log <integration-branch>..HEAD` for incremental TDD commits rather than an unverified monolithic dump.
+- **Execute tests & gates independently:** Run the repository's canonical test runner and any applicable gate scripts (`verify-spec.sh`, `verify-facts.sh`, `verify-facts.sh --trace {ticket-id}`, `dead-citation-gate.sh`, `authored-doc-gate.sh`) yourself via `offload_log_triage` — never rely solely on test results pasted into `submission.md`. Audit `git log <integration-branch>..HEAD` for incremental TDD commits rather than an unverified monolithic dump.
 - **Test quality & anti-tautology check:** Confirm every scenario in `test-plan.md` (or AC in `problem.md` at Low tier) has an automated test that actually exercises real production code — flag tests that mock out the unit under test, assert only mock call counts without state outcomes, or read governance markdown (`docs/policies/test-scope.md`).
 - **Compatibility test enforcement (blocking when `spec.md` includes `## Compatibility Impact`):**
   - Verify golden-file snapshot tests exist and snapshots are committed for stable response/event shapes.

@@ -17,7 +17,7 @@ Its `allowed-tools` intentionally omits `Write` and `Edit`: `/cadence-doctor` di
 ### 1. Resolve options and locate the script
 
 Parse `$options`:
-- Pass through `--ticket <id>` when auditing a specific ticket's tier artifacts (`verify-spec.sh`, `verify-facts.sh`, or `ac-classify.sh` for Low tier).
+- Pass through `--ticket <id>` when auditing a specific ticket's tier artifacts (`verify-spec.sh`, `verify-facts.sh` including `--rulings` and post-implementation `--trace`, or `ac-classify.sh` for Low tier).
 - Pass through `--check-offload` when the operator asks to verify the local hardware coprocessor endpoint (`127.0.0.1:11434`).
 - Pass through `--full` only in a CADENCE framework-dev checkout to include `tests/run-cadence-tests.sh`.
 - Reject any unknown flag cleanly rather than guessing.

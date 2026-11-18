@@ -161,7 +161,7 @@ For any database migrations included in the branch, verify compliance with `docs
 
 ### Phase 4: Pre-Review Coprocessor Scan & Finalization
 
-1. **Run the complete test suite, formatter, and clean build one final time** (automatically compacting any output `>30` lines via `offload_log_triage` and preserving `/tmp/agy-last-triage.log`).
+1. **Run the complete test suite, formatter, clean build, and traceability gate one final time** (automatically compacting any output `>30` lines via `offload_log_triage` and preserving `/tmp/agy-last-triage.log`). Run `.agents/skills/cadence-spec/verify-facts.sh --trace {ticket-id}` (except Trivial tier) and verify `exit 0` so every planned scenario/AC `C5` tag, CHORD observability seam, and `Files Affected` target is proven before finalizing.
 2. **Execute an automatic local coprocessor pre-review scan (`offload_deep_review`):**
    - Call `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[<touched files>]`) to inspect the unified diff and check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
 3. **Update `specs/{ticket-id}/metadata.yaml`:**

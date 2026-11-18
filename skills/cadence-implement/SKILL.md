@@ -165,9 +165,10 @@ At Low tier, `cadence-implementer` constructs its TDD scenario sequence directly
    - Run regression tests, code formatters, and a clean build verification
    - Populate `branch` in `metadata.yaml` and draft `specs/$ticket_id/submission.md` (leaving `status` and tracker projection to Step 5 below)
 
-4. **Verify implementation exit criteria and run automatic pre-review scan (`offload_deep_review`):**
+4. **Verify implementation exit criteria, spec-to-code traceability (`verify-facts.sh --trace`), and automatic pre-review scan (`offload_deep_review`):**
    - Full sanctioned test suite passes (unit, integration, and journey+chaos suites where applicable), with any output >30 lines verified via `offload_log_triage` (`/tmp/agy-last-triage.log`)
    - Every acceptance criterion maps to >=1 passing test scenario
+   - **Mechanical Spec/AC Traceability Gate (`verify-facts.sh --trace`):** Run `(.agents/skills/cadence-spec/verify-facts.sh --trace $ticket_id || skills/cadence-spec/verify-facts.sh --trace $ticket_id)` (piping `>30`-line failure output through `offload_log_triage`) and verify `exit 0` across `C5` test tags (`S-*`, `OS-*`, or `AC-*` at Low tier), declared CHORD `Observability Seams`, and `Files Affected` targets before transitioning to `in-review`
    - Git history shows one atomic commit per red-green scenario cycle
    - Cross-service and domain boundary documentation is in place
    - `specs/$ticket_id/submission.md` is populated and `branch` is recorded in `metadata.yaml`

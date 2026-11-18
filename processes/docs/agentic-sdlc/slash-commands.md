@@ -106,7 +106,7 @@ For Medium and High tier tickets, `/cadence-spec` executes an **independent desi
 
 ## `/cadence-implement [ticket-id]`
 
-Execute a ticket's approved tier contract using strict BDD red-green-refactor TDD — one Gherkin scenario per commit cycle, database migrations via expand/contract, and journey invariant tests under chaos profiles. Delegates to `cadence-implementer`, which works sequentially through the Implementation Order (from `test-plan.md` at Medium/High tier, or derived from `problem.md` acceptance criteria at Low tier) in red-green-accumulate-commit loops while using `offload_log_triage` / `log-triage` on `:11434` to compact test output.
+Execute a ticket's approved tier contract using strict BDD red-green-refactor TDD — one Gherkin scenario per commit cycle, database migrations via expand/contract, and journey invariant tests under chaos profiles. Delegates to `cadence-implementer`, which works sequentially through the Implementation Order (from `test-plan.md` at Medium/High tier, or derived from `problem.md` acceptance criteria at Low tier) in red-green-accumulate-commit loops while using `offload_log_triage` / `log-triage` on `:11434` to compact test output and gating transition on `verify-facts.sh --trace` plus `offload_deep_review`.
 
 ```
 /cadence-implement TT-1234
@@ -118,7 +118,7 @@ Execute a ticket's approved tier contract using strict BDD red-green-refactor TD
 
 ## `/cadence-review [MR number or branch name]`
 
-Review a submitted change proposal against its governing tier contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md` acceptance criteria at Low tier). Runs an advisory local pre-review sweep (`offload_deep_review` on `:11434`) followed by `cadence-reviewer`, verifying acceptance criteria implementation, BDD test coverage, CADENCE Engineering Pillar compliance, architecture boundaries, and security posture, and applying the two-axis adversarial review lens: *verify-the-claim* (checking every safety assumption against authoritative seed/config/code sources) and *locate-the-failure* (probing inside the diff, in consumed code, in callers, and in unchanged sibling code whose assumptions were invalidated), plus silent-failure probes (silent fallbacks, broad catch blocks, multi-writer invariant gaps, state reuse across transitions, fake blind spots, and environment asset parity).
+Review a submitted change proposal against its governing tier contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md` acceptance criteria at Low tier). Runs an advisory local pre-review sweep (`offload_deep_review` on `:11434`) plus mechanical spec/AC traceability (`verify-facts.sh --trace`), followed by `cadence-reviewer`, verifying acceptance criteria implementation, BDD test coverage, CADENCE Engineering Pillar compliance, architecture boundaries, and security posture, and applying the two-axis adversarial review lens: *verify-the-claim* (checking every safety assumption against authoritative seed/config/code sources) and *locate-the-failure* (probing inside the diff, in consumed code, in callers, and in unchanged sibling code whose assumptions were invalidated), plus silent-failure probes (silent fallbacks, broad catch blocks, multi-writer invariant gaps, state reuse across transitions, fake blind spots, and environment asset parity).
 
 ```
 /cadence-review 142
@@ -234,7 +234,7 @@ Mechanize Workflow Step 07 (Merge): checks tier-conditional Gate 2 / Gate 3 appr
 
 ## `/cadence-doctor [--ticket <id>] [--check-offload] [--full]`
 
-Run a strictly read-only repository audit via `.agents/skills/cadence-doctor/doctor.sh`: verifies linkage, `#*-binding` markers, `<400`-line file ceilings, eject footprint freshness, `mint-id.sh --peek`, installed governance gates (never silently passing 0-byte scripts), optional ticket checks, and optional `:11434` offload reachability.
+Run a strictly read-only repository audit via `.agents/skills/cadence-doctor/doctor.sh`: verifies linkage, `#*-binding` markers, `<400`-line file ceilings, eject footprint freshness, `mint-id.sh --peek`, installed governance gates (never silently passing 0-byte scripts), optional ticket checks (`verify-spec.sh`, `verify-facts.sh --rulings/--trace`, `ac-classify.sh`), and optional `:11434` offload reachability.
 
 ## `/cadence-eject <source-repo-root> <destination-dir> | --check-footprint`
 

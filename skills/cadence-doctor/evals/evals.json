@@ -28,10 +28,10 @@
       "id": 2,
       "name": "ticket-scoped-audit-respects-tier",
       "prompt": "Check CADENCE health specifically for ticket ACME-201 (--ticket ACME-201).",
-      "expected_output": "Runs doctor.sh --ticket ACME-201, resolves tier from metadata.yaml, executes verify-spec.sh and verify-facts.sh (including --rulings) for Medium/High tickets or ac-classify.sh for Low tickets.",
+      "expected_output": "Runs doctor.sh --ticket ACME-201, resolves tier and status from metadata.yaml, executes verify-spec.sh and verify-facts.sh (including --rulings, plus --trace when status is in-progress+ vs SKIP pre-implementation) for Medium/High tickets or ac-classify.sh (+ --trace post-implementation) for Low tickets.",
       "assertions": [
         "Passes --ticket ACME-201 to doctor.sh",
-        "Selects verify-spec/verify-facts for Medium/High or ac-classify for Low based on metadata.yaml tier"
+        "Selects verify-spec/verify-facts (--rulings/--trace post-impl) for Medium/High or ac-classify (+ --trace post-impl) for Low based on metadata.yaml tier"
       ]
     }
   ]
