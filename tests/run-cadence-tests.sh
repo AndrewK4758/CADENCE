@@ -69,6 +69,7 @@ expected_effort = {
     "cadence-implementer": "xhigh",
     "cadence-migration-author": "xhigh",
     "cadence-reviewer": "xhigh",
+    "cadence-security-auditor": "xhigh",
     "cadence-maintainer": "xhigh",
     "cadence-triage-agent": "high",
     "cadence-archivist": "high",
@@ -137,7 +138,7 @@ PY
 t1b_syntax() {
   while IFS= read -r -d '' shf; do
     bash -n "$shf"
-  done < <(find "$ROOT/hooks" "$ROOT/import" "$ROOT/skills/cadence-adopt" "$ROOT/skills/cadence-doctor" "$ROOT/skills/cadence-spec" "$ROOT/skills/cadence-implement" "$ROOT/skills/cadence-upgrade" "$ROOT/processes/ci-templates/scripts" "$ROOT/tests" -maxdepth 2 -name '*.sh' -print0)
+  done < <(find "$ROOT/hooks" "$ROOT/import" "$ROOT/skills/cadence-adopt" "$ROOT/skills/cadence-doctor" "$ROOT/skills/cadence-review" "$ROOT/skills/cadence-spec" "$ROOT/skills/cadence-implement" "$ROOT/skills/cadence-upgrade" "$ROOT/processes/ci-templates/scripts" "$ROOT/tests" -maxdepth 2 -name '*.sh' -print0)
   python3 -B - "$ROOT" <<'PY'
 import pathlib, sys
 root = pathlib.Path(sys.argv[1])
@@ -267,6 +268,8 @@ t5_adopt_and_eject() {
   grep -qFx "@CADENCE_DIRECTIVES.md" "$dst/AGENTS.md"
   test -f "$dst/.gemini/GEMINI.md"
   test -e "$dst/.gemini/agents/cadence-reviewer/agent.md"
+  test -e "$dst/.gemini/agents/cadence-security-auditor/agent.md"
+  test -x "$dst/.agents/skills/cadence-review/security-trigger.sh"
   test -e "$dst/.gemini/skills/cadence-spec/SKILL.md"
   for ns in cadence-doctor cadence-eject cadence-merge cadence-propose cadence-refactor; do
     test -e "$dst/.gemini/skills/$ns/SKILL.md"
@@ -319,6 +322,7 @@ run_subtest "T3 local-offload core unit tests" t3_offload
 run_subtest "T4 fixtures, read_state, verify-spec/facts, ac-classify, ready_mr" t4_fixture_and_gates "$FIX_DIR"
 run_subtest "T5 adopt, .gemini projection, mint-id peek, idempotency, eject, check-footprint" t5_adopt_and_eject "$ADOPT_DST" "$EJECT_OUT"
 run_subtest "T6 verify-facts --trace spec/AC-to-code/test traceability gates" bash "$ROOT/tests/test-trace-gates.sh" "$ROOT"
+run_subtest "T7 security-trigger.sh hybrid audit dispatch gates" bash "$ROOT/tests/test-security-trigger.sh" "$ROOT"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]
