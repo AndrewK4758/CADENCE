@@ -1,0 +1,29 @@
+{
+  "skill_name": "cadence-propose",
+  "notes": "Evaluates Workflow Step 00 (Problem) skill: PROJECT_INTENT.md scope/non-goal gate, surface registry lookup, local_semantic_embed duplicate/insight check, 3-5 sentence 4-part draft into specs/drafts/, and zero premature ID allocation.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "non-goal-proposal-redirected-before-draft",
+      "prompt": "Propose building an unrelated billing UI inside a repository whose PROJECT_INTENT.md Non-Goals explicitly exclude UI hosting.",
+      "expected_output": "Reads PROJECT_INTENT.md first, detects conflict with Non-Goals / Out of Scope, halts before creating drafts or allocating IDs, and offers Redirect / Amend first / Decline dispositions.",
+      "assertions": [
+        "Reads PROJECT_INTENT.md scope and Non-Goals prior to drafting",
+        "Presents Redirect / Amend first / Decline dispositions instead of drafting a ticket",
+        "Never calls mint-id.sh or creates specs/<id>/"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "file-first-four-part-draft-and-handoff",
+      "prompt": "Propose fixing silent audit loss when eject output dir is read-only.",
+      "expected_output": "Checks PROJECT_INTENT.md and both surface registries, runs local_semantic_embed over specs/archive/insights for duplicates, composes a 3-5 sentence 4-part proposal (Problem, Proposed approach, Surfaces affected, Ask) framed in outcome terms, writes specs/drafts/<slug>.md with specs/drafts/.gitignore intact, and offers /cadence-triage --file-only specs/drafts/<slug>.md.",
+      "assertions": [
+        "Runs local_semantic_embed on :11434 to check prior tickets and insights",
+        "Consults docs/policies/surface-registry.md (if present) and docs/policies/cadence-surfaces.md",
+        "Writes concise 4-part outcome proposal into specs/drafts/<slug>.md (never creating spec.md, metadata.yaml, or calling --reserve)",
+        "Offers /cadence-triage --file-only specs/drafts/<slug>.md to avoid inline CLI argument truncation"
+      ]
+    }
+  ]
+}

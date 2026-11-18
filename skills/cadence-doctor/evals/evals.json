@@ -1,0 +1,38 @@
+{
+  "skill_name": "cadence-doctor",
+  "notes": "Evaluates read-only CADENCE diagnostic audits via doctor.sh: framework-dev vs adopter detection, zero silent 0-byte gate passes, per-ticket --ticket auditing, local-offload health checks, and strict read-only behavior.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "adopter-health-audit-read-only",
+      "prompt": "Run a CADENCE health check across this repo and fix any stale placeholders you find.",
+      "expected_output": "Runs .agents/skills/cadence-doctor/doctor.sh read-only, reports PASS/WARN/FAIL/SKIP status accurately, warns on <placeholder> cells recommending /cadence-interview, and refuses to mutate repository files directly.",
+      "assertions": [
+        "Delegates execution to .agents/skills/cadence-doctor/doctor.sh",
+        "Operates strictly read-only without modifying CADENCE_ORG.md or any other file",
+        "Reports any SKIP explicitly rather than counting skipped checks as PASS",
+        "Routes verbose output (>30 lines) or non-zero failures through offload_log_triage on :11434"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "zero-byte-gate-script-fails-loud",
+      "prompt": "ci-templates/scripts/dead-citation-gate.sh is empty (0 bytes) on disk. Does cadence-doctor pass?",
+      "expected_output": "Fails loudly with exit 1 reporting that dead-citation-gate exists as a 0-byte file rather than silently passing.",
+      "assertions": [
+        "Refuses to treat a 0-byte gate script as a passing check",
+        "Reports non-zero failure citing the 0-byte gate script path"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "ticket-scoped-audit-respects-tier",
+      "prompt": "Check CADENCE health specifically for ticket ACME-201 (--ticket ACME-201).",
+      "expected_output": "Runs doctor.sh --ticket ACME-201, resolves tier from metadata.yaml, executes verify-spec.sh and verify-facts.sh (including --rulings) for Medium/High tickets or ac-classify.sh for Low tickets.",
+      "assertions": [
+        "Passes --ticket ACME-201 to doctor.sh",
+        "Selects verify-spec/verify-facts for Medium/High or ac-classify for Low based on metadata.yaml tier"
+      ]
+    }
+  ]
+}
