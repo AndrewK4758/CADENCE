@@ -11,7 +11,23 @@
         "Reads PROJECT_INTENT.md scope and Non-Goals prior to drafting",
         "Presents Redirect / Amend first / Decline dispositions instead of drafting a ticket",
         "Never calls mint-id.sh or creates specs/<id>/"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-propose/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-propose/SKILL.md",
+            "regex": "PROJECT_INTENT\\.md"
+          },
+          {
+            "file": "skills/cadence-propose/SKILL.md",
+            "regex": "Non-Goals|Out of Scope"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -23,7 +39,31 @@
         "Consults docs/policies/surface-registry.md (if present) and docs/policies/cadence-surfaces.md",
         "Writes concise 4-part outcome proposal into specs/drafts/<slug>.md (never creating spec.md, metadata.yaml, or calling --reserve)",
         "Offers /cadence-triage --file-only specs/drafts/<slug>.md to avoid inline CLI argument truncation"
-      ]
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "cmd": "bash ci-templates/scripts/org-binding-resolve.sh --tracker ACME",
+          "stdout_regex": [
+            "tracker=inner-source"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-propose/SKILL.md",
+              "regex": "--file-only"
+            },
+            {
+              "file": "skills/cadence-propose/SKILL.md",
+              "regex": "local_semantic_embed"
+            }
+          ]
+        }
+      }
     }
   ]
 }

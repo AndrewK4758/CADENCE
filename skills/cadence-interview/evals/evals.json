@@ -1,6 +1,6 @@
 {
   "skill_name": "cadence-interview",
-  "notes": "Evaluates /cadence-interview contracts: unrecognized flag refusal, missing live CADENCE_ORG.md fail-closed halt, Where/Who/Why scope containment (§7-§15 byte-preserved), non-destructive N/A retention, default idempotent no-op, and Step 7 disk re-read post-write check.",
+  "notes": "Evaluates /cadence-interview contracts: unrecognized flag refusal, missing live CADENCE_ORG.md fail-closed halt, Where/Who/Why scope containment (\u00a77-\u00a715 byte-preserved), non-destructive N/A retention, default idempotent no-op, and Step 7 disk re-read post-write check.",
   "evals": [
     {
       "id": 0,
@@ -10,18 +10,47 @@
       "assertions": [
         "Halts fail-closed on unrecognized flag without defaulting to default mode",
         "Halts when docs/agentic-sdlc/CADENCE_ORG.md does not exist without synthesizing the file"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-interview/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-interview/SKILL.md",
+            "regex": "--re-interview"
+          },
+          {
+            "file": "skills/cadence-interview/SKILL.md",
+            "regex": "unrecognized"
+          }
+        ]
+      }
     },
     {
       "id": 1,
       "name": "non-destructive-na-and-post-write-self-check",
-      "prompt": "Fill placeholders in Where/Who/Why selecting N/A on one row and Observed candidate on another while leaving §15 intact.",
-      "expected_output": "Writes literal N/A keeping the table row intact (preserving column 1 and Notes), leaves §7-§15 and CADENCE_ORG_TEMPLATE.md byte-identical, re-reads CADENCE_ORG.md from disk in Step 7 confirming row counts preserved and zero placeholders in populated cells (UNSOUND_CONDITION on structural corruption).",
+      "prompt": "Fill placeholders in Where/Who/Why selecting N/A on one row and Observed candidate on another while leaving \u00a715 intact.",
+      "expected_output": "Writes literal N/A keeping the table row intact (preserving column 1 and Notes), leaves \u00a77-\u00a715 and CADENCE_ORG_TEMPLATE.md byte-identical, re-reads CADENCE_ORG.md from disk in Step 7 confirming row counts preserved and zero placeholders in populated cells (UNSOUND_CONDITION on structural corruption).",
       "assertions": [
         "Preserves table rows when N/A is selected instead of deleting rows",
-        "Restricts edits strictly to second-column value cells under Where/Who/Why leaving §7-§15 untouched",
+        "Restricts edits strictly to second-column value cells under Where/Who/Why leaving \u00a77-\u00a715 untouched",
         "Re-reads CADENCE_ORG.md from disk in Step 7 verifying row counts, scope containment, and residual placeholders"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-interview/SKILL.md",
+            "regex": "N/A"
+          },
+          {
+            "file": "skills/cadence-interview/SKILL.md",
+            "regex": "CADENCE_ORG\\.md"
+          }
+        ]
+      }
     }
   ]
 }

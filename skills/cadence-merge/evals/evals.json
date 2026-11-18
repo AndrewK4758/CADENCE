@@ -11,7 +11,19 @@
         "Normalizes tier=High from metadata.yaml and resolves integration branch from #branch-strategy-binding",
         "Refuses merge when maintainer_approved_at is missing at Medium/High tier",
         "Directs operator to run /cadence-maintain without bypassing hooks or gates"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-merge/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-merge/SKILL.md",
+            "regex": "maintainer_approved_at"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -23,7 +35,32 @@
         "Resolves integration-branch dynamically from CADENCE_ORG.md#branch-strategy-binding without hardcoding main or develop",
         "Never uses --no-verify",
         "Updates status: merged with exact UTC second-precision merged_at and chains /cadence-archive unless --no-archive is set"
-      ]
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "cmd": "bash ci-templates/scripts/org-binding-resolve.sh --tracker ACME",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "tracker=inner-source"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-merge/SKILL.md",
+              "regex": "branch-strategy-binding"
+            },
+            {
+              "file": "skills/cadence-merge/SKILL.md",
+              "regex": "--no-verify"
+            }
+          ]
+        }
+      }
     },
     {
       "id": 2,
@@ -33,7 +70,20 @@
       "assertions": [
         "Delegates non-trivial code conflict resolution to Deep-reasoning (xhigh effort)",
         "Re-runs tests with offload_log_triage and runs offload_deep_review after conflict resolution"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-merge/SKILL.md",
+            "regex": "cadence-implementer"
+          },
+          {
+            "file": "skills/cadence-merge/SKILL.md",
+            "regex": "Deep-reasoning"
+          }
+        ]
+      }
     }
   ]
 }

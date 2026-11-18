@@ -12,7 +12,27 @@
         "Operates strictly read-only without modifying CADENCE_ORG.md or any other file",
         "Reports any SKIP explicitly rather than counting skipped checks as PASS",
         "Routes verbose output (>30 lines) or non-zero failures through offload_log_triage on :11434"
-      ]
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "adopted_repo",
+          "cmd": "bash \"$FIX/.agents/skills/cadence-doctor/doctor.sh\" --root \"$FIX\"",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "PASS  org-binding-resolve --form",
+            "PASS  authored-doc-gate"
+          ],
+          "check_unchanged": [
+            "docs/agentic-sdlc/CADENCE_ORG.md"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "read_only_tools": true
+        }
+      }
     },
     {
       "id": 1,
@@ -22,7 +42,17 @@
       "assertions": [
         "Refuses to treat a 0-byte gate script as a passing check",
         "Reports non-zero failure citing the 0-byte gate script path"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "adopted_repo",
+        "setup_sh": "mkdir -p \"$FIX/archive\" && : > \"$FIX/ci-templates/scripts/dead-citation-gate.sh\"",
+        "cmd": "bash \"$FIX/.agents/skills/cadence-doctor/doctor.sh\" --root \"$FIX\"",
+        "expect_exit": 1,
+        "output_regex": [
+          "FAIL  dead-citation-gate exists but is 0 bytes"
+        ]
+      }
     },
     {
       "id": 2,
@@ -32,7 +62,19 @@
       "assertions": [
         "Passes --ticket ACME-201 to doctor.sh",
         "Selects verify-spec/verify-facts (--rulings/--trace post-impl) for Medium/High or ac-classify (+ --trace post-impl) for Low based on metadata.yaml tier"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "bash \"$ROOT/skills/cadence-doctor/doctor.sh\" --root \"$FIX\" --ticket ACME-201 || true",
+        "expect_exit": 0,
+        "output_regex": [
+          "PASS  verify-spec \\(ACME-201\\)",
+          "PASS  verify-facts \\(ACME-201\\)",
+          "PASS  verify-facts --rulings \\(ACME-201\\)",
+          "SKIP  verify-facts --trace \\(ACME-201\\)"
+        ]
+      }
     }
   ]
 }

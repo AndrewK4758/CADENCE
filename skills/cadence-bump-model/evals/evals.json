@@ -11,7 +11,25 @@
         "Resolves capability tiers from CADENCE_ORG.md#model-tier-mapping",
         "Refuses cross-tier substitution between Deep-reasoning and Fast-mechanical",
         "Performs zero edits to adapters, agent.md, or CADENCE_ORG.md"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-bump-model/SKILL.md",
+          "processes/docs/agentic-sdlc/CADENCE_ORG_TEMPLATE.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-bump-model/SKILL.md",
+            "regex": "cross-tier",
+            "flags": "i"
+          },
+          {
+            "file": "skills/cadence-bump-model/SKILL.md",
+            "regex": "model-tier-mapping"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -23,7 +41,20 @@
         "Displays exact diff and awaits operator confirmation before writing",
         "Re-greps post-apply (failing on bump-model.reference_search.incomplete_representation_set if drift remains)",
         "Leaves narrative release notes, ADRs, and external gateways untouched"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-bump-model/SKILL.md",
+            "regex": "adapters"
+          },
+          {
+            "file": "processes/docs/policies/change-tiers.md",
+            "regex": "Trivial"
+          }
+        ]
+      }
     }
   ]
 }

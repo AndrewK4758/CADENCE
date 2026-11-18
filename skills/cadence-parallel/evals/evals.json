@@ -12,7 +12,23 @@
         "Skips cadence-spec-author, cadence-architect, and cadence-maintainer for Low-tier tickets",
         "Dispatches cadence-explorer before cadence-spec-author for Medium/High tickets",
         "Enforces Step 3 checkpoint commit and integration-branch merge prior to creating isolated implementation worktrees"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-parallel/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-parallel/SKILL.md",
+            "regex": "checkpoint"
+          },
+          {
+            "file": "skills/cadence-parallel/SKILL.md",
+            "regex": "Deep-reasoning"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -24,7 +40,20 @@
         "Resolves shared append-only file conflicts additively (never blind --ours/--theirs) in owning worktree",
         "Routes post-review edits back to owning worktree rather than read-only reviewer/maintainer",
         "Runs offload_log_triage on tests and offload_deep_review prior to cadence-reviewer"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-parallel/SKILL.md",
+            "regex": "no-op"
+          },
+          {
+            "file": "skills/cadence-parallel/SKILL.md",
+            "regex": "cadence-security-auditor"
+          }
+        ]
+      }
     }
   ]
 }

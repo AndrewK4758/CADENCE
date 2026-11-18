@@ -12,7 +12,35 @@
         "Skips Step 3 jira-preserve.sh on create path and on type: epic (and passes --issue-key only when run)",
         "Persists jira_url via jira-metadata-write.sh immediately after Step 4 create",
         "Halts on non-zero exit without rolling back earlier steps and emits partial-completion report"
-      ]
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "cmd": "bash \"$ROOT/skills/cadence-sync-jira/jira-resolve.sh\" --ticket ACME-101",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "mode=create"
+          ],
+          "stderr_regex": [
+            "syncjs\\.resolve\\.create"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-sync-jira/SKILL.md",
+              "regex": "JIRA_PAT"
+            },
+            {
+              "file": "skills/cadence-sync-jira/SKILL.md",
+              "regex": "-K-"
+            }
+          ]
+        }
+      }
     },
     {
       "id": 1,
@@ -23,7 +51,20 @@
         "Generates a distinct fresh mktemp description file per ticket in bulk sync",
         "Isolates per-ticket halts rather than aborting independent sibling tickets",
         "Reports any non-zero counter and each halted ticket by ID, and affirmatively states clean reference counts when 0"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-sync-jira/SKILL.md",
+            "regex": "mktemp"
+          },
+          {
+            "file": "skills/cadence-sync-jira/SKILL.md",
+            "regex": "jira-preserve"
+          }
+        ]
+      }
     }
   ]
 }

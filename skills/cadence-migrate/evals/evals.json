@@ -12,7 +12,24 @@
         "Delegates to cadence-migration-author at Deep-reasoning tier (xhigh effort)",
         "Verifies reversible apply -> rollback -> reapply cycle routing noisy logs via offload_log_triage",
         "Executes offload_deep_review on the generated migration diff before MR creation"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-migrate/SKILL.md",
+          "agents/cadence-migration-author/agent.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-migrate/SKILL.md",
+            "regex": "cadence-migration-author"
+          },
+          {
+            "file": "skills/cadence-migrate/SKILL.md",
+            "regex": "expand"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -22,7 +39,20 @@
       "assertions": [
         "Sets mode to contract when --contract is supplied and records deferred follow-up in decisions.md",
         "Prompts operator instead of guessing when neither spec.md nor entity diffs exist"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-migrate/SKILL.md",
+            "regex": "contract"
+          },
+          {
+            "file": "skills/cadence-migrate/SKILL.md",
+            "regex": "decisions\\.md"
+          }
+        ]
+      }
     }
   ]
 }

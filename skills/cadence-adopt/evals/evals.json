@@ -11,7 +11,16 @@
         "Rejects remote URLs containing :// or git@ prefix",
         "Canonicalizes destination and refuses self-target against the CADENCE source repo",
         "Never uses Edit or Write tools directly to copy framework files"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "none",
+        "cmd": "bash \"$ROOT/skills/cadence-adopt/adopt-cadence.sh\" \"$ROOT\"",
+        "expect_exit": 1,
+        "stderr_regex": [
+          "target is the CADENCE repo itself"
+        ]
+      }
     },
     {
       "id": 1,
@@ -23,7 +32,23 @@
         "Passes --gitignore-machinery through while preserving tracked AGENTS.md",
         "Independently checks specs/CADENCE.md, specs/TEMPLATE, and .agents/skills at canonical destination after exit 0",
         "Re-running reports skip (exists): on pre-existing files without overwriting them"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "empty_git",
+        "setup_sh": "mkdir -p \"$FIX/src\" && echo \"print(1)\" > \"$FIX/src/app.py\"",
+        "cmd": "out1=$(bash \"$ROOT/skills/cadence-adopt/adopt-cadence.sh\" \"$FIX\" --gitignore-machinery) && out2=$(bash \"$ROOT/skills/cadence-adopt/adopt-cadence.sh\" \"$FIX\" --gitignore-machinery) && printf \"%s\\n%s\\n\" \"$out1\" \"$out2\"",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "AGENTS\\.md",
+          "skip \\(exists\\): CADENCE_DIRECTIVES\\.md"
+        ],
+        "check_files_exist": [
+          "specs/CADENCE.md",
+          "specs/TEMPLATE/spec.md",
+          ".agents/skills/cadence-spec/SKILL.md"
+        ]
+      }
     }
   ]
 }

@@ -11,7 +11,23 @@
         "Consults docs/policies/surface-registry.md and docs/policies/cadence-surfaces.md before editing",
         "Halts and escalates to /cadence-spec (Deep-reasoning, xhigh effort) when a registered surface or contract would change",
         "Performs zero file mutations when escalating"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-refactor/SKILL.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-refactor/SKILL.md",
+            "regex": "cadence-surfaces\\.md"
+          },
+          {
+            "file": "skills/cadence-refactor/SKILL.md",
+            "regex": "/cadence-spec"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -23,7 +39,20 @@
         "Builds complete manifest across source, tests, configs, and docs/ prior to editing",
         "Executes deterministic sweep under Fast-mechanical (high effort) preserving comments and <400L file ceiling",
         "Verifies zero remaining stale occurrences, runs canonical tests via offload_log_triage, and executes offload_deep_review on the diff"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-refactor/SKILL.md",
+            "regex": "Fast-mechanical"
+          },
+          {
+            "file": "skills/cadence-refactor/SKILL.md",
+            "regex": "offload_log_triage"
+          }
+        ]
+      }
     }
   ]
 }

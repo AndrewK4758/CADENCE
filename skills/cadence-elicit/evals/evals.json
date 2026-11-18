@@ -10,7 +10,24 @@
       "assertions": [
         "Halts immediately on Trivial, Low, missing, or unrecognized tier",
         "Modifies zero files and skips Step 7 stage_effort + tracker sync on refusal"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-elicit/SKILL.md",
+          "processes/docs/policies/change-tiers.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-elicit/SKILL.md",
+            "regex": "Low|Trivial"
+          },
+          {
+            "file": "skills/cadence-elicit/SKILL.md",
+            "regex": "change-tiers\\.md"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -22,7 +39,16 @@
         "Re-presents byte-identical options once on ambiguity at zero extra question budget",
         "Records exact option description bytes verbatim under **Source:** template-probe-menu",
         "Appends stage: triage increment via stage-effort.sh and adds to actual_effort after Step 5 write"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-elicit/SKILL.md",
+            "regex": "Elicited Intent"
+          }
+        ]
+      }
     },
     {
       "id": 2,
@@ -33,7 +59,16 @@
         "Uses deterministic 12-hex sha256 idempotency_key excluding ## Elicited Intent",
         "Deletes only children with status: created from current run and leaves duplicate children intact",
         "Leaves parent decomposed_into: unmodified on partial failure"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-elicit/SKILL.md",
+            "regex": "rollback"
+          }
+        ]
+      }
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "skill_name": "cadence-cycle",
-  "notes": "Evals run against a throwaway CADENCE-shaped fixture built by tests/fixtures/build_cadence_fixture.sh (ACME-101..121). Integration branch is `trunk`, not `main`. LIMIT — the fixture has no git remote and no forge, so evals grade the DECISION (admit / refuse / count / ask / stop) and stated sequence; ready_mr.sh is covered by a mock-gh test in tests/run-cadence-tests.sh. ACME-110 carries THREE ledger markers while stage_effort records fewer code-review entries; ACME-111 is at the cap of 4 with open blockers; ACME-113 has untracked spec.md; Trivial runs zero /cadence-review cycles.",
+  "notes": "Evals run against a throwaway CADENCE-shaped fixture built by tests/fixtures/build_cadence_fixture.sh (ACME-101..121). Integration branch is `trunk`, not `main`. LIMIT \u2014 the fixture has no git remote and no forge, so evals grade the DECISION (admit / refuse / count / ask / stop) and stated sequence; ready_mr.sh is covered by a mock-gh test in tests/run-cadence-tests.sh. ACME-110 carries THREE ledger markers while stage_effort records fewer code-review entries; ACME-111 is at the cap of 4 with open blockers; ACME-113 has untracked spec.md; Trivial runs zero /cadence-review cycles.",
   "evals": [
     {
       "id": 0,
@@ -19,29 +19,45 @@
         "Marks the MR ready for review when blocking issues reach 0",
         "States that the run stops there and does NOT run /cadence-maintain",
         "States that it does NOT monitor or wait for the MR to merge"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-106 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "status=spec-approved",
+          "tier=High",
+          "spec_mr=https://github\\.com/acme/repo/pull/77"
+        ]
+      }
     },
     {
       "id": 1,
       "name": "spec-not-landed-refused",
-      "prompt": "acme-113 is ready to build — spec's approved. go ahead and implement it",
+      "prompt": "acme-113 is ready to build \u2014 spec's approved. go ahead and implement it",
       "expected_output": "Identifies status `spec-approved` at tier High, but the spec is NOT on the integration branch (specs/ACME-113/ is untracked), so the spec never landed. Not admitted. This is 'not yet' rather than 'already past'. Names /cadence-prep (to propose/merge the spec MR) and stops, explaining that an implementation branch cut now would not contain the contract it is reviewed against.",
       "files": [],
       "assertions": [
         "Checks whether the spec is present on the integration branch",
         "Determines that the spec has NOT landed on the integration branch",
         "Declines to run /cadence-implement",
-        "Frames this as 'not yet' — the spec phase is incomplete — rather than as the ticket being past this skill's window",
+        "Frames this as 'not yet' \u2014 the spec phase is incomplete \u2014 rather than as the ticket being past this skill's window",
         "Names /cadence-prep as what carries it from here",
         "Explains that implementing now would base the branch on a tree missing the spec",
         "Does NOT treat `status: spec-approved` as proof the spec merged"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "test -z \"$(git -C \"$FIX\" ls-tree trunk specs/ACME-113/)\" && test -f \"$FIX/specs/ACME-113/spec.md\"",
+        "expect_exit": 0
+      }
     },
     {
       "id": 2,
       "name": "ledger-cycle-count",
       "prompt": "where does acme-110 stand on review rounds, and how many has it got left before you'd need to check with me? read-only, don't run anything",
-      "expected_output": "Reads 3 completed cycles from the cadence-run:cycle ledger markers in submission.md — NOT 1, which is what stage_effort records — with the last review leaving 1 blocking issue. Against a cap of 4 that leaves exactly one more cycle before the operator has to authorise further ones.",
+      "expected_output": "Reads 3 completed cycles from the cadence-run:cycle ledger markers in submission.md \u2014 NOT 1, which is what stage_effort records \u2014 with the last review leaving 1 blocking issue. Against a cap of 4 that leaves exactly one more cycle before the operator has to authorise further ones.",
       "files": [],
       "assertions": [
         "Counts 3 completed review cycles",
@@ -50,13 +66,21 @@
         "States the cap is 4",
         "Concludes exactly 1 cycle remains before authorisation is needed",
         "Reports that the most recent review left 1 blocking issue"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-110 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "ledger_cycles_completed=3"
+        ]
+      }
     },
     {
       "id": 3,
       "name": "cap-reached-asks",
       "prompt": "acme-111 has been round and round with review. can you push it over the line?",
-      "expected_output": "Reads 4 completed cycles with 2 blocking issues still open — the cap is already spent. Does NOT run a fifth cycle unasked and does NOT halt silently: puts it to the operator with the cycle count, what the last review's blocking issues were, and the choice between authorising further cycles and stopping for a human look. States that any authorisation gets recorded in decisions.md.",
+      "expected_output": "Reads 4 completed cycles with 2 blocking issues still open \u2014 the cap is already spent. Does NOT run a fifth cycle unasked and does NOT halt silently: puts it to the operator with the cycle count, what the last review's blocking issues were, and the choice between authorising further cycles and stopping for a human look. States that any authorisation gets recorded in decisions.md.",
       "files": [],
       "assertions": [
         "Counts 4 completed review cycles from the ledger",
@@ -66,13 +90,21 @@
         "Presents what the last review's blocking issues were so the operator can decide",
         "States that an authorisation to exceed the cap would be recorded in decisions.md",
         "Does NOT self-authorise additional cycles"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-111 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "ledger_cycles_completed=4"
+        ]
+      }
     },
     {
       "id": 4,
       "name": "window-closed-mr-ready",
       "prompt": "can you run the implementation on acme-112",
-      "expected_output": "Identifies status `in-review`, tier Medium, 0 blocking on the last review, with the implementation MR recorded in merge_request and already ready for review. The window is closed — there is nothing for this skill to do. Names /cadence-maintain as what owns it now, and frames the decline as a normal outcome.",
+      "expected_output": "Identifies status `in-review`, tier Medium, 0 blocking on the last review, with the implementation MR recorded in merge_request and already ready for review. The window is closed \u2014 there is nothing for this skill to do. Names /cadence-maintain as what owns it now, and frames the decline as a normal outcome.",
       "files": [],
       "assertions": [
         "Identifies the ticket's current status as `in-review`",
@@ -83,7 +115,17 @@
         "Names /cadence-maintain as what owns the ticket now",
         "Does NOT start another implement/review cycle",
         "Does NOT run /cadence-maintain itself"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "mkdir -p \"$FIX/bin\" && echo \"true\" > \"$FIX/state\" && cat > \"$FIX/bin/gh\" <<SH\n#!/usr/bin/env bash\nif [[ \"\\$1 \\$2\" == \"pr view\" ]]; then\n  printf '{\"state\":\"OPEN\",\"isDraft\":%s,\"url\":\"https://github.com/acme/repo/pull/88\"}\\n' \"\\$(cat \"$FIX/state\")\"\nelif [[ \"\\$1 \\$2\" == \"pr ready\" ]]; then\n  printf 'false' > \"$FIX/state\"\nfi\nSH\nchmod +x \"$FIX/bin/gh\"",
+        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-112 --repo-root \"$FIX\" && PATH=\"$FIX/bin:$PATH\" bash \"$ROOT/skills/cadence-cycle/scripts/ready_mr.sh\" 88",
+        "stdout_regex": [
+          "blocking=0",
+          "result=READY was_draft=yes"
+        ]
+      }
     },
     {
       "id": 5,
@@ -101,12 +143,21 @@
         "Marks the MR ready for review rather than leaving it a draft",
         "Does NOT run implement/review cycles or append ledger entries at this tier",
         "Leaves the merge itself to a human"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-103 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "tier=Trivial",
+          "status=triaged"
+        ]
+      }
     },
     {
       "id": 6,
       "name": "low-tier-admitted",
-      "prompt": "acme-109 — the export filename thing. it's triaged, can you build it?",
+      "prompt": "acme-109 \u2014 the export filename thing. it's triaged, can you build it?",
       "expected_output": "Identifies status `triaged`, tier Low. No spec is produced at Low, so there is nothing to wait for and the ticket is admitted. The tier contract is problem.md's acceptance criteria, not a spec. Runs /cadence-implement and /cadence-review cycles, opens the MR as a draft, records it, and marks it ready at 0 blocking.",
       "files": [],
       "assertions": [
@@ -116,7 +167,16 @@
         "Identifies problem.md's acceptance criteria as the tier contract /cadence-implement works against",
         "Describes running /cadence-implement and /cadence-review cycles",
         "Ends with the implementation MR recorded and marked ready for review"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-109 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "tier=Low",
+          "status=triaged"
+        ]
+      }
     },
     {
       "id": 7,
@@ -131,7 +191,16 @@
         "Names /cadence-prep or /cadence-spec as what comes first",
         "Does NOT invoke /cadence-implement",
         "Does NOT write a spec itself"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-101 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "tier=High",
+          "status=triaged"
+        ]
+      }
     },
     {
       "id": 8,
@@ -146,13 +215,22 @@
         "Does NOT invoke /cadence-triage itself to keep the run going",
         "Names /cadence-triage or /cadence-prep as what establishes the ticket first",
         "Does NOT create a ticket, spec, or branch"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-cycle/SKILL.md",
+            "regex": "raw problem|/cadence-prep|/cadence-triage"
+          }
+        ]
+      }
     },
     {
       "id": 9,
       "name": "ledger-marker-interop",
-      "prompt": "quick question before i kick anything off — if i start acme-110 with /cadence-cycle and then inspect state with /cadence-prep or resume later, does it know how many review rounds have already happened? read-only",
-      "expected_output": "Yes, because the cycle ledger marker prefix is shared (`cadence-run:cycle`): this skill writes `cadence-run:cycle` markers, the exact string read_state.py greps for in both /cadence-prep and /cadence-cycle. A skill-specific marker name would make the cycles invisible and restart a capped review at one. The same holds for metadata fields — merge_request is the implementation MR and is not repurposed.",
+      "prompt": "quick question before i kick anything off \u2014 if i start acme-110 with /cadence-cycle and then inspect state with /cadence-prep or resume later, does it know how many review rounds have already happened? read-only",
+      "expected_output": "Yes, because the cycle ledger marker prefix is shared (`cadence-run:cycle`): this skill writes `cadence-run:cycle` markers, the exact string read_state.py greps for in both /cadence-prep and /cadence-cycle. A skill-specific marker name would make the cycles invisible and restart a capped review at one. The same holds for metadata fields \u2014 merge_request is the implementation MR and is not repurposed.",
       "files": [],
       "assertions": [
         "States that the cycle ledger marker is written as `cadence-run:cycle`",
@@ -161,7 +239,16 @@
         "Connects that failure to the cycle cap being restarted or bypassed",
         "Does NOT propose introducing a `cadence-cycle:cycle` marker",
         "Does NOT propose a new metadata.yaml field for this skill's own use"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "python3 \"$ROOT/skills/cadence-cycle/scripts/read_state.py\" ACME-110 --repo-root \"$FIX\"",
+        "stdout_regex": [
+          "ledger_entries=3",
+          "ledger_last=n=3,phase=code-review,blocking=1,nonblocking=1"
+        ]
+      }
     }
   ]
 }

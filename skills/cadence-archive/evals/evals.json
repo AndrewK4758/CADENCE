@@ -11,7 +11,20 @@
         "Evaluates cancelled entry state with precedence over branch merge reachability",
         "Halts with archive.close_out_reason_absent when merged_at and resolution: are both empty",
         "Moves zero files and writes zero summary.md / CHANGELOG.md / tracker sync changes on halt"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-archive/SKILL.md",
+          "agents/cadence-archivist/agent.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-archive/SKILL.md",
+            "regex": "archive\\.close_out_"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -23,7 +36,31 @@
         "Executes dead-citation-gate.sh --id <ticket> BEFORE --except-id <ticket>",
         "Refuses --emit-baseline to silence Step 2c hits and dispositions REPOINT or EXEMPT in summary.md",
         "Runs authored-doc-gate.sh against both intent-insights.md and production-insights.md"
-      ]
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "adopted_repo",
+          "cmd": "bash \"$FIX/ci-templates/scripts/dead-citation-gate.sh\" --root \"$FIX\"",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "no archived ids"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "must_exist": [
+            "processes/ci-templates/scripts/dead-citation-gate.sh"
+          ],
+          "patterns": [
+            {
+              "file": "skills/cadence-archive/SKILL.md",
+              "regex": "dead-citation-gate\\.sh"
+            }
+          ]
+        }
+      }
     },
     {
       "id": 2,
@@ -33,7 +70,20 @@
       "assertions": [
         "Dispositions every [adr-owed] finding into a concrete ADR or Follow-ups created entry (else archive.adr_owed.undispositioned)",
         "Computes archive stage_effort via stage-effort.sh rather than git log timestamps"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-archive/SKILL.md",
+            "regex": "adr-owed"
+          },
+          {
+            "file": "skills/cadence-archive/SKILL.md",
+            "regex": "stage_effort"
+          }
+        ]
+      }
     }
   ]
 }

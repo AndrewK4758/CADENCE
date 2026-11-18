@@ -10,7 +10,16 @@
       "assertions": [
         "Invokes cadence-eject.sh --check-footprint",
         "Performs zero filesystem writes in --check-footprint mode"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "none",
+        "cmd": "bash \"$ROOT/processes/ci-templates/scripts/cadence-eject.sh\" --check-footprint",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "OK: committed footprint descriptor is in sync"
+        ]
+      }
     },
     {
       "id": 1,
@@ -20,7 +29,13 @@
       "assertions": [
         "Canonicalizes source and destination paths via realpath / pwd -P",
         "Refuses self-target or nested destination inside source without writing files"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "adopted_repo",
+        "cmd": "bash \"$FIX/ci-templates/scripts/cadence-eject.sh\" \"$FIX\" \"$FIX/dist\"",
+        "expect_exit": "nonzero"
+      }
     },
     {
       "id": 2,
@@ -31,7 +46,14 @@
         "Previews mode, audit file path outside destination, and BL-003 limitation before exporting",
         "Requires explicit operator confirmation prior to running cadence-eject.sh <src> <dest>",
         "Independently verifies absence of .agents, .gemini, CADENCE_DIRECTIVES.md, and ci-templates in destination and presence of audit log"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "adopted_repo",
+        "setup_sh": "mkdir -p \"$FIX.out\"",
+        "cmd": "bash \"$FIX/ci-templates/scripts/cadence-eject.sh\" \"$FIX\" \"$FIX.out\" && test -f \"$FIX.out/src/app.py\" && test ! -e \"$FIX.out/.agents\" && test ! -e \"$FIX.out/CADENCE_DIRECTIVES.md\" && test -f \"$FIX.out.eject-audit.txt\"",
+        "expect_exit": 0
+      }
     }
   ]
 }

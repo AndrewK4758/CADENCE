@@ -11,7 +11,20 @@
         "Evaluates Step F0 single-token file check prior to any allocation or tracker lookup",
         "Halts with cadence_triage.fileonly.argument_unresolved on unreadable/missing single token",
         "Performs zero mint-id.sh --reserve calls, zero tracker calls, and zero specs/<id>/ writes"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-triage/SKILL.md",
+          "agents/cadence-triage-agent/agent.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-triage/SKILL.md",
+            "regex": "fileonly\\.argument_unresolved"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -21,7 +34,32 @@
       "assertions": [
         "Calls .agents/skills/cadence-mint/mint-id.sh --reserve for local sequence minting",
         "Halts on non-zero allocator exit without scanning specs/, archive/, or docs/ADR/"
-      ]
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "empty_git",
+          "cmd": "CADENCE_FLOCK_CMD=nonexistent_flock bash \"$ROOT/skills/cadence-mint/mint-id.sh\" --reserve PI",
+          "expect_exit": "nonzero",
+          "stderr_regex": [
+            "idalloc\\.reserve\\.lock_unavailable"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-triage/SKILL.md",
+              "regex": "mint-id\\.sh"
+            },
+            {
+              "file": "skills/cadence-triage/SKILL.md",
+              "regex": "idalloc"
+            }
+          ]
+        }
+      }
     },
     {
       "id": 2,
@@ -31,7 +69,17 @@
       "assertions": [
         "Checks (decomposed_from, idempotency_key) duplicate BEFORE calling mint-id.sh --reserve",
         "Suppresses Step 5 /cadence-elicit offer in handoff mode (suppress_elicit_offer: true) and at Trivial/Low tier"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-triage/SKILL.md",
+            "regex": "duplicate",
+            "flags": "i"
+          }
+        ]
+      }
     }
   ]
 }

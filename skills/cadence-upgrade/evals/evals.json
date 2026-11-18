@@ -11,7 +11,35 @@
         "Delegates exclusively to upgrade-cadence.sh without reimplementing 3-way merges via Edit/Write",
         "Performs zero writes to .cadence-version or working tree under --dry-run",
         "Stages conflicts under .cadence-upgrade-staging/ leaving .cadence-version unchanged and never auto-resolves them"
-      ]
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "adopted_repo",
+          "cmd": "UPGRADE_CORE=\"$ROOT\" UPGRADE_TARGET=\"$FIX\" AUTOGEN_CONFIRM=0 bash \"$FIX/.agents/skills/cadence-upgrade/upgrade-cadence.sh\" --autogen-footprint",
+          "expect_exit": "nonzero",
+          "stderr_regex": [
+            "declined"
+          ],
+          "check_unchanged": [
+            "docs/agentic-sdlc/CADENCE_ORG.md"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "patterns": [
+            {
+              "file": "skills/cadence-upgrade/SKILL.md",
+              "regex": "--dry-run"
+            },
+            {
+              "file": "skills/cadence-upgrade/SKILL.md",
+              "regex": "\\.cadence-upgrade-staging"
+            }
+          ]
+        }
+      }
     },
     {
       "id": 1,
@@ -22,7 +50,20 @@
         "Routes Step 5.6 strictly by existence of .cadence-upgrade-staging/docs/agentic-sdlc/CADENCE_ORG.md",
         "Refuses to auto-invoke /cadence-interview when org-fold staged a conflict",
         "Requires AUTOGEN_CONFIRM=1 for --autogen-footprint and separate UPGRADE_CORE for --rewrite-vocab"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-upgrade/SKILL.md",
+            "regex": "CADENCE_ORG\\.md"
+          },
+          {
+            "file": "skills/cadence-upgrade/SKILL.md",
+            "regex": "UPGRADE_CORE"
+          }
+        ]
+      }
     }
   ]
 }

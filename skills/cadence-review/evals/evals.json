@@ -12,7 +12,24 @@
         "Refuses to accept 'out of scope / cannot occur at current scale' unverified",
         "Applies all four Section 10 structural positions across diff, upstream, downstream, and untouched siblings",
         "Persists verdict to specs/<id>/submission.md before forge comment publication"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-review/SKILL.md",
+          "agents/cadence-reviewer/agent.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "offload_deep_review"
+          },
+          {
+            "file": "agents/cadence-reviewer/agent.md",
+            "regex": "Adversarial"
+          }
+        ]
+      }
     },
     {
       "id": 1,
@@ -23,7 +40,20 @@
         "Normalizes tier=Low from metadata.yaml first",
         "Does NOT flag missing spec.md or test-plan.md as a defect at Low tier",
         "Executes Step 6 follow-up disposition via followup-disposition.md"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "tier: Low"
+          },
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "followup-disposition\\.md"
+          }
+        ]
+      }
     },
     {
       "id": 2,
@@ -33,7 +63,19 @@
       "assertions": [
         "Emits finding.class.unlabelled and halts enumeration",
         "Does NOT assign a silent default class token"
-      ]
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "skills/cadence-review/references/followup-disposition.md"
+        ],
+        "patterns": [
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "finding\\.class\\.unlabelled"
+          }
+        ]
+      }
     },
     {
       "id": 3,
@@ -44,7 +86,17 @@
         "Evaluates security-trigger.sh before dispatching cadence-security-auditor",
         "Always triggers cadence-security-auditor on High tier and on Low/Medium diffs with security or concurrency signals",
         "Skips extra cadence-security-auditor pass on Trivial or signal-free Low/Medium diffs"
-      ]
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "git checkout -q -b impl/fix/ACME-TRIG && mkdir -p specs/ACME-301 specs/ACME-302 && printf \"id: ACME-301\\ntier: Low\\nstatus: in-review\\n\" > specs/ACME-301/metadata.yaml && printf \"id: ACME-302\\ntier: Low\\nstatus: in-review\\n\" > specs/ACME-302/metadata.yaml && printf \"import fcntl\\ndef check_jwt(): fcntl.flock(0, 2)\\n\" > src/guard.py",
+        "cmd": "out1=$(bash \"$ROOT/skills/cadence-review/security-trigger.sh\" --root \"$FIX\" --base trunk ACME-301) && echo \"$out1\" && rm -f src/guard.py && out2=$(bash \"$ROOT/skills/cadence-review/security-trigger.sh\" --root \"$FIX\" --base trunk ACME-302) && echo \"$out2\"",
+        "stdout_regex": [
+          "decision=TRIGGER tier=low .*auth",
+          "decision=SKIP tier=low signals=none"
+        ]
+      }
     }
   ]
 }
