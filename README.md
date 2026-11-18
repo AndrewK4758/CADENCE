@@ -12,7 +12,7 @@ Every letter of **CADENCE** maps directly to a governed phase of the software en
 2. **A — Architect & Explore**: Cross-boundary implicit contract discovery and 2–3 structurally distinct, unranked steelmanned design options (`cadence-architect`, `cadence-explorer`, `/cadence-prep`).
 3. **D — Decompose & Specify**: Grounding via the **Contextual Grounding Matrix (`6W×4L`)**, evaluation against **Engineering Pillars**, and **CHORD** 5-part behavioral decomposition (**C**onditions [`Given`], **H**andling/Triggers [`When`], **O**utcomes [`Then` external], **R**ules [`Then` invariants], **D**eltas [`Then` internal mutations]) into `spec.md` and Gherkin `test-plan.md`, gated by `[Human Gate: Spec Approval]` (`cadence-spec-author`, `/cadence-spec`, `/cadence-interview`, `/cadence-doctor`).
 4. **E — Execute via TDD**: Strict BDD Red $\rightarrow$ Green $\rightarrow$ Accumulate $\rightarrow$ Commit cycles, wide mechanical refactors, and expand/contract schema migrations (`cadence-implementer`, `cadence-migration-author`, `/cadence-implement`, `/cadence-refactor`, `/cadence-migrate`, `/cadence-cycle`, `/cadence-parallel`).
-5. **N — Navigate Gates**: Automatic local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-reviewer`, `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`).
+5. **N — Navigate Gates**: Automatic local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-reviewer`, `cadence-security-auditor`, `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`).
 6. **C — Consolidate**: Tier-gated integration merges, same-session tracker projection to YouTrack or Jira, and clean deliverable ejects (`/cadence-merge`, `/cadence-sync-youtrack`, `/cadence-sync-jira`, `/cadence-eject`).
 7. **E — Enshrine**: Relocation to `archive/{ticket-id}/`, two-pass dead-citation sweeps, ADR and intent-insight promotion, living business flow updates (`docs/flows/`), and release cutting (`cadence-archivist`, `/cadence-archive`, `/cadence-release`).
 
@@ -24,7 +24,7 @@ Every letter of **CADENCE** maps directly to a governed phase of the software en
 CADENCE/
 ├── AGENTS.md                        # Universal agent discovery manifest
 ├── README.md                        # End-to-end architecture & implementation guide
-├── agents/                          # 11 governed subagents (9 CADENCE + repo-scout + log-triage)
+├── agents/                          # 12 governed subagents (10 CADENCE + repo-scout + log-triage)
 │   ├── cadence-architect/
 │   ├── cadence-archivist/
 │   ├── cadence-explorer/
@@ -32,6 +32,7 @@ CADENCE/
 │   ├── cadence-maintainer/
 │   ├── cadence-migration-author/
 │   ├── cadence-reviewer/
+│   ├── cadence-security-auditor/
 │   ├── cadence-spec-author/
 │   ├── cadence-triage-agent/
 │   ├── log-triage/

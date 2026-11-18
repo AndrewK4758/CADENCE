@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Gate** | Code Review (Gate 2) |
-| **Who** | Reviewer (a human), assisted by `cadence-reviewer` + `offload_deep_review` via `/cadence-review` |
+| **Who** | Reviewer (a human), assisted by `cadence-reviewer` (+ `cadence-security-auditor` on `High` or risk-matched diffs) + `offload_deep_review` via `/cadence-review` |
 | **You are approving** | The **implementation against its approved contract** (`spec.md` at Medium/High tier; `problem.md` ACs at Low tier) |
 | **Consumes** | The implementation MR/branch (`impl/{type}/{id}`) at `status: in-review`, its approved contract, and `submission.md` |
 | **Outcome** | **Approve**, **Request Changes**, or **Needs Discussion** |
@@ -45,7 +45,7 @@ Launch the governed review pass from your agentic CLI runtime (`.agents/skills/c
 
 > **Always run `/cadence-review`, never a generic `/code-review` command.** Gate 2 requires the **CADENCE** `/cadence-review` skill — which resolves the integration branch from `CADENCE_ORG.md#branch-strategy-binding`, evaluates the diff against the ticket's approved contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md`'s Acceptance Criteria at Low tier), classifies every non-blocking finding under [`finding-classes.md`](../../policies/finding-classes.md), processes `out-of-scope-defect` follow-up candidates, and logs `code-review` `stage_effort` in `metadata.yaml`. A generic IDE diff checker lacks spec awareness, finding classification, and governance tracking, and **never satisfies Gate 2**.
 
-`/cadence-review` resolves the ticket ID from the final `/`-delimited segment of the branch name (`impl/{type}/{id}`), computes the diff against the bound integration branch (`CADENCE_ORG.md` §15), runs the `offload_deep_review` pre-scan plus mechanical `verify-facts.sh --trace <ticket-id>` verification, and delegates to the read-only **`cadence-reviewer`** subagent. Because its inputs are repository-resident (`git diff` and `submission.md`), it requires no proprietary forge API tokens. `cadence-reviewer` verifies:
+`/cadence-review` resolves the ticket ID from the final `/`-delimited segment of the branch name (`impl/{type}/{id}`), computes the diff against the bound integration branch (`CADENCE_ORG.md` §15), runs the `offload_deep_review` pre-scan plus mechanical `verify-facts.sh --trace <ticket-id>` and `security-trigger.sh` verification, and delegates to the read-only **`cadence-reviewer`** subagent (alongside **`cadence-security-auditor`** when `decision=TRIGGER`). Because its inputs are repository-resident (`git diff` and `submission.md`), it requires no proprietary forge API tokens. `cadence-reviewer` verifies:
 
 - **Contract compliance** — every acceptance criterion in `spec.md` (or `problem.md` at Low tier) is implemented completely.
 - **Test coverage & scope** — every Gherkin scenario in `test-plan.md` (or AC at Low tier) has a passing test tagged per `C5`, and no test reads forbidden governance paths ([`test-scope.md`](../../policies/test-scope.md)).

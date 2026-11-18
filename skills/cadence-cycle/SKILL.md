@@ -79,7 +79,7 @@ Halt verbatim on any non-zero exit (including `sprint.binding.form_removed` / `s
 2. **Each iteration:**
    - Invoke `/cadence-implement <TICKET-ID>` (relaying the run-level sprint confirmation if `Confirm`).
    - If `merge_request` is still empty, immediately push and open the implementation MR **as a draft** targeting `<integration-branch>`, record `merge_request` in `metadata.yaml`, commit, and push (keeps draft until blocking == 0).
-   - Invoke `/cadence-review <TICKET-ID>`, **holding** non-blocking follow-up candidates during the loop (see below).
+   - Invoke `/cadence-review <TICKET-ID>` (which runs `verify-facts.sh --trace`, evaluates `security-trigger.sh`, and dispatches `cadence-security-auditor` alongside `cadence-reviewer` whenever `decision=TRIGGER`), **holding** non-blocking follow-up candidates during the loop (see below).
    - Append `<!-- cadence-run:cycle n=<N> phase=code-review blocking=<B> nonblocking=<NB> at=<UTC> -->` to `submission.md` `## Discussion`, commit, push, and verify `read_state.py` `ledger_cycles_completed` incremented by `1`.
    - **If `blocking == 0`:** exit loop -> for **Low** tier, reconcile & decide held follow-ups first -> run *Finishing the Implementation MR*.
    - **If `blocking > 0`:** do **not** touch non-blocking suggestions; check cap (`4` total cycles). If `>= 4` with `blocking > 0`, **pause and prompt operator** with cycle count + latest blocking findings to either authorize `K` extra cycles (logging verbatim prompt + reply + `K` in `decisions.md` scoped to this run only) or stop (unattended -> stop cleanly, never self-authorize a 5th cycle).

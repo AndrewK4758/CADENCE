@@ -84,11 +84,12 @@ Agents are specialized subagents stored directly under `.agents/agents/<role>/ag
 | `cadence-implementer` | Execute the ticket's tier contract (spec at Medium/High, `problem.md` ACs at Low) via strict BDD red-green-refactor TDD | Execute via TDD | `Deep-reasoning` (`effort: xhigh`, all tiers) |
 | `cadence-migration-author` | Author reversible, idempotent schema/data migrations across stacks using the expand/contract pattern | Execute via TDD (Migration) | `Deep-reasoning` (`effort: xhigh`) |
 | `cadence-reviewer` | Review MR against its tier contract (spec at Medium/High, `problem.md` ACs at Low) — independent test verification + Section 10 adversarial falsification | Navigate Gates (Code Review) | `Deep-reasoning` (`effort: xhigh`) |
+| `cadence-security-auditor` | Adversarial security and concurrency audit (authz, secrets/PII, injection, TOCTOU/locking races, transactions, fail-open paths) — always High tier, signal-triggered on Low/Medium via `security-trigger.sh` | Navigate Gates (Code Review) | `Deep-reasoning` (`effort: xhigh`) |
 | `cadence-maintainer` | Evaluate MR for project-level acceptance — compatibility, architecture, charter alignment | Navigate Gates (Maintainer Review) | `Deep-reasoning` (`effort: xhigh`) |
 | `cadence-archivist` | Enshrine completed work in `archive/`, update CHANGELOG, sync the repo's bound tracker | Consolidate & Enshrine (Archive) | `Fast-mechanical` (`effort: high`) |
 
 Key constraints:
-- Read-only agents (`cadence-architect`, `cadence-reviewer`, `log-triage`, `repo-scout`) cannot write or modify repository files
+- Read-only agents (`cadence-architect`, `cadence-reviewer`, `cadence-security-auditor`, `log-triage`, `repo-scout`) cannot write or modify repository files
 - `cadence-implementer` writes application source and test files plus the ticket's `specs/` execution artifacts (`submission.md` draft, `test-plan.md` infrastructure discovery fields)
 - All agents enforce the core behaviors above
 

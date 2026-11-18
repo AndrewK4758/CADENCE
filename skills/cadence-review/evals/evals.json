@@ -34,6 +34,17 @@
         "Emits finding.class.unlabelled and halts enumeration",
         "Does NOT assign a silent default class token"
       ]
+    },
+    {
+      "id": 3,
+      "name": "hybrid-security-auditor-trigger",
+      "prompt": "Review Low-tier ticket ACME-301 whose diff modifies token verification / flock locking vs ACME-302 whose diff only adjusts UI currency text.",
+      "expected_output": "Runs security-trigger.sh: returns decision=TRIGGER (auth/concurrency signals) on ACME-301 to dispatch cadence-security-auditor alongside cadence-reviewer, and returns decision=SKIP on benign ACME-302.",
+      "assertions": [
+        "Evaluates security-trigger.sh before dispatching cadence-security-auditor",
+        "Always triggers cadence-security-auditor on High tier and on Low/Medium diffs with security or concurrency signals",
+        "Skips extra cadence-security-auditor pass on Trivial or signal-free Low/Medium diffs"
+      ]
     }
   ]
 }

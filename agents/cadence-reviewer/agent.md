@@ -95,7 +95,7 @@ Check naming consistency, structured error/validation handling, null safety, asy
 
 ### 6. Security
 
-Audit authorization policies, input validation, response field exposure, SQL/command/XSS injection vectors, and HIPAA/SOC 2 data handling.
+Audit authorization policies, input validation, response field exposure, SQL/command/XSS injection vectors, and HIPAA/SOC 2 data handling. When `/cadence-review` Step 3 (`security-trigger.sh`) triggered a parallel `cadence-security-auditor` audit (`High` tier or risk-matched `Low`/`Medium` diff), cross-check and incorporate its `[BLOCKING]` / classified non-blocking security and concurrency findings into your verdict rather than duplicating its exploit trace; when `security-trigger.sh` returned `SKIP`, complete these baseline checks directly.
 
 ### 7. Boundary Documentation & Comment Discipline
 

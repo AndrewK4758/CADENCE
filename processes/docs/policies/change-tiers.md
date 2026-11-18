@@ -154,7 +154,7 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 | CI pipeline | Validate + Unit Tests + Doc Check |
 | Spec | `problem.md` only (acceptance criteria sufficient, no Contextual Grounding Matrix (6W×4L)) |
 | CHORD decomposition | No |
-| Agents | code-reviewer only |
+| Agents | code-reviewer (+ security-auditor when risk signals trigger) |
 | Human gates | Code Review (1 reviewer) |
 | Maintainer gate | No |
 | Integration tests | Only if touching data access |
@@ -209,7 +209,7 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 | Spec | Full: problem.md + spec.md + test-plan.md + decisions.md + submission.md (plus `design-options.md` when the explorer pre-step runs — an input, not a required artifact; the machine-readable table below is authoritative for `/cadence-implement`) |
 | CHORD decomposition | Yes |
 | Contextual Grounding Matrix (6W×4L) | Abbreviated — System Model and Technology Model rows only (skip Scope and Business Model if the business context is obvious) |
-| Agents | explorer, spec-author, code-reviewer, maintainer; **architect (optional)** — see note below |
+| Agents | explorer, spec-author, code-reviewer, maintainer; **architect (optional)**, **security-auditor (signal-triggered)** — see notes below |
 | Human gates | Spec Review + Code Review + Maintainer |
 | Integration tests | Yes |
 | Contract tests | Yes, if touching registered surfaces |
@@ -223,6 +223,8 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 - The change introduces a new internal integration (a new call to an existing internal service).
 
 When invoked, the architect's output (Observed/Inferred/Unknown findings, Draft Contracts, Open Questions) feeds directly into the spec's compatibility-impact section. Invocation at Medium tier remains opt-in by the spec-author; it is never mandatory unless the change escalates to High tier.
+
+**Security & Concurrency Auditor (`cadence-security-auditor`, hybrid trigger):** Always invoked at **High** tier; at **Low** and **Medium** tiers, `/cadence-review` (and `/cadence-cycle` / `/cadence-parallel`) runs `security-trigger.sh` and triggers `cadence-security-auditor` alongside `cadence-reviewer` whenever changed paths or diff hunks touch authentication/authorization, secrets/cryptography, SQL/migrations, concurrency/locks/transactions, or untrusted input/exec boundaries.
 
 **Examples:** Adding a new field to an existing API response, new database column with backfill, new validation rule that changes existing behavior, integrating with an internal notification service.
 
@@ -246,7 +248,7 @@ When invoked, the architect's output (Observed/Inferred/Unknown findings, Draft 
 | Spec | Full: all artifacts (plus `design-options.md` when the explorer pre-step runs — an input, not a required artifact; the machine-readable table below is authoritative for `/cadence-implement`) |
 | CHORD decomposition | Yes, all ACs |
 | Contextual Grounding Matrix (6W×4L) | Full — all four rows (Scope, Business Model, System Model, Technology Model) |
-| Agents | All: architect, explorer, spec-author, code-reviewer, maintainer, migration-author (if schema) |
+| Agents | All: architect, explorer, spec-author, code-reviewer, security-auditor, maintainer, migration-author (if schema) |
 | Human gates | All 4: Spec Review + Code Review + Maintainer + Deploy Validation |
 | Integration tests | Yes |
 | Contract tests | Yes — golden-file + consumer contracts + versioned integration |
