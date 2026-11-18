@@ -23,7 +23,6 @@ if [[ "${1:-}" == "--global" ]]; then
 
   # 2. Global Antigravity / Gemini Configuration (~/.gemini/config/)
   mkdir -p "$HOME/.gemini/config/agents" "$HOME/.gemini/config/skills"
-  rm -rf "$HOME/.gemini/config/agents"/claire-* "$HOME/.gemini/config/skills"/claire-*
   for agent_dir in "$SDLC_ROOT"/agents/cadence-* "$SDLC_ROOT"/agents/log-triage "$SDLC_ROOT"/agents/repo-scout; do
     if [[ -d "$agent_dir" ]]; then
       rm -rf "$HOME/.gemini/config/agents/$(basename "$agent_dir")"
@@ -73,9 +72,9 @@ mkdir -p "$TARGET_REPO/.agents"
 ln -sfn "$SDLC_ROOT/agents" "$TARGET_REPO/.agents/agents"
 ln -sfn "$SDLC_ROOT/skills" "$TARGET_REPO/.agents/skills"
 ln -sfn "$SDLC_ROOT/hooks" "$TARGET_REPO/.agents/hooks"
-sed "s|/home/ak/projects/sdlc|$SDLC_ROOT|g; s|/home/ak|$HOME|g" "$SDLC_ROOT/import/agents.json" > "$TARGET_REPO/.agents/agents.json"
-sed "s|/home/ak/projects/sdlc|$SDLC_ROOT|g; s|/home/ak|$HOME|g" "$SDLC_ROOT/import/skills.json" > "$TARGET_REPO/.agents/skills.json"
-sed "s|/home/ak/projects/sdlc|$SDLC_ROOT|g; s|/home/ak|$HOME|g" "$SDLC_ROOT/hooks/hooks.json" > "$TARGET_REPO/.agents/hooks.json"
+printf '{"entries": [{"path": ".agents/agents"}]}\n' > "$TARGET_REPO/.agents/agents.json"
+printf '{"entries": [{"path": ".agents/skills"}]}\n' > "$TARGET_REPO/.agents/skills.json"
+cp "$SDLC_ROOT/hooks/hooks.json" "$TARGET_REPO/.agents/hooks.json"
 
 # 2. Canonical Reference Implementation (.gemini/ for Antigravity / Gemini CLI)
 bash "$SDLC_ROOT/processes/ci-templates/scripts/adapters/gemini-agy.sh" "$TARGET_REPO"

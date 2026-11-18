@@ -1,13 +1,20 @@
 {
   "cadence-local-offload-enforcer": {
     "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/local-offload-enforcer.sh\" ]; then exec \"$r/.agents/hooks/local-offload-enforcer.sh\"; fi; printf \"{}\"'",
+        "timeout": 10
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "run_command|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "/home/ak/projects/sdlc/hooks/local-offload-enforcer.sh",
+            "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/local-offload-enforcer.sh\" ]; then exec \"$r/.agents/hooks/local-offload-enforcer.sh\"; fi; printf \"{}\"'",
             "timeout": 10
           }
         ]
@@ -22,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/ak/projects/sdlc/hooks/tms-sync-reminder.sh",
+            "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/tms-sync-reminder.sh\" ]; then exec \"$r/.agents/hooks/tms-sync-reminder.sh\"; fi; printf \"{}\"'",
             "timeout": 15
           }
         ]
@@ -34,7 +41,7 @@
     "Stop": [
       {
         "type": "command",
-        "command": "/home/ak/projects/sdlc/hooks/tms-doc-sync-stop.sh",
+        "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/tms-doc-sync-stop.sh\" ]; then exec \"$r/.agents/hooks/tms-doc-sync-stop.sh\"; fi; printf \"{}\"'",
         "timeout": 15
       }
     ]

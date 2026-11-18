@@ -1,5 +1,5 @@
 #!/bin/sh
-# Global Lifecycle Hook (PreInvocation + PostToolUse) for Universal LiteRT / CADENCE Local Offload (:11434).
+# Global Lifecycle Hook (PreInvocation + PostToolUse) for Universal Local Offload (:11434).
 # Installed globally in ~/.gemini/config/hooks.json and ~/.agents/hooks.json so it runs on ALL repositories
 # without per-repo configuration, and deduplicates across both global and repo-level hook invocations.
 
@@ -13,6 +13,24 @@ fi
 
 raw=$(cat 2>/dev/null)
 [ -n "$(printf '%s' "$raw" | tr -d ' \t\r\n')" ] || exit 0
+
+emit_preinv_json() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys; print(json.dumps({"injectSteps":[{"systemMessage":{"systemMessage":sys.argv[1]}}]}))' "$1"
+  else
+    esc=$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    printf '{"injectSteps":[{"systemMessage":{"systemMessage":"%s"}}]}' "$esc"
+  fi
+}
+
+emit_posttool_json() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys; m=sys.argv[1]; print(json.dumps({"systemMessage":m,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":m}}))' "$1"
+  else
+    esc=$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    printf '{"systemMessage":"%s","hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}' "$esc" "$esc"
+  fi
+}
 
 extract_str() {
   printf '%s' "$raw" | sed -n 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1
@@ -43,7 +61,7 @@ if [ -n "$inv_num" ] && ! printf '%s' "$raw" | grep -q '"toolCall"'; then
     msg=$(cat "$remind_file" 2>/dev/null)
     rm -f "$remind_file" 2>/dev/null
     if [ -n "$msg" ]; then
-      printf '{"injectSteps":[{"ephemeralMessage":"%s"}]}' "$msg"
+      emit_preinv_json "$msg"
       exit 0
     fi
   fi
@@ -51,8 +69,8 @@ if [ -n "$inv_num" ] && ! printf '%s' "$raw" | grep -q '"toolCall"'; then
   first_file="/tmp/agy-offload-first.${safe_sid}"
   if [ ! -f "$first_file" ]; then
     printf '%s' "$inv_num" > "$first_file" 2>/dev/null
-    msg="[COGNITIVE & LOCAL-OFFLOAD GATE (:11434) — READ-ONLY REASONING DEFAULT]: (A) THINK FIRST, DO NOT CREATE: Unless the user prompt explicitly authorizes implementation ('implement', 'write the code', 'apply patch', 'create file', 'build', or /cadence-implement), operate strictly in Read-Only Epistemic Architecture Mode (falsify premises, trace cross-boundary state, analyze trade-offs; NEVER call write_to_file/replace_file_content/multi_replace_file_content or dump unsolicited full files). (B) CONDITIONAL LOCAL-OFFLOAD SCHEMAS (DO NOT read_file .json schemas): Prefer direct native read_file (0.3s) when the exact file path is already known, and direct run_command for quick (<55-line) shell checks. ONLY IF multi-file semantic discovery, noisy test/build log triage (>55 lines), or pre-PR review is needed, call call_mcp_tool(ServerName='local-offload', ToolName=..., Arguments=...) directly without reading /home/ak/.gemini/antigravity-cli/mcp/local-offload/*.json: (1) local_semantic_embed: Arguments={'texts':['<file_or_dir>',...],'query':'<search_query>','top_k':4} — returns inline-bounded (<3.9 KB) AST-aligned Pinned Context Slices + File Symbol Maps (sym@L<line>); (2) offload_log_triage: Arguments={'log_text_or_command':'cmd:<shell_cmd>' or '<log_path_or_text>','model':'inference'} — runs/triages test & build suites on :11434 (fast-path <=55L, context-preserving signals + raw log at /tmp/agy-triage/<repo_name>/<pid>.log); (3) offload_deep_review: Arguments={'prompt':'<task>','context_files':['<path>',...],'model':'inference'} before commit/PR. NOTE: If [LiteRT Pre-Modified Execution Pack (:11434)] is ALREADY in the prompt or no repository lookup is required, reason directly without calling tools."
-    printf '{"injectSteps":[{"ephemeralMessage":"%s"}]}' "$msg"
+    msg="[COGNITIVE & LOCAL-OFFLOAD GATE (:11434) — READ-ONLY REASONING DEFAULT]: (A) THINK FIRST, DO NOT CREATE: Unless the user prompt explicitly authorizes implementation ('implement', 'write the code', 'apply patch', 'create file', 'build', or an explicitly authorized repository implementation workflow), operate strictly in Read-Only Epistemic Architecture Mode (falsify premises, trace cross-boundary state, analyze trade-offs; NEVER create or edit files or dump unsolicited full rewrites). (B) CONDITIONAL LOCAL-OFFLOAD SCHEMAS (DO NOT read_file .json schemas): Prefer direct native read_file (0.3s) when the exact file path is already known, and direct run_command for quick (<=30-line) shell checks. ONLY IF multi-file semantic discovery, noisy test/build log triage (>30 lines), or pre-PR review is needed, call call_mcp_tool(ServerName='local-offload', ToolName=..., Arguments=...) directly without reading ~/.gemini/antigravity-cli/mcp/local-offload/*.json: (1) local_semantic_embed: Arguments={'texts':['<file_or_dir>',...],'query':'<search_query>','top_k':6} — returns inline-bounded (<3.9 KB) AST-aligned Pinned Context Slices + File Symbol Maps (sym@L<line>); (2) offload_log_triage: Arguments={'log_text_or_command':'cmd:<shell_cmd>' or '<log_path_or_text>','cwd':'<repo_root>','model':'inference'} — runs/triages test & build suites on :11434 (preserving raw log at /tmp/agy-triage/<repo_name>/<pid>.log); (3) offload_deep_review: Arguments={'prompt':'<task>','context_files':['<path>',...],'diff_range':'<base>...HEAD','cwd':'<repo_root>','model':'inference'} before commit/PR. NOTE: If [LiteRT Pre-Modified Execution Pack (:11434)] is ALREADY in the prompt or no repository lookup is required, reason directly without calling tools."
+    emit_preinv_json "$msg"
     exit 0
   fi
 
@@ -91,7 +109,7 @@ remind_file="/tmp/agy-offload-remind.${safe_sid}"
 
 case "$cmd_str" in
   # Test / build / compiler / lint gates (substring matches on the raw command line).
-  # Groups, in order: .NET | Python | JS/TS | Rust/Go | JVM/C/Make | CADENCE gates.
+  # Groups, in order: .NET | Python | JS/TS | Rust/Go | JVM/C/Make | Repo test/verification gates.
   *"dotnet test"*|*"dotnet build"*|*"dotnet ef"*|\
   *"pytest"*|*"unittest"*|*"tox "*|*"nox "*|*"ruff check"*|*"mypy "*|*"pyright"*|\
   *"npm test"*|*"npm run build"*|*"npm run test"*|*"npm run lint"*|*"pnpm test"*|*"pnpm build"*|*"pnpm run "*|\
@@ -100,14 +118,14 @@ case "$cmd_str" in
   *"cargo test"*|*"cargo check"*|*"cargo build"*|*"cargo clippy"*|*"go test"*|*"go build"*|*"go vet"*|\
   *"mvn test"*|*"mvn verify"*|*"mvn package"*|*"gradle test"*|*"gradle build"*|*"gradlew test"*|*"gradlew build"*|\
   *"make test"*|*"make check"*|*"make build"*|*"make all"*|*"ctest"*|*"cmake --build"*|*" ninja"*|"ninja"*|\
-  *"verify-spec.sh"*|*"verify-facts.sh"*|*"authored-doc-gate.sh"*|*"dead-citation-gate.sh"*)
+  *"run-tests.sh"*|*"verify-spec.sh"*|*"verify-facts.sh"*|*"authored-doc-gate.sh"*|*"dead-citation-gate.sh"*)
     msg="CADENCE Automatic Local Offload (:11434): Route any test/build/compiler/gate output exceeding 30 lines or exiting non-zero through call_mcp_tool(ServerName='local-offload', ToolName='offload_log_triage', Arguments={'log_text_or_command': ...}) or invoke_subagent(TypeName='log-triage') (raw log saved at /tmp/agy-triage/<repo_name>/<pid>.log)."
     if [ "$is_agy" -eq 1 ]; then
       printf '%s' "$msg" > "$remind_file" 2>/dev/null
       printf '{}'
       exit 0
     fi
-    printf '{"systemMessage":"%s","hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}' "$msg" "$msg"
+    emit_posttool_json "$msg"
     exit 0
     ;;
   *"find "*|*"grep "*|*"rg "*)
@@ -116,13 +134,13 @@ case "$cmd_str" in
     cnt=$((cnt + 1))
     printf '%s' "$cnt" > "$search_cnt_file" 2>/dev/null
     if [ "$cnt" -eq 2 ]; then
-      msg="CADENCE Automatic Local Offload (:11434): You have run multiple shell search commands. Use call_mcp_tool(ServerName='local-offload', ToolName='local_semantic_embed', ...) (GPU-pinned on :11434) or invoke_subagent(TypeName='repo-scout') to semantically rank candidate files and offload multi-file exploration."
+      msg="CADENCE Automatic Local Offload (:11434): You have run multiple shell search commands. Use call_mcp_tool(ServerName='local-offload', ToolName='local_semantic_embed', ...) (on :11434) or invoke_subagent(TypeName='repo-scout') to semantically rank candidate files and offload multi-file exploration."
       if [ "$is_agy" -eq 1 ]; then
         printf '%s' "$msg" > "$remind_file" 2>/dev/null
         printf '{}'
         exit 0
       fi
-      printf '{"systemMessage":"%s","hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}' "$msg" "$msg"
+      emit_posttool_json "$msg"
       exit 0
     fi
     [ "$is_agy" -eq 1 ] && printf '{}'

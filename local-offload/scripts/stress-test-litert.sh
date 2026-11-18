@@ -43,7 +43,8 @@ FAIL_FILE=$(mktemp)
 seq 1 50 | xargs -P 10 -I@ sh -c '
   SID="stress-mployee-@"
   OUT1=$(printf "{\"conversationId\":\"%s\",\"invocationNum\":1,\"workspacePaths\":[\"%s\"]}" "$SID" "'"$MPLOYEE_DIR"'" | "'"$HOOK_BIN"'")
-  echo "$OUT1" | grep -q "MANDATORY LITERT" || echo "FAIL_TURN1:$SID:$OUT1" >> "'"$FAIL_FILE"'"
+  echo "$OUT1" | grep -q "COGNITIVE & LOCAL-OFFLOAD GATE" || echo "FAIL_TURN1:$SID:$OUT1" >> "'"$FAIL_FILE"'"
+  echo "$OUT1" | grep -q "systemMessage" || echo "FAIL_SCHEMA:$SID:$OUT1" >> "'"$FAIL_FILE"'"
 
   OUT1_DUP=$(printf "{\"conversationId\":\"%s\",\"invocationNum\":1,\"workspacePaths\":[\"%s\"]}" "$SID" "'"$MPLOYEE_DIR"'" | "'"$HOOK_BIN"'")
   [ "$OUT1_DUP" = "{}" ] || echo "FAIL_DEDUP:$SID:$OUT1_DUP" >> "'"$FAIL_FILE"'"

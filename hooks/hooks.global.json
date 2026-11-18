@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/ak/projects/sdlc/hooks/tms-sync-reminder.sh",
+            "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/tms-sync-reminder.sh\" ]; then exec \"$r/.agents/hooks/tms-sync-reminder.sh\"; elif [ -x \"$HOME/.agents/hooks/tms-sync-reminder.sh\" ]; then exec \"$HOME/.agents/hooks/tms-sync-reminder.sh\"; fi; printf \"{}\"'",
             "timeout": 15
           }
         ]
@@ -41,7 +41,7 @@
     "Stop": [
       {
         "type": "command",
-        "command": "/home/ak/projects/sdlc/hooks/tms-doc-sync-stop.sh",
+        "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/tms-doc-sync-stop.sh\" ]; then exec \"$r/.agents/hooks/tms-doc-sync-stop.sh\"; elif [ -x \"$HOME/.agents/hooks/tms-doc-sync-stop.sh\" ]; then exec \"$HOME/.agents/hooks/tms-doc-sync-stop.sh\"; fi; printf \"{}\"'",
         "timeout": 15
       }
     ]
