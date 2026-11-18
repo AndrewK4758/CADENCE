@@ -54,7 +54,7 @@ for p in root.rglob("*"):
     if (
         rel.startswith(("agents/", "hooks/", "local-offload/mcp/", "tests/"))
         or re.match(r"skills/.*/SKILL\.md$", rel)
-        or rel.startswith(("skills/cadence-spec/", "skills/cadence-review/references/", "skills/cadence-cycle/references/", "skills/cadence-adopt/", "skills/cadence-prep/scripts/", "skills/cadence-cycle/scripts/"))
+        or rel.startswith(("skills/cadence-spec/", "skills/cadence-review/references/", "skills/cadence-cycle/references/", "skills/cadence-adopt/", "skills/cadence-doctor/", "skills/cadence-prep/scripts/", "skills/cadence-cycle/scripts/"))
     ):
         if len(text.splitlines()) >= 400:
             errs.append(f"line ceiling >=400 ({len(text.splitlines())}L) in {rel}")
@@ -98,6 +98,20 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
             errs.append(f"dangling command {bad} in {sm.relative_to(root)}")
     if m := provider_leak.search(txt):
         errs.append(f"provider-specific routing {m.group(0)!r} in {sm.relative_to(root)}")
+    eval_file = sm.parent / "evals" / "evals.json"
+    if not eval_file.is_file():
+        errs.append(f"missing evals file: {eval_file.relative_to(root)}")
+    else:
+        edata = json.loads(eval_file.read_text(encoding="utf-8"))
+        if edata.get("skill_name") != sm.parent.name:
+            errs.append(f"evals skill_name mismatch in {eval_file.relative_to(root)}: {edata.get('skill_name')!r}")
+        cases = edata.get("evals")
+        if not isinstance(cases, list) or len(cases) < 2:
+            errs.append(f"evals must declare >=2 cases in {eval_file.relative_to(root)}")
+        else:
+            for c in cases:
+                if not all(k in c for k in ("id", "name", "prompt", "expected_output", "assertions")) or not c["assertions"]:
+                    errs.append(f"malformed eval case in {eval_file.relative_to(root)}: {c!r}")
 
 for a, b in [
     ("hooks/antigravity-local-offload-hook", "hooks/local-offload-enforcer.sh"),
@@ -116,7 +130,7 @@ PY
 t1b_syntax() {
   while IFS= read -r -d '' shf; do
     bash -n "$shf"
-  done < <(find "$ROOT/hooks" "$ROOT/import" "$ROOT/skills/cadence-adopt" "$ROOT/skills/cadence-spec" "$ROOT/skills/cadence-implement" "$ROOT/skills/cadence-upgrade" "$ROOT/processes/ci-templates/scripts" "$ROOT/tests" -maxdepth 2 -name '*.sh' -print0)
+  done < <(find "$ROOT/hooks" "$ROOT/import" "$ROOT/skills/cadence-adopt" "$ROOT/skills/cadence-doctor" "$ROOT/skills/cadence-spec" "$ROOT/skills/cadence-implement" "$ROOT/skills/cadence-upgrade" "$ROOT/processes/ci-templates/scripts" "$ROOT/tests" -maxdepth 2 -name '*.sh' -print0)
 }
 
 t2_hooks() {
@@ -194,6 +208,11 @@ t4_fixture_and_gates() {
   bash "$ROOT/skills/cadence-spec/verify-spec.sh" ACME-201 >/dev/null
   bash "$ROOT/skills/cadence-spec/verify-facts.sh" ACME-201 >/dev/null
   bash "$ROOT/skills/cadence-spec/verify-facts.sh" --rulings ACME-201 >/dev/null
+  local fix_doc
+  fix_doc="$(bash "$ROOT/skills/cadence-doctor/doctor.sh" --root "$fix" --ticket ACME-201 2>&1 || true)"
+  [[ "$fix_doc" == *"PASS  verify-spec (ACME-201)"* ]]
+  [[ "$fix_doc" == *"PASS  verify-facts (ACME-201)"* ]]
+  [[ "$fix_doc" == *"PASS  verify-facts --rulings (ACME-201)"* ]]
 
   cp specs/ACME-201/spec.md specs/ACME-201/spec.md.bak
   echo "extra <placeholder>" >> specs/ACME-201/spec.md
@@ -234,6 +253,10 @@ t5_adopt_and_eject() {
   test -f "$dst/.gemini/GEMINI.md"
   test -e "$dst/.gemini/agents/cadence-reviewer/agent.md"
   test -e "$dst/.gemini/skills/cadence-spec/SKILL.md"
+  for ns in cadence-doctor cadence-eject cadence-merge cadence-propose cadence-refactor; do
+    test -e "$dst/.gemini/skills/$ns/SKILL.md"
+  done
+  test -x "$dst/.agents/skills/cadence-doctor/doctor.sh"
   test -e "$dst/.gemini/hooks.json"
   grep -q '\.agents/hooks/' "$dst/.agents/hooks.json"
   (cd "$dst" && bash .agents/skills/cadence-mint/mint-id.sh --peek ADR | grep -q '^ADR-')
@@ -241,6 +264,17 @@ t5_adopt_and_eject() {
   reout="$(bash "$ROOT/skills/cadence-adopt/adopt-cadence.sh" "$dst" --gitignore-machinery)"
   [[ "$reout" == *"skip (exists): CADENCE_DIRECTIVES.md"* ]]
   [[ "$reout" == *"AGENTS.md (CADENCE directives block written)"* ]]
+
+  bash "$ROOT/skills/cadence-doctor/doctor.sh" --root "$ROOT" >/dev/null
+  local doc_pre
+  doc_pre="$(bash "$dst/.agents/skills/cadence-doctor/doctor.sh" --root "$dst" 2>&1 || true)"
+  [[ "$doc_pre" == *"FAIL  org config missing: docs/agentic-sdlc/CADENCE_ORG.md"* ]]
+  cp "$dst/docs/agentic-sdlc/CADENCE_ORG_TEMPLATE.md" "$dst/docs/agentic-sdlc/CADENCE_ORG.md"
+  local doc_org
+  doc_org="$(bash "$dst/.agents/skills/cadence-doctor/doctor.sh" --root "$dst" 2>&1 || true)"
+  [[ "$doc_org" == *"PASS  org-binding-resolve --form"* ]]
+  [[ "$doc_org" == *"PASS  marker integration-branch=develop"* ]]
+  [[ "$doc_org" == *"WARN "* ]]
 
   bash "$dst/ci-templates/scripts/cadence-eject.sh" "$dst" "$out" >/dev/null
   test -f "$out/src/app.py"
@@ -250,6 +284,13 @@ t5_adopt_and_eject() {
   test ! -e "$out/AGENTS.md"
   test ! -e "$out/ci-templates"
   bash "$ROOT/processes/ci-templates/scripts/cadence-eject.sh" --check-footprint >/dev/null
+
+  ! bash "$ROOT/skills/cadence-doctor/doctor.sh" --root "$out" >/dev/null 2>&1
+  mkdir -p "$dst/archive"
+  : > "$dst/ci-templates/scripts/dead-citation-gate.sh"
+  local doc_zero
+  doc_zero="$(bash "$dst/.agents/skills/cadence-doctor/doctor.sh" --root "$dst" 2>&1 || true)"
+  [[ "$doc_zero" == *"FAIL  dead-citation-gate exists but is 0 bytes"* ]]
 }
 
 FIX_DIR="$(mktemp -d)"; ADOPT_DST="$(mktemp -d)"; EJECT_OUT="$(mktemp -d)"

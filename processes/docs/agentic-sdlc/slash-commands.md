@@ -217,3 +217,25 @@ Upon confirmation, the skill finalizes `## [Unreleased]` as `## [X.Y.Z] - <YYYY-
 /cadence-release minor     # force minor bump (still displays analysis)
 /cadence-release patch     # force patch — warns if Unreleased contains features or breaking changes
 ```
+
+---
+
+## `/cadence-propose "<summary>"`
+
+Mechanize Workflow Step 00 (Problem) before IDs are allocated: validates fit against `PROJECT_INTENT.md` and registered surface registries, runs `local_semantic_embed` (`:11434`) to surface duplicate tickets or prior `PROD-*`/`II-*` insights, writes a concise 3–5 sentence 4-part outcome proposal (`Problem`, `Proposed approach`, `Surfaces affected`, `Ask`) into `specs/drafts/<slug>.md`, and hands off to `/cadence-triage --file-only specs/drafts/<slug>.md` (or full `/cadence-triage`).
+
+## `/cadence-refactor "<transform-spec>" [scope]`
+
+Execute wide, deterministic, behavior-preserving refactors inside a dedicated worktree under `Fast-mechanical` (`high` effort) over an exhaustive pre-computed manifest (`local_semantic_embed` + `rg` + dual `docs/` searches), halting and escalating to `/cadence-spec` (`Deep-reasoning`, `xhigh`) if registered surfaces, schemas, or behavioral contracts would change, and running canonical tests + `offload_deep_review` (`:11434`) post-sweep.
+
+## `/cadence-merge <ticket-id> [--no-archive]`
+
+Mechanize Workflow Step 07 (Merge): checks tier-conditional Gate 2 / Gate 3 approval (`maintainer_approved_at` for Medium/High; Gate 2 only for Low), resolves the integration branch dynamically from `CADENCE_ORG.md#branch-strategy-binding`, rebases cleanly and re-runs tests via `offload_log_triage` (`:11434`), lands the change without `--no-verify`, sets `status: merged` + exact UTC `merged_at`, syncs the bound tracker, cleans up temporary worktree state, and chains `/cadence-archive` unless `--no-archive` is passed.
+
+## `/cadence-doctor [--ticket <id>] [--check-offload] [--full]`
+
+Run a strictly read-only repository audit via `.agents/skills/cadence-doctor/doctor.sh`: verifies linkage, `#*-binding` markers, `<400`-line file ceilings, eject footprint freshness, `mint-id.sh --peek`, installed governance gates (never silently passing 0-byte scripts), optional ticket checks, and optional `:11434` offload reachability.
+
+## `/cadence-eject <source-repo-root> <destination-dir> | --check-footprint`
+
+Wrap `cadence-eject.sh` to validate the eject footprint descriptor read-only or export a CADENCE-stripped deliverable copy after previewing strip scope (plus BL-003 history boundary), obtaining operator confirmation, and verifying CADENCE directories are absent from `<destination-dir>`.

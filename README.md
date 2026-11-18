@@ -8,12 +8,12 @@
 
 Every letter of **CADENCE** maps directly to a governed phase of the software engineering lifecycle:
 
-1. **C — Classify**: Issue intake, 4-part problem framing (`VERB`, `SCOPE`, `WHY`, `CONSTRAINTS`), objective change-tier sizing (`Trivial`, `Low`, `Medium`, `High`), automatic local semantic duplicate/codebase discovery, and intent elicitation (`cadence-triage-agent`, `/cadence-triage`, `/cadence-elicit`, `/cadence-mint`).
+1. **C — Classify**: Issue intake, 4-part problem framing (`VERB`, `SCOPE`, `WHY`, `CONSTRAINTS`), objective change-tier sizing (`Trivial`, `Low`, `Medium`, `High`), automatic local semantic duplicate/codebase discovery, and intent elicitation (`cadence-triage-agent`, `/cadence-propose`, `/cadence-triage`, `/cadence-elicit`, `/cadence-mint`).
 2. **A — Architect & Explore**: Cross-boundary implicit contract discovery and 2–3 structurally distinct, unranked steelmanned design options (`cadence-architect`, `cadence-explorer`, `/cadence-prep`).
-3. **D — Decompose & Specify**: Grounding via the **Contextual Grounding Matrix (`6W×4L`)**, evaluation against **Engineering Pillars**, and **CHORD** 5-part behavioral decomposition (**C**onditions [`Given`], **H**andling/Triggers [`When`], **O**utcomes [`Then` external], **R**ules [`Then` invariants], **D**eltas [`Then` internal mutations]) into `spec.md` and Gherkin `test-plan.md`, gated by `[Human Gate: Spec Approval]` (`cadence-spec-author`, `/cadence-spec`, `/cadence-interview`).
-4. **E — Execute via TDD**: Strict BDD Red $\rightarrow$ Green $\rightarrow$ Accumulate $\rightarrow$ Commit cycles and expand/contract schema migrations (`cadence-implementer`, `cadence-migration-author`, `/cadence-implement`, `/cadence-migrate`, `/cadence-cycle`, `/cadence-parallel`).
+3. **D — Decompose & Specify**: Grounding via the **Contextual Grounding Matrix (`6W×4L`)**, evaluation against **Engineering Pillars**, and **CHORD** 5-part behavioral decomposition (**C**onditions [`Given`], **H**andling/Triggers [`When`], **O**utcomes [`Then` external], **R**ules [`Then` invariants], **D**eltas [`Then` internal mutations]) into `spec.md` and Gherkin `test-plan.md`, gated by `[Human Gate: Spec Approval]` (`cadence-spec-author`, `/cadence-spec`, `/cadence-interview`, `/cadence-doctor`).
+4. **E — Execute via TDD**: Strict BDD Red $\rightarrow$ Green $\rightarrow$ Accumulate $\rightarrow$ Commit cycles, wide mechanical refactors, and expand/contract schema migrations (`cadence-implementer`, `cadence-migration-author`, `/cadence-implement`, `/cadence-refactor`, `/cadence-migrate`, `/cadence-cycle`, `/cadence-parallel`).
 5. **N — Navigate Gates**: Automatic local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-reviewer`, `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`).
-6. **C — Consolidate**: Two-stage remote PR workflow (`worktree -> develop -> main`) and same-session bi-directional tracker projection to YouTrack or Jira (`/cadence-sync-youtrack`, `/cadence-sync-jira`).
+6. **C — Consolidate**: Tier-gated integration merges, same-session tracker projection to YouTrack or Jira, and clean deliverable ejects (`/cadence-merge`, `/cadence-sync-youtrack`, `/cadence-sync-jira`, `/cadence-eject`).
 7. **E — Enshrine**: Relocation to `archive/{ticket-id}/`, two-pass dead-citation sweeps, ADR and intent-insight promotion, living business flow updates (`docs/flows/`), and release cutting (`cadence-archivist`, `/cadence-archive`, `/cadence-release`).
 
 ---
@@ -36,19 +36,24 @@ CADENCE/
 │   ├── cadence-triage-agent/
 │   ├── log-triage/
 │   └── repo-scout/
-├── skills/                          # 19 governed /cadence-* workflow skills
+├── skills/                          # 24 governed /cadence-* workflow skills
 │   ├── cadence-adopt/
 │   ├── cadence-archive/
 │   ├── cadence-bump-model/
 │   ├── cadence-cycle/
+│   ├── cadence-doctor/
+│   ├── cadence-eject/
 │   ├── cadence-elicit/
 │   ├── cadence-implement/
 │   ├── cadence-interview/
 │   ├── cadence-maintain/
+│   ├── cadence-merge/
 │   ├── cadence-migrate/
 │   ├── cadence-mint/
 │   ├── cadence-parallel/
 │   ├── cadence-prep/
+│   ├── cadence-propose/
+│   ├── cadence-refactor/
 │   ├── cadence-release/
 │   ├── cadence-review/
 │   ├── cadence-spec/
