@@ -2,6 +2,8 @@
 
 **CADENCE** (*Contextual Architecture, Decomposition, Execution, Navigation, Consolidation & Enshrinement*) is a CLI-neutral, hardware-tiered agentic software development lifecycle (SDLC) framework paired with a complete local AI coprocessor stack powered by **`llama-swap`**, **`llama.cpp` (`llama-server`)**, **LiteRT-LM**, and the **`local-offload` FastMCP server** on `127.0.0.1:11434`.
 
+**Version 2026.47.0** | [Release Notes](docs/releases/cadence-v1.1.0.md) | [Changelog](CHANGELOG.md)
+
 ---
 
 ## 1. The 7 Phases of CADENCE
