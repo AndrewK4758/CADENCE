@@ -29,9 +29,9 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
 1. **Read the intake artifacts and run automatic local codebase discovery:**
    - Read `specs/$ticket_id/problem.md` and `specs/$ticket_id/metadata.yaml`.
-   - **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `local-moe-hybrid`).** Prior to broad repository file reads, automatically invoke `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) to map affected codebase symbols, cross-boundary contracts, CHORD seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`), and prior architecture records (`docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`). Forward the resulting symbol map and exact `file:line` references to `cadence-explorer` (Step 2) and `cadence-spec-author` (Step 3).
+   - **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `repo-scout`).** Prior to broad repository file reads, automatically invoke `local_semantic_embed` (`top_k=6` on `:11434`) and/or `repo-scout` to map affected codebase symbols, cross-boundary contracts, CHORD seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`), and prior architecture records (`docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`). Forward the resulting symbol map and exact `file:line` references to `cadence-explorer` (Step 2) and `cadence-spec-author` (Step 3).
 
-2. **Explore the design space (mandatory independent pre-step).** Invoke the `cadence-explorer` subagent, which will:
+2. **Explore the design space (mandatory independent pre-step).** Invoke the `cadence-explorer` subagent (`Model="pro"` in Antigravity), which will:
    - Inspect `specs/$ticket_id/problem.md`, `specs/$ticket_id/metadata.yaml`, and the affected source files identified in Step 1
    - Write `specs/$ticket_id/design-options.md` containing two or three structurally distinct, steelmanned architectural options — at least one diverging from established repository conventions with its unresolved failure modes marked `UNKNOWN` — and containing **ZERO rankings and ZERO recommendations**
 
@@ -43,7 +43,7 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
    If `cadence-explorer` fails or is unavailable, **surface the failure** to the operator and **ask explicitly whether to proceed** without divergent exploration. Only if the operator confirms proceeding may `cadence-spec-author` record the explicit **not-performed marker** disclosing the skipped exploration in `spec.md`. **Never bypass Step 2 silently** — an undisclosed skip masquerades as a fully explored design.
 
-3. **Delegate to `cadence-spec-author`.** The subagent will:
+3. **Delegate to `cadence-spec-author` (`Model="pro"`).** The subagent will:
    - Inspect all relevant source files and contracts surfaced in Step 1
    - Populate the Contextual Grounding Matrix (6W×4L) across What, How, Where, Who, When, and Why
    - Evaluate every mandatory Engineering Pillar (Structural Simplicity, Operational Resilience, Agentic Ergonomics, plus triggered Data & Audit Fidelity, Security Boundary Posture, and Surface Compatibility)
@@ -59,29 +59,30 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
    This deterministic structural gate — the specification counterpart to `/cadence-elicit`'s unfilled-probe grep — verifies that all required headings are present, every mandatory Engineering Pillar is evaluated, CHORD decompositions (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`) and Gherkin scenarios exist, and zero template placeholders remain unfilled.
 
-   - **Automatic Failure Triage (`offload_log_triage`).** Whenever `verify-spec.sh` exits **non-zero** (or emits multi-line failure output), automatically pass its output through `offload_log_triage` (`local-fast-cpu` on `:11434`, preserving raw numbered lines in `/tmp/agy-last-triage.log`) to extract the verbatim failing check assertions and exact `file:line` coordinates of unfilled placeholders. Return those exact failures to `cadence-spec-author` for remediation, then **re-run `verify-spec.sh`. Repeat this loop until the script exits 0.** Never advance to Step 5 while any structural check fails.
-   - `WARN` diagnostics (such as an acceptance-criterion count difference between `problem.md` and `spec.md`) do not block execution, but must be surfaced to the operator in Step 7 so the human spec-approval gate can verify no criterion was inadvertently dropped.
+   - **Automatic Failure Triage (`offload_log_triage`).** Whenever `verify-spec.sh` exits **non-zero** (or emits multi-line failure output), automatically pass its output through `offload_log_triage` (`cwd="<repo-root>"`, preserving raw numbered lines in `/tmp/agy-last-triage.log`) to extract the verbatim failing check assertions and exact `file:line` coordinates. Return those failures to `cadence-spec-author`, then **re-run `verify-spec.sh` until exit 0.**
+   - **`design-options.md` neutrality & completeness:** When `design-options.md` is present, `verify-spec.sh` also validates `Axis of variation`, all 6 required per-option bullets, non-empty `UNKNOWN` modes, and zero ranking leakage.
+   - `WARN` diagnostics must be surfaced to the operator in Step 7 so Gate 1 verifies nothing was dropped.
 
-   Remember that `verify-spec.sh` checks *structural completeness*, not *engineering soundness*. Judging whether the Contextual Grounding Matrix (6W×4L) cells are accurate, whether the CHORD edge cases are realistic, and whether the chosen architecture is sound belongs to Step 5 and the human spec-approval gate.
-
-   **Run the mechanical citation and fact verifier (BTG-331) under the same loop-until-green discipline:**
+   **Run the mechanical citation and fact verifier (`verify-facts.sh`) under the same loop-until-green discipline:**
 
    ```bash
    .agents/skills/cadence-spec/verify-facts.sh $ticket_id
    ```
 
-   This script validates every `Files Affected` entry (`Add`/`Modify`/`Delete`) and every backticked `path:N` line citation against the actual repository tree — eliminating manual proofreading of mechanical file facts. It blocks only when `spec.md` carries the `**Gate 1 rulings:** required` sentinel under Open Questions (specs without that sentinel emit `WARN` lines only and exit 0). Whenever `verify-facts.sh` exits non-zero, automatically pass the output through `offload_log_triage` (`local-fast-cpu` on `:11434`), hand the verbatim `FAIL` lines back to `cadence-spec-author`, and re-run until clean.
+   This script validates `Files Affected` entries, every backticked `path:N` / markdown `#LN` citation across `spec.md`, `problem.md`, `design-options.md`, and `decisions.md`, plus identifier-proximity near cited lines. Whenever `verify-facts.sh` exits non-zero, route through `offload_log_triage` and return `FAIL` lines to `cadence-spec-author` until clean.
 
-5. **Verify engineering completeness (judgment review).** Once both mechanical gates exit 0, verify:
-   - Every acceptance criterion in `problem.md` maps to a concrete design element in `spec.md` and a Gherkin scenario in `test-plan.md`
-   - Relevant cells of the Contextual Grounding Matrix (6W×4L) are substantively populated
-   - `## Design Exploration` documents the selected option, the decisive tradeoff axis over the named runner-up, a concrete falsifiable flip-condition, and the strongest counter-argument -- or, if `design-options.md` was skipped with operator permission, the explicit not-performed marker
-   - Operational and architectural risks are documented
+4.5. **Adversarial Spec Challenge (Pre-Gate-1 Red-Team, Medium/High).** Once mechanical checks exit `0`, dispatch a read-only challenger (`cadence-reviewer` or `cadence-architect` with `Model="pro"`) supplied ONLY with `problem.md`, `design-options.md`, `spec.md`, `test-plan.md`, and repository source access (zero authoring-session reasoning) to:
+   - Attempt to construct a concrete counterexample violating each CHORD `Condition`, `Rule`, or `Delta` that lacks a negative/concurrency/timeout scenario in `test-plan.md`;
+   - Verify any `# STATUS: Verified` boundary claims or `Files Affected` signatures against real callee implementations and callers;
+   - Flag any existing target file approaching `<400` lines that lacks a split plan, or any unstated failure mode missing from `## Open Questions` (`OQ-N`).
+   Feed concrete findings back into `cadence-spec-author` (re-running Step 4 gates after any edit) before advancing.
+
+5. **Verify engineering completeness (judgment review).** Confirm every AC maps cleanly to design signatures and Gherkin scenarios, the 6W×4L matrix is substantively populated, `## Design Exploration` documents the flip condition and steelman counter-argument, and risks + `OQ-N` capture every unresolved challenge.
 
 6. **Update ticket metadata and project to tracker:**
    - Set `status: spec-in-review` in `specs/$ticket_id/metadata.yaml`
-   - **Record the spec stage effort** in accordance with `docs/agentic-sdlc/CADENCE_ORG.md` "Actual Effort Accumulation": within the same `metadata.yaml` edit, append a `stage_effort` item (`stage: spec`, `at` = exact UTC completion timestamp from `date -u +%Y-%m-%dT%H:%M:%SZ`, never rounded, midnight, or date-only) whose `effort` value comes directly from running `ci-templates/scripts/stage-effort.sh --stage spec --observed <minutes>` — the script resolves the stage review multiplier (including any operator-specific override), multiplies, and rounds up to a 15-minute increment (minimum `15m` for non-zero work; `0m` when the multiplier is `0`). **Verify before saving:** the rounded `effort` string MUST equal `0m` or an exact multiple of 15 minutes; if not, surface a visible diagnostic naming the invalid value, recompute, and continue without halting. Add the increment to `actual_effort`.
-   - Execute the repository's designated tracker sync skill (resolved from `CADENCE_ORG.md` §9, Tracker Binding) for `{ticket-id}` to project the `spec-in-review` status and log the new `stage_effort` entry as a per-stage worklog.
+   - **Record the spec stage effort** (`CADENCE_ORG.md` §12): invoke `(test -x ci-templates/scripts/stage-effort.sh && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage spec --observed <minutes>`, verify `0m` or a 15-minute multiple, and append to `stage_effort` + `actual_effort` using `date -u +%Y-%m-%dT%H:%M:%SZ`.
+   - Execute the repository's designated tracker sync skill (`CADENCE_ORG.md` §9) for `$ticket_id`.
 
 7. **Report to the operator:**
    - Concise overview of the proposed architecture and CHORD decomposition
@@ -96,7 +97,7 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 /cadence-spec TT-6547
 ```
 
-## Local Model Offload Integration (Antigravity + LiteRT/GGUF)
-- Step 1 automatically invokes `local_semantic_embed` (`local-embed-cpu` on `:11434`, 0 MB VRAM) and `local-moe-hybrid` (`local-moe-hybrid` on `:11434`) to gather type signatures, cross-boundary contracts, and prior insights without polluting the primary context window.
-- Step 4 automatically pipes any `verify-spec.sh` or `verify-facts.sh` failure output through `offload_log_triage` (`local-fast-cpu` on `:11434`) to extract verbatim `FAIL` assertions and `file:line` coordinates.
-- Contextual Grounding Matrix (6W×4L) analysis, CHORD decomposition, divergent design options, and Gherkin test plans remain 100% authored by `gemini-4-argon-high`.
+## Local Model Offload Integration (Antigravity + llama-swap)
+- Step 1 automatically invokes `local_semantic_embed` (`top_k=6` on `:11434`) to gather type signatures, cross-boundary contracts, and prior insights without polluting the primary context window.
+- Step 4 automatically pipes any `verify-spec.sh` or `verify-facts.sh` failure output through `offload_log_triage` (`cwd="<repo-root>"` on `:11434`) to extract verbatim `FAIL` assertions and `file:line` coordinates.
+- Specification authoring, convergent judgment, and the Step 4.5 Adversarial Spec Challenge remain 100% owned by Deep-reasoning models (`Model="pro"`).

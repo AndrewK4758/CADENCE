@@ -1,36 +1,16 @@
 #!/usr/bin/env bash
-# verify-facts-lib.sh -- BTG-331 cycle 2 (code-review B1/B3). Helpers factored
-# out of verify-facts.sh to hold it under the 400-line Facet 3 ceiling after
-# the two fixes below widened them: the citation checker (facts mode,
-# generalized to range/list citation forms per B1) and the Gate 1 evidence
-# label computation (rulings mode, generalized to examine every backticked
-# token in a ruling's reason per B3, not just the first).
-#
-# Bounded context: CADENCE framework tooling / the registered /cadence-spec
-# surface (docs/policies/cadence-surfaces.md). Sourced ONLY by verify-facts.sh,
-# from the same directory (resolved via that script's own BASH_SOURCE, so this
-# works unmodified from both the neutral source tree and the compiled
-# .agents/skills/cadence-spec/ tree -- sidecar-completeness-gate.sh mirrors the
-# whole directory).
-# Invariant relied on from outside this boundary: the caller defines
-# report_fact, ROOT, BASE and TICKET_DIR before sourcing this file. See
-# archive/BTG-331/decisions.md DEC-011 for why this split exists, and
-# verify-facts.sh (Proposed Design -> Sidecar interface) for the design
-# rationale of the two functions themselves.
-#
-# PORTABILITY: bash + awk/grep only (II_CADENCE-013, busybox-safe CI).
+# verify-facts-lib.sh -- Fact, citation-symbol proximity, and Gate-1 evidence helpers
+# sourced ONLY by verify-facts.sh (keeps every module <400 lines).
 
 set -u
 
-# check_citation <path> <spec> -- B1. <spec> is a single line number, a range
-# (N-M) or a comma-separated list of numbers/ranges (e.g. "81-91",
-# "73,304-321"), exactly the tokens the caller's broadened citation regex
-# extracts. Checks the MAX numeric endpoint across the whole spec against the
-# file's line count at $BASE -- the preferred resolution B1 calls for. A spec
-# with no numeric endpoint (should not occur given the caller's regex, but
-# never silently skipped) reports UNVERIFIABLE by name instead.
+# check_citation <path> <spec> [co_symbols...]
+# Validates file existence at $BASE, line endpoint <= file line count, and
+# (when co-located backticked symbol identifiers were mentioned alongside path:N)
+# checks whether at least one mentioned identifier appears within +-5 lines of
+# the cited coordinate at $BASE.
 check_citation() {
-  local path="$1" spec="$2"
+  local path="$1" spec="$2" co_syms="${3:-}"
   if [[ "$path" != */* ]] && ! git -C "$ROOT" cat-file -e "$BASE:$path" 2>/dev/null; then
     report_fact UNVERIFIABLE citation "$path:$spec"
     return 0
@@ -39,29 +19,89 @@ check_citation() {
     report_fact FAIL citation "$path:$spec" "path is absent at base ($BASE)"
     return 0
   fi
-  local maxn
+  local minn maxn
+  minn="$(grep -oE '[0-9]+' <<<"$spec" | sort -n | head -1)"
   maxn="$(grep -oE '[0-9]+' <<<"$spec" | sort -n | tail -1)"
   if [[ -z "$maxn" ]]; then
     report_fact UNVERIFIABLE citation "$path:$spec" "no numeric endpoint in citation"
     return 0
   fi
-  local lines
-  lines="$(git -C "$ROOT" cat-file -p "$BASE:$path" 2>/dev/null | awk 'END{print NR}')"
+  local content lines
+  content="$(git -C "$ROOT" cat-file -p "$BASE:$path" 2>/dev/null || true)"
+  lines="$(printf '%s\n' "$content" | awk 'END{print NR}')"
   lines="${lines:-0}"
-  if [[ "$maxn" -le "$lines" ]]; then
-    report_fact PASS citation "$path:$spec"
-  else
+  if [[ "$maxn" -gt "$lines" ]]; then
     report_fact FAIL citation "$path:$spec" "$path has $lines lines at base ($BASE)"
+    return 0
   fi
+
+  if [[ -n "$co_syms" ]]; then
+    local lo=$(( minn > 5 ? minn - 5 : 1 ))
+    local hi=$(( maxn + 5 ))
+    local window
+    window="$(printf '%s\n' "$content" | sed -n "${lo},${hi}p")"
+    local matched=0 sym
+    for sym in $co_syms; do
+      if grep -qF -- "$sym" <<<"$window"; then
+        matched=1
+        break
+      fi
+    done
+    if [[ "$matched" -eq 0 ]]; then
+      report_fact FAIL citation "$path:$spec" "symbol(s) [$co_syms] not found near L${lo}-L${hi} in $path"
+      return 0
+    fi
+  fi
+
+  report_fact PASS citation "$path:$spec"
 }
 
-# compute_label <value> <why> -- R7, generalized per B3. amend/override always
-# diverge. For agree, iterate EVERY backticked token in <why> (not just the
-# first, which was the B3 defect) -- label `examined` the moment any ONE
-# token qualifies (resolves in the working tree AND its exact token appears
-# in none of the ticket's own agent-authored artifacts); only when no token
-# qualifies (or none is present at all) does the label fall through to
-# `accepted-as-presented`.
+# extract_citations_with_symbols <file> -- prints "<path>\t<linespec>\t<space-separated co_syms>"
+extract_citations_with_symbols() {
+  python3 - "$1" <<'PY'
+import pathlib, re, sys
+
+lines = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace").splitlines()
+seen = {}
+in_fence = False
+pat_colon = re.compile(r"`([A-Za-z0-9_./-]+):([0-9]+(?:[,-][0-9]+)*)`")
+pat_md = re.compile(r"\[[^\]]+\]\(([^)#\s]+)#L([0-9]+)(?:-L?([0-9]+))?\)")
+pat_bt = re.compile(r"`([A-Za-z_][A-Za-z0-9_]{2,})(?:\(\))?`")
+
+for raw in lines:
+    if re.match(r"^\s*```", raw):
+        in_fence = not in_fence
+        continue
+    if in_fence:
+        continue
+    cites = [(m.group(1), m.group(2)) for m in pat_colon.finditer(raw)]
+    for m in pat_md.finditer(raw):
+        p, l1, l2 = m.group(1), m.group(2), m.group(3)
+        cites.append((p, f"{l1}-{l2}" if l2 else l1))
+    if not cites:
+        continue
+    syms = []
+    for bm in pat_bt.finditer(raw):
+        tok = bm.group(1)
+        if tok in {"true", "false", "null", "None", "Add", "Modify", "Delete", "Pass", "Flag"}:
+            continue
+        if any(tok in p for p, _ in cites):
+            continue
+        syms.append(tok)
+    sym_str = " ".join(dict.fromkeys(syms))
+    for p, spec in cites:
+        key = (p, spec)
+        if key not in seen:
+            seen[key] = sym_str
+        elif sym_str and not seen[key]:
+            seen[key] = sym_str
+
+for (p, spec), sym_str in sorted(seen.items()):
+    print(f"{p}\t{spec}\t{sym_str}")
+PY
+}
+
+# compute_label <value> <why> -- R7/B3 Gate 1 evidence labeler
 compute_label() {
   local value="$1" why="$2"
   case "$value" in
