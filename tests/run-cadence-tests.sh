@@ -54,7 +54,7 @@ for p in root.rglob("*"):
     if (
         rel.startswith(("agents/", "hooks/", "local-offload/mcp/", "tests/"))
         or re.match(r"skills/.*/SKILL\.md$", rel)
-        or rel.startswith(("skills/cadence-spec/", "skills/cadence-review/references/", "skills/cadence-build/references/", "skills/cadence-adopt/", "skills/cadence-doctor/", "skills/cadence-define/scripts/", "skills/cadence-build/scripts/"))
+        or rel.startswith(("skills/cadence-spec/", "skills/cadence-review/references/", "skills/cadence-build/references/", "skills/cadence-adopt/", "skills/cadence-doctor/", "skills/cadence-define/scripts/", "skills/cadence-build/scripts/", "skills/cadence-watch/scripts/"))
     ):
         if len(text.splitlines()) >= 400:
             errs.append(f"line ceiling >=400 ({len(text.splitlines())}L) in {rel}")
@@ -126,6 +126,7 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
 for a, b in [
     ("hooks/antigravity-local-offload-hook", "hooks/local-offload-enforcer.sh"),
     ("skills/cadence-define/scripts/read_state.py", "skills/cadence-build/scripts/read_state.py"),
+    ("skills/cadence-define/scripts/read_state.py", "skills/cadence-watch/scripts/read_state.py"),
     ("skills/cadence-define/scripts/ready_mr.sh", "skills/cadence-build/scripts/ready_mr.sh"),
 ]:
     if (root / a).read_bytes() != (root / b).read_bytes():
@@ -286,6 +287,10 @@ t5_adopt_and_eject() {
   [[ "$reout" == *"skip (exists): CADENCE_DIRECTIVES.md"* ]]
   [[ "$reout" == *"AGENTS.md (CADENCE directives block written)"* ]]
 
+  CADENCE_ADOPT_RELEASE_TREE=checkout bash "$ROOT/skills/cadence-adopt/adopt-cadence.sh" "$dst" --gitignore-machinery >/dev/null
+  test -e "$dst/.gemini/skills/cadence-watch/SKILL.md"
+  test -x "$dst/.agents/skills/cadence-watch/scripts/pr_watch.py"
+
   bash "$ROOT/skills/cadence-doctor/doctor.sh" --root "$ROOT" >/dev/null
   local doc_pre
   doc_pre="$(bash "$dst/.agents/skills/cadence-doctor/doctor.sh" --root "$dst" 2>&1 || true)"
@@ -342,7 +347,8 @@ PY
 }
 EVAL_TMP="$(mktemp -d)"
 TMP_DIRS+=("$EVAL_TMP")
-run_subtest "T8 executable eval runner across all 28 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
+run_subtest "T8 executable eval runner across all 29 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
+run_subtest "T9 /cadence-watch PR & bound-tracker listener gates" bash "$ROOT/tests/test-pr-watch.sh" "$ROOT"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]

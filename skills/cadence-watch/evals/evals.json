@@ -1,0 +1,170 @@
+{
+  "skill_name": "cadence-watch",
+  "notes": "Offline deterministic evals for /cadence-watch using cadence_fixture (integration branch `trunk`, ACME-101..201), stubbed gh/glab binaries, and ephemeral loopback HTTP servers for Jira Server/DC and YouTrack Server.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "github-spec-mr-merged-advances-to-build",
+      "prompt": "Run /cadence-watch ACME-106 when its GitHub spec PR has merged into trunk.",
+      "expected_output": "Detects event=merged on pr_kind=spec_mr, resolves integration_branch=trunk dynamically, and outputs next_action=cadence-build.",
+      "assertions": [
+        "Resolves integration_branch=trunk dynamically from CADENCE_ORG.md §15",
+        "Reports pr_kind=spec_mr, forge=github, event=merged, and next_action=cadence-build"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "mkdir -p \"$FIX/bin\"\ncat > \"$FIX/bin/gh\" <<'SH'\n#!/usr/bin/env bash\nif [[ \"$1 $2\" == \"pr view\" ]]; then\n  echo '{\"number\":77,\"url\":\"https://github.com/acme/repo/pull/77\",\"state\":\"MERGED\",\"isDraft\":false,\"mergeStateStatus\":\"CLEAN\",\"reviewDecision\":\"APPROVED\",\"headRefName\":\"spec/high/ACME-106\",\"headRefOid\":\"sha77\",\"baseRefName\":\"trunk\",\"mergedAt\":\"2026-11-19T10:00:00Z\",\"closedAt\":\"2026-11-19T10:00:00Z\",\"reviews\":[],\"comments\":[],\"statusCheckRollup\":[{\"conclusion\":\"SUCCESS\"}]}'\nelif [[ \"$1\" == \"api\" ]]; then\n  echo '[]'\nfi\nSH\nchmod +x \"$FIX/bin/gh\"",
+        "cmd": "PATH=\"$FIX/bin:$PATH\" python3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-106 --repo-root \"$FIX\" --state-dir \"$FIX/.watch-state\"",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "integration_branch=trunk",
+          "pr_kind=spec_mr",
+          "forge=github",
+          "event=merged",
+          "next_action=cadence-build"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "github-changes-requested-ack-and-toctou-comment-safety",
+      "prompt": "Poll ACME-112 with CHANGES_REQUESTED + inline comment, ack snapshot, verify idle on unchanged SHA, then detect a newly arrived comment while reviewDecision stays CHANGES_REQUESTED.",
+      "expected_output": "Poll 1 emits event=changes_requested with new_inline_comment_count=1; after --ack --from-snapshot, Poll 2 emits event=idle; when a second comment arrives, Poll 3 emits event=comments_new.",
+      "assertions": [
+        "Emits event=changes_requested and next_action=remediate_impl on initial review + inline comment",
+        "After --ack --from-snapshot, does not infinite-loop while reviewDecision remains CHANGES_REQUESTED",
+        "Detects a newly arriving comment on the same PR as event=comments_new (TOCTOU safe)"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "mkdir -p \"$FIX/bin\" && echo '[]' > \"$FIX/extra_comments\"\ncat > \"$FIX/bin/gh\" <<SH\n#!/usr/bin/env bash\nif [[ \"\\$1 \\$2\" == \"pr view\" ]]; then\n  cat <<'JSON'\n{\"number\":88,\"url\":\"https://github.com/acme/repo/pull/88\",\"state\":\"OPEN\",\"isDraft\":false,\"mergeStateStatus\":\"BLOCKED\",\"reviewDecision\":\"CHANGES_REQUESTED\",\"headRefName\":\"impl/feat/ACME-112\",\"headRefOid\":\"sha88a\",\"baseRefName\":\"trunk\",\"mergedAt\":null,\"closedAt\":null,\"reviews\":[{\"id\":\"rev1\",\"author\":{\"login\":\"bob\"},\"state\":\"CHANGES_REQUESTED\",\"body\":\"Fix edge case\",\"submittedAt\":\"2026-11-19T10:00:00Z\"}],\"comments\":[],\"statusCheckRollup\":[{\"conclusion\":\"SUCCESS\"}]}\nJSON\nelif [[ \"\\$1\" == \"api\" ]]; then\n  cat \"$FIX/extra_comments\"\nfi\nSH\nprintf '[{\"id\":501,\"user\":{\"login\":\"bob\"},\"body\":\"Check null guard\",\"path\":\"src/app.py\",\"line\":12,\"created_at\":\"2026-11-19T10:01:00Z\",\"html_url\":\"https://github.com/acme/repo/pull/88#discussion_r501\"}]' > \"$FIX/extra_comments\"\nchmod +x \"$FIX/bin/gh\"",
+        "cmd": "set -euo pipefail\nexport PATH=\"$FIX/bin:$PATH\"\npython3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-112 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\" --write-snapshot \"$FIX/snap1.json\" > \"$FIX/p1.out\"\ngrep -q '^event=changes_requested$' \"$FIX/p1.out\"\ngrep -q '^next_action=remediate_impl$' \"$FIX/p1.out\"\ngrep -q '^new_inline_comment_count=1$' \"$FIX/p1.out\"\npython3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" --ack ACME-112 --from-snapshot \"$FIX/snap1.json\" --repo-root \"$FIX\" --state-dir \"$FIX/.ws\" >/dev/null\npython3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-112 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\" > \"$FIX/p2.out\"\ngrep -q '^event=idle$' \"$FIX/p2.out\"\nprintf '[{\"id\":501,\"user\":{\"login\":\"bob\"},\"body\":\"Check null guard\",\"path\":\"src/app.py\",\"line\":12,\"created_at\":\"2026-11-19T10:01:00Z\"},{\"id\":502,\"user\":{\"login\":\"alice\"},\"body\":\"Also log error code\",\"path\":\"src/app.py\",\"line\":18,\"created_at\":\"2026-11-19T10:05:00Z\"}]' > \"$FIX/extra_comments\"\npython3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-112 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\"",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "event=comments_new",
+          "next_action=triage_comments",
+          "new_inline_comment_count=1",
+          "item=github_inline:502:alice:src/app\\.py:18:Also log error code"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "gitlab-mr-merged-and-closed-unmerged-halt",
+      "prompt": "Poll GitLab merge_request tickets for MERGED (-> cadence-archive) and CLOSED unmerged (-> halt_human_rejected).",
+      "expected_output": "GitLab merged MR returns forge=gitlab, event=merged, next_action=cadence-archive; GitLab closed MR returns event=closed_unmerged, next_action=halt_human_rejected.",
+      "assertions": [
+        "Supports GitLab MR inspection via glab CLI",
+        "Routes merged merge_request to cadence-archive and closed unmerged MR to halt_human_rejected"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "mkdir -p \"$FIX/bin\"\nsed -i 's|^merge_request:.*|merge_request: \"https://gitlab.example.com/acme/repo/-/merge_requests/41\"|' \"$FIX/specs/ACME-112/metadata.yaml\"\nsed -i 's|^merge_request:.*|merge_request: \"https://gitlab.example.com/acme/repo/-/merge_requests/42\"|' \"$FIX/specs/ACME-110/metadata.yaml\"\ncat > \"$FIX/bin/glab\" <<'SH'\n#!/usr/bin/env bash\nif [[ \"$1 $2\" == \"mr view\" ]]; then\n  case \"$3\" in\n    *41) echo '{\"iid\":41,\"project_id\":9,\"web_url\":\"https://gitlab.example.com/acme/repo/-/merge_requests/41\",\"state\":\"merged\",\"draft\":false,\"source_branch\":\"impl/feat/ACME-112\",\"target_branch\":\"trunk\",\"sha\":\"gl41\",\"merged_at\":\"2026-11-19T11:00:00Z\",\"head_pipeline\":{\"status\":\"success\"},\"notes\":[]}' ;;\n    *42) echo '{\"iid\":42,\"project_id\":9,\"web_url\":\"https://gitlab.example.com/acme/repo/-/merge_requests/42\",\"state\":\"closed\",\"draft\":false,\"source_branch\":\"impl/feat/ACME-110\",\"target_branch\":\"trunk\",\"sha\":\"gl42\",\"merged_at\":null,\"head_pipeline\":{\"status\":\"success\"},\"notes\":[]}' ;;\n  esac\nfi\nSH\nchmod +x \"$FIX/bin/glab\"",
+        "cmd": "set -euo pipefail\nexport PATH=\"$FIX/bin:$PATH\"\npython3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-112 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\" > \"$FIX/m1.out\"\ngrep -q '^forge=gitlab$' \"$FIX/m1.out\"\ngrep -q '^event=merged$' \"$FIX/m1.out\"\ngrep -q '^next_action=cadence-archive$' \"$FIX/m1.out\"\npython3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-110 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\"",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "forge=gitlab",
+          "event=closed_unmerged",
+          "next_action=halt_human_rejected"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "bound-jira-and-youtrack-comments-and-fail-closed-env",
+      "prompt": "Poll ACME-112 with bound Jira Server/DC and YouTrack Server comments, filtering preservation and self-reply comments, halting fail-closed on missing PAT without leaking secrets, and respecting --no-tracker.",
+      "expected_output": "Detects stakeholder tracker comments while ignoring preservation & reply-marker notes; exits 2 when JIRA_PAT is unset; succeeds cleanly under --no-tracker.",
+      "assertions": [
+        "Reads comments from bound Jira Server/DC and YouTrack Server per CADENCE_ORG.md §9",
+        "Filters out preservation comments and <!-- cadence-watch:reply markers",
+        "Halts fail-closed when tracker credentials are absent without echoing secrets, and allows --no-tracker bypass"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "mkdir -p \"$FIX/bin\"\ncat > \"$FIX/bin/gh\" <<'SH'\n#!/usr/bin/env bash\nif [[ \"$1 $2\" == \"pr view\" ]]; then\n  echo '{\"number\":88,\"url\":\"https://github.com/acme/repo/pull/88\",\"state\":\"OPEN\",\"isDraft\":false,\"mergeStateStatus\":\"CLEAN\",\"reviewDecision\":\"\",\"headRefName\":\"impl/feat/ACME-112\",\"headRefOid\":\"sha88t\",\"baseRefName\":\"trunk\",\"mergedAt\":null,\"closedAt\":null,\"reviews\":[],\"comments\":[],\"statusCheckRollup\":[{\"conclusion\":\"SUCCESS\"}]}'\nelif [[ \"$1\" == \"api\" ]]; then\n  echo '[]'\nfi\nSH\nchmod +x \"$FIX/bin/gh\"\npython3 - \"$FIX/docs/agentic-sdlc/CADENCE_ORG.md\" <<'PY'\nimport pathlib, sys\np = pathlib.Path(sys.argv[1])\ntxt = p.read_text(encoding=\"utf-8\")\ntxt = txt.replace(\"| `*` | None -- inner-source | | | |\", \"| ACME | Jira Server | ACME | /cadence-sync-jira | |\\n| YT | YouTrack Server | YT | /cadence-sync-youtrack | |\")\np.write_text(txt, encoding=\"utf-8\")\nPY\nprintf 'jira_url: \"https://jira.example.test/browse/ACME-112\"\\n' >> \"$FIX/specs/ACME-112/metadata.yaml\"\nmkdir -p \"$FIX/specs/YT-1\"\ncat > \"$FIX/specs/YT-1/metadata.yaml\" <<'YAML'\nid: YT-1\ntier: Low\nstatus: in-review\nmerge_request: \"https://github.com/acme/repo/pull/91\"\nyoutrack_url: \"https://yt.example.test/issue/YT-1\"\nYAML\necho '# YT-1' > \"$FIX/specs/YT-1/problem.md\"",
+        "cmd": "set -euo pipefail\nunset BASH_ENV\nexport PATH=\"$FIX/bin:$PATH\"\nPORT_FILE=\"$FIX/port.txt\"\npython3 -B - \"$PORT_FILE\" <<'PY' &\nimport http.server, json, sys\nclass H(http.server.BaseHTTPRequestHandler):\n    def log_message(self, *a): pass\n    def do_GET(self):\n        if self.path.startswith(\"/rest/api/2/issue/ACME-112/comment\"):\n            data = {\"comments\": [\n                {\"id\": \"j1\", \"author\": {\"displayName\": \"sync\"}, \"body\": \"Original intake (as filed)\\npreserved on import; the repo now owns the description below\", \"created\": \"2026-11-19T09:00:00Z\"},\n                {\"id\": \"j2\", \"author\": {\"displayName\": \"bot\"}, \"body\": \"Handled <!-- cadence-watch:reply for=x -->\", \"created\": \"2026-11-19T09:10:00Z\"},\n                {\"id\": \"j3\", \"author\": {\"displayName\": \"pm_sara\"}, \"body\": \"Please include CSV header validation\", \"created\": \"2026-11-19T10:00:00Z\"}\n            ]}\n        elif self.path.startswith(\"/api/issues/YT-1/comments\"):\n            data = [\n                {\"id\": \"y1\", \"author\": {\"login\": \"sync\"}, \"text\": \"Original intake (as filed)\\npreserved on import; the repo now owns the description below\", \"created\": 1000, \"deleted\": False},\n                {\"id\": \"y2\", \"author\": {\"login\": \"qa_dan\"}, \"text\": \"Tested edge case on staging\", \"created\": 2000, \"deleted\": False}\n            ]\n        else:\n            self.send_response(404); self.end_headers(); return\n        body = json.dumps(data).encode()\n        self.send_response(200); self.send_header(\"Content-Type\", \"application/json\"); self.send_header(\"Content-Length\", str(len(body))); self.end_headers(); self.wfile.write(body)\nsrv = http.server.HTTPServer((\"127.0.0.1\", 0), H)\nopen(sys.argv[1], \"w\").write(str(srv.server_address[1]))\nsrv.serve_forever()\nPY\nSRV_PID=$!\ntrap 'kill $SRV_PID 2>/dev/null || true' EXIT\nfor _ in $(seq 1 40); do [[ -s \"$PORT_FILE\" ]] && break; sleep 0.05; done\nPORT=\"$(cat \"$PORT_FILE\")\"\n! env -u JIRA_BASE_URL -u JIRA_PAT python3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-112 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\" 2>\"$FIX/noenv.err\"\ngrep -q 'tracker_env_unset' \"$FIX/noenv.err\"\nenv -u JIRA_BASE_URL -u JIRA_PAT python3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-112 --no-tracker --repo-root \"$FIX\" --state-dir \"$FIX/.ws\" > \"$FIX/notr.out\"\ngrep -q '^tracker_status=disabled_flag$' \"$FIX/notr.out\"\nJIRA_BASE_URL=\"http://127.0.0.1:$PORT\" JIRA_PAT=\"secret-jira-pat\" python3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" ACME-112 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\" > \"$FIX/jira.out\"\ngrep -q '^new_tracker_comment_count=1$' \"$FIX/jira.out\"\ngrep -q '^item=jira:j3:pm_sara:-:Please include CSV header validation$' \"$FIX/jira.out\"\nYOUTRACK_BASE_URL=\"http://127.0.0.1:$PORT\" YOUTRACK_TOKEN=\"secret-yt-tok\" python3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" YT-1 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\"",
+        "expect_exit": 0,
+        "stdout_regex": [
+          "tracker=youtrack",
+          "event=comments_new",
+          "new_tracker_comment_count=1",
+          "item=youtrack:y2:qa_dan:-:Tested edge case on staging"
+        ],
+        "not_output_regex": [
+          "secret-jira-pat",
+          "secret-yt-tok"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "all-scan-watch-wake-and-skill-contract",
+      "prompt": "Verify --all active discovery, --watch immediate wake on event, and /cadence-watch SKILL.md governance contracts.",
+      "expected_output": "Discovers active PR tickets via --all, wakes promptly under --watch when an actionable event appears, and SKILL.md enforces read_state.py, reply/item markers, local offload, cycle cap 4, and no silent self-merge.",
+      "assertions": [
+        "Supports --all across active specs/*/ PRs and exits immediately from --watch on event",
+        "SKILL.md enforces read_state.py, cadence-watch:item/reply tags, offload_deep_review/offload_log_triage, cycle cap 4, and no self-merge"
+      ],
+      "check": {
+        "type": "composite",
+        "script": {
+          "type": "script",
+          "fixture": "cadence_fixture",
+          "setup_sh": "mkdir -p \"$FIX/bin\"\ncat > \"$FIX/bin/gh\" <<'SH'\n#!/usr/bin/env bash\nif [[ \"$1 $2\" == \"pr view\" ]]; then\n  case \"$3\" in\n    *77) echo '{\"number\":77,\"url\":\"https://github.com/acme/repo/pull/77\",\"state\":\"OPEN\",\"isDraft\":false,\"mergeStateStatus\":\"CLEAN\",\"reviewDecision\":\"\",\"headRefName\":\"spec/high/ACME-106\",\"headRefOid\":\"s77\",\"baseRefName\":\"trunk\",\"mergedAt\":null,\"closedAt\":null,\"reviews\":[],\"comments\":[],\"statusCheckRollup\":[{\"conclusion\":\"SUCCESS\"}]}' ;;\n    *88) echo '{\"number\":88,\"url\":\"https://github.com/acme/repo/pull/88\",\"state\":\"OPEN\",\"isDraft\":false,\"mergeStateStatus\":\"CLEAN\",\"reviewDecision\":\"APPROVED\",\"headRefName\":\"impl/feat/ACME-112\",\"headRefOid\":\"s88\",\"baseRefName\":\"trunk\",\"mergedAt\":null,\"closedAt\":null,\"reviews\":[],\"comments\":[],\"statusCheckRollup\":[{\"conclusion\":\"SUCCESS\"}]}' ;;\n  esac\nelif [[ \"$1\" == \"api\" ]]; then\n  echo '[]'\nfi\nSH\nchmod +x \"$FIX/bin/gh\"",
+          "cmd": "PATH=\"$FIX/bin:$PATH\" python3 -B \"$ROOT/skills/cadence-watch/scripts/pr_watch.py\" --all --watch --interval 0.05 --timeout 1 --repo-root \"$FIX\" --state-dir \"$FIX/.ws\"",
+          "expect_exit": 0,
+          "stdout_regex": [
+            "active_tickets=2",
+            "event=approved",
+            "next_action=cadence-close",
+            "ticket=ACME-106 .*event=idle",
+            "ticket=ACME-112 .*event=approved"
+          ]
+        },
+        "contract": {
+          "type": "contract",
+          "must_exist": [
+            "skills/cadence-watch/SKILL.md",
+            "skills/cadence-watch/scripts/read_state.py",
+            "skills/cadence-watch/scripts/watch_sources.py",
+            "skills/cadence-watch/scripts/pr_watch.py"
+          ],
+          "patterns": [
+            {
+              "file": "skills/cadence-watch/SKILL.md",
+              "regex": "read_state\\.py"
+            },
+            {
+              "file": "skills/cadence-watch/SKILL.md",
+              "regex": "cadence-watch:reply"
+            },
+            {
+              "file": "skills/cadence-watch/SKILL.md",
+              "regex": "cadence-watch:item"
+            },
+            {
+              "file": "skills/cadence-watch/SKILL.md",
+              "regex": "offload_deep_review"
+            },
+            {
+              "file": "skills/cadence-watch/SKILL.md",
+              "regex": "offload_log_triage"
+            },
+            {
+              "file": "skills/cadence-watch/SKILL.md",
+              "regex": "Never self-merge silently"
+            },
+            {
+              "file": "skills/cadence-watch/SKILL.md",
+              "regex": ">= 4"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

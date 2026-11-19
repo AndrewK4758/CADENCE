@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Automated PR & bound-tracker listener (`/cadence-watch`):** Added `/cadence-watch` with `pr_watch.py` and `watch_sources.py` to monitor GitHub PRs, GitLab MRs, and bound Jira/YouTrack ticket comments (`--once`, `--watch`, `--all`), mirror unseen feedback into `submission.md` using write-after-completion watermarks and reply loop suppression, advance merged `spec_mr` -> `/cadence-build` and merged `merge_request` -> `/cadence-archive`, remediate in-scope change requests/CI failures, and escalate scope changes or hand approved PRs to `/cadence-close` without silent self-merge.
+
 ## [2026.47.0] - 2026-11-18
 
 > Milestone release **`cadence-v1.1.0`**. See [cadence-v1.1.0 release notes](docs/releases/cadence-v1.1.0.md) for narrative context and upgrade notes.

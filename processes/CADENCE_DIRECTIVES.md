@@ -133,6 +133,7 @@ Skills are user-invokable slash-command workflows stored directly in `.agents/sk
 | `/cadence-eject` | Safely wrap `cadence-eject.sh` to validate eject footprint descriptors (`--check-footprint`) or export a CADENCE-stripped deliverable copy after preview confirmation and verification |
 | `/cadence-release` | Cut a governed release — compute the major/minor/patch version bump from `[Unreleased]` changelog entries (with operator confirmation), finalize CHANGELOG, update README, draft release notes, commit, create an annotated git tag, and push |
 | `/cadence-retro` | Run a read-only cross-ticket retrospective across `archive/*/` via `retro_scan.py` and `:11434` semantic clustering, surfacing rework hotspots, effort variance, deferred follow-ups, and confirmation-gated `II-NNN`/`PROD-NNN` insight candidates |
+| `/cadence-watch` | Poll open GitHub PRs, GitLab MRs, and bound Jira/YouTrack ticket comments (`pr_watch.py`), mirror new feedback into `submission.md` with idempotent watermarks, advance merged `spec_mr` -> `/cadence-build` or `merge_request` -> `/cadence-archive`, and remediate in-scope change requests while preserving mandatory human gates |
 
 ---
 
