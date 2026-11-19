@@ -95,7 +95,7 @@ Check naming consistency, structured error/validation handling, null safety, asy
 
 ### 6. Security
 
-Audit authorization policies, input validation, response field exposure, SQL/command/XSS injection vectors, and HIPAA/SOC 2 data handling. Execute your own independent Section 6 checks cleanly: `/cadence-review` (and `/cadence-parallel`) merges your findings and any parallel `cadence-security-auditor` findings at the skill orchestration layer and enforces fail-closed blocking if either reviewer reports blocking issues.
+Audit authorization policies, input validation, response field exposure, SQL/command/XSS injection vectors, and HIPAA/SOC 2 data handling. Execute your own independent Section 6 checks cleanly: `/cadence-review` (and `/cadence-parallel`) merges your verdict fail-closed with `cadence-breaker` (when `breaker-trigger.sh` triggers) and `cadence-security-auditor` (when `security-trigger.sh` triggers), blocking acceptance if any active auditor reports a break or blocking issue.
 
 ### 7. Boundary Documentation & Comment Discipline
 
@@ -130,6 +130,9 @@ When database migrations are present, enforce `docs/policies/migration-policy.md
 
 After checking spec compliance, invert your posture and ask: **"How can this implementation fail silently, corrupt state, or report success on a partial outcome?"** Even a fallback or limitation approved in `spec.md` is a **blocking** defect if it masks real failures or rests on false math.
 
+- **Anti-Spec-Anchoring Rule (`[spec-contradicts-codebase]`):** Never assume a choice in `spec.md` is safe simply because it was approved at Gate 1. Verify every new env var default, timezone, storage backend toggle, error hierarchy catch, or config format against sibling repositories, existing populated deployments, and real callee implementations. If the spec default silently alters or breaks existing deployments (e.g., changing omitted timezone to `UTC` vs sibling repo default, ignoring legacy storage prefixes during copy, or catching 5xx subclasses under `ResponseError`), raise a blocking `[spec-contradicts-codebase]` defect immediately.
+- **Anti-Downgrade & Rework Whole-Lifecycle Sweep (`docs/policies/finding-classes.md`):** Never downgrade any reproducible failure, cancellation/abort race across any `await`, missing deadline, un-sanitized inner log, or partial fix inside or coupled to the diff into `[observation]`, `[nit]`, or `[hygiene]`. Whenever a flaw appears at one `await` or class (especially during rework), walk **every subsequent `await`** in the same function/lifecycle and grep all sibling classes/callers in the repository so follow-up issues are caught in one pass.
+
 Apply two mandatory axes across every review:
 
 1. **Verify-the-Claim Axis (Read the Authoritative Source, Never Trust the Proxy):**
@@ -156,7 +159,7 @@ Specifically probe:
 - **Consumed-contract assumptions** regarding transaction commits, blocking I/O, nullability, or idempotency.
 - **Cross-writer invariant completeness** across untouched sibling mutators when a field enters a shared invariant or encode/decode round-trip.
 - **Partial-state carry-over across transitions** (hydrate, reset, URL decode, object spread) leaving derived fields (`bbox`, stateful `prevRef` classifiers) stale.
-- **Test/production wiring divergence** and **fake/mock blind spots** (write an explicit one-line `"does NOT model: ..."` inventory for each fake/mock relied upon).
+- **Active Mock-Blind-Spot Verification & Test/Production Divergence:** Do not merely record `"does NOT model: ..."` for unit-test stubs. Open the **real production source** of every collaborator mocked/stubbed in unit tests (e.g., inner `FlowiseService.run` behind stubbed `FlowiseService.chat`, real auth/router guard ordering vs store init, real wire `origin.kind` values, nested layout `title.template` inheritance) and verify the un-stubbed call chain end-to-end before issuing `Approve`.
 - **Declarative-config omissions** where runtime engine defaults fail in target/offline environments.
 - **Claimed scale bounds & forward-looking hazards** recomputed against real seed/config numbers today.
 

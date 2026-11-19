@@ -16,7 +16,7 @@ Prior to invoking `cadence-maintainer`, resolve `tier:` from `specs/{ticket-id}/
 
 1. **Tier gate (Stop on `Low`/`Trivial`).** Maintainer Acceptance (`Step 06`) is required for `Medium` and `High` tickets only (`docs/policies/change-tiers.md`). If `tier:` is `Low` or `Trivial` (and no post-implementation escalation entry in `decisions.md` applies), **STOP cleanly** without invoking `cadence-maintainer` or writing `maintainer_approved_at`.
 
-2. **Code review approval is recorded.** Confirm that `cadence-reviewer` has approved this change proposal by checking `submission.md`'s `## Discussion`, the forge thread comments, or the review record in the ticket's spec directory. If code review has not yet approved the proposal, stop and instruct the operator to run `/cadence-review $mr_ref` first.
+2. **Code review, Cold-Breaker & Security-Auditor clearance recorded.** Confirm in `submission.md`'s `## Discussion`, forge thread comments, or ticket artifacts that `cadence-reviewer` approved (`Approve`), `cadence-breaker` recorded `Verdict: CLEAN` whenever `breaker-trigger.sh` returns `decision=TRIGGER`, and `cadence-security-auditor` recorded `PASS` whenever `security-trigger.sh` returns `decision=TRIGGER`. If any active Gate 2 review is missing or blocking, stop and instruct the operator to run `/cadence-review $mr_ref` first.
 
 3. **Specification contract is satisfied (Stop on missing `spec.md` without qualified escalation).** Confirm that `specs/{ticket-id}/spec.md` exists and `metadata.yaml` carries a status of `spec-approved` or later — **except** when `specs/{ticket-id}/decisions.md` contains a qualified post-implementation tier-escalation entry (`docs/policies/change-tiers.md#escalation`) explicitly naming each promoted `decisions.md` entry and explaining why each predated and governed implementation. If `spec.md` is absent **without** such a qualified escalation ruling (or only an unqualified escalation exists), **STOP** and instruct the operator to complete `/cadence-spec` or record a qualified escalation ruling before running `/cadence-maintain`.
 
@@ -34,7 +34,7 @@ Prior to invoking `cadence-maintainer`, resolve `tier:` from `specs/{ticket-id}/
    - Extract `{ticket-id}` from the final `/`-delimited segment of the branch name per the `branch-naming-convention` declared in `CADENCE_ORG.md#branch-strategy-binding` (with full strategy narrative under `docs/policies/branch-strategy/`).
 
 2. **Confirm prerequisites:**
-   - Verify code-reviewer approval is on record
+   - Verify `cadence-reviewer` approval plus `cadence-breaker` (`CLEAN` when triggered) and `cadence-security-auditor` (`PASS` when triggered) Gate 2 clearance are on record
    - Verify the specification (or qualified escalation ruling) is present and approved
 
 3. **Compute the branch diff** against the repository's integration branch (resolving `<integration-branch>` dynamically from the `integration-branch` marker in `CADENCE_ORG.md#branch-strategy-binding` per `ADR_CADENCE-0020`; never hardcode a branch name):
@@ -43,7 +43,7 @@ Prior to invoking `cadence-maintainer`, resolve `tier:` from `specs/{ticket-id}/
    ```
    Run Step 0's optional `offload_deep_review` pre-scan on this diff when `:11434` is reachable prior to Step 4.
 
-4. **Delegate to `cadence-maintainer` (`Deep-reasoning` tier, `xhigh` effort).** Pass the diff, the spec/decision artifacts, and Step 0's `offload_deep_review(diff_range="<integration-branch>...{branch-name}", cwd="<repo-root>")` pre-scan so the subagent evaluates all eight maintainer dimensions:
+4. **Delegate to `cadence-maintainer` (`Deep-reasoning` tier, `xhigh` effort).** Pass the diff, spec/decision artifacts, `submission.md`'s `## Discussion` (including `### Cold-Breaker Summary`, Security Audit summary, non-blocking observations, and `"does NOT model:"` entries for Gate 2 Residual Backstop inspection), and Step 0's `offload_deep_review(diff_range="<integration-branch>...{branch-name}", cwd="<repo-root>")` pre-scan so the subagent evaluates all eight maintainer dimensions:
    - Surface Compatibility and backwards-compatible API stability
    - Architectural alignment with ratified ADRs and repository conventions
    - Mission alignment against `PROJECT_INTENT.md` (fitness vs. scope creep)

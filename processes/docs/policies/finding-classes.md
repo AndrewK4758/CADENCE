@@ -12,6 +12,18 @@ Any real defect inside the diff under review is **blocking**. Consequently, a no
 inside the diff is never a defect. Only a genuine defect that this change will not fix warrants
 filing a follow-up ticket.
 
+### Anti-Downgrade & Anti-Rationalization Clause
+
+No observable bug, race, unhandled error class, security/PII leak, upgrade regression, or edge-case
+failure inside modified/added code — or in lifecycle callers/callees directly coupled to the diff — may
+ever be labelled `[observation]`, `[nit]`, or `[hygiene]`. Specifically **forbidden** downgrades include
+teardown/cancellation races across `await` boundaries, missing client timeouts/deadlines (`ioredis`,
+`AbortSignal.timeout`), catching base `ResponseError` over 5xx subclasses, un-sanitized inner logger
+calls, clobbering existing populated defaults or rollback secrets, fixing only one sibling class/endpoint,
+and regex/lexer/rounding boundary failures. Rationalizations (*"only happens if stopped quickly"*,
+*"the spec did not mention this case"*, *"unit tests stubbed that collaborator"*, *"low likelihood in
+normal usage"*) are banned: every such defect inside or coupled to the diff MUST be **blocking**.
+
 ## The five classes
 
 | Class | Definition | Offered as a candidate? | Disposed where |

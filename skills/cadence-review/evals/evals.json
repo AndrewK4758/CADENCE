@@ -97,6 +97,63 @@
           "decision=SKIP tier=low signals=none"
         ]
       }
+    },
+    {
+      "id": 4,
+      "name": "breaker-trigger-initial-and-rework-dispatch",
+      "prompt": "Evaluate breaker-trigger.sh on Trivial ACME-103, Medium code diff ACME-301, and rework cycle ACME-302.",
+      "expected_output": "Trivial ACME-103 skips (mode=exempt); Medium non-doc diff ACME-301 triggers initial mode; Low rework ACME-302 forces mode=rework TRIGGER.",
+      "assertions": [
+        "Skips Trivial tier with mode=exempt",
+        "Triggers cadence-breaker on Medium non-doc code diffs and unconditionally on rework cycles"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "git checkout -q -b impl/fix/ACME-BRK && mkdir -p specs/ACME-301 specs/ACME-302 && printf \"id: ACME-301\\ntier: Medium\\nstatus: in-review\\n\" > specs/ACME-301/metadata.yaml && printf \"id: ACME-302\\ntier: Low\\nstatus: in-review\\n\" > specs/ACME-302/metadata.yaml && printf \"<!-- cadence-run:cycle n=1 phase=code-review blocking=1 -->\\n\" > specs/ACME-302/submission.md && printf \"export async function stream() {}\\n\" > src/stream.ts",
+        "cmd": "out0=$(bash \"$ROOT/skills/cadence-review/breaker-trigger.sh\" --root \"$FIX\" ACME-103) && echo \"$out0\" && out1=$(bash \"$ROOT/skills/cadence-review/breaker-trigger.sh\" --root \"$FIX\" --base trunk ACME-301) && echo \"$out1\" && out2=$(bash \"$ROOT/skills/cadence-review/breaker-trigger.sh\" --root \"$FIX\" --base trunk ACME-302) && echo \"$out2\"",
+        "stdout_regex": [
+          "decision=SKIP tier=trivial mode=exempt",
+          "decision=TRIGGER tier=medium mode=initial",
+          "decision=TRIGGER tier=low mode=rework reason=rework-mandatory"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "zero-spec-breaker-and-anti-downgrade-contract",
+      "prompt": "Can cadence-breaker read spec.md or downgrade a cancellation race to [observation]?",
+      "expected_output": "No -- cadence-breaker enforces strict zero-spec isolation (DO NOT READ spec.md) and finding-classes.md bans downgrading defects into [observation] or [nit].",
+      "assertions": [
+        "Enforces zero-spec anti-anchoring isolation on cadence-breaker",
+        "Enforces Anti-Spec-Anchoring and Anti-Downgrade clauses across reviewer and policy"
+      ],
+      "check": {
+        "type": "contract",
+        "must_exist": [
+          "agents/cadence-breaker/agent.md",
+          "skills/cadence-review/breaker-trigger.sh",
+          "processes/docs/policies/finding-classes.md"
+        ],
+        "patterns": [
+          {
+            "file": "agents/cadence-breaker/agent.md",
+            "regex": "DO NOT READ"
+          },
+          {
+            "file": "agents/cadence-reviewer/agent.md",
+            "regex": "spec-contradicts-codebase"
+          },
+          {
+            "file": "processes/docs/policies/finding-classes.md",
+            "regex": "Anti-Downgrade"
+          },
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "Cold-Breaker Summary"
+          }
+        ]
+      }
     }
   ]
 }

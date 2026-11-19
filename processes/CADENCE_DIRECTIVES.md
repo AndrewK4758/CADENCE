@@ -123,7 +123,7 @@ Skills are user-invokable slash-command workflows stored directly in `.agents/sk
 | `/cadence-implement` | Execute a ticket's tier contract via strict BDD red-green-refactor TDD — approved spec (Medium/High) or `problem.md` ACs (Low) |
 | `/cadence-migrate` | Author reversible, idempotent schema/data migrations across stacks using the expand/contract pattern |
 | `/cadence-build` | Consolidated build-and-review workflow: worktree isolation, `#integration-branch-enforcement` + `#sprint-enforcement-binding` checks, `/cadence-implement` -> post-entity `/cadence-migrate` -> iterative `/cadence-review` loop (cap `4`) -> PR readiness |
-| `/cadence-review` | Review an MR against its tier contract — approved spec (Medium/High) or `problem.md` ACs (Low), merging `cadence-reviewer` + triggered `cadence-security-auditor` verdicts fail-closed |
+| `/cadence-review` | Review an MR against its tier contract — approved spec (Medium/High) or `problem.md` ACs (Low), merging `cadence-reviewer` + triggered `cadence-security-auditor` + zero-spec `cadence-breaker` (`breaker-trigger.sh`, repeatable `--code-root <dir>`) fail-closed |
 | `/cadence-maintain` | Evaluate an MR for project-level maintainer acceptance (`Medium`/`High` only; stops on `Low`/`Trivial`) |
 | `/cadence-merge` | Mechanize Workflow Step 07 (Merge) — validate tier-required gates and `#branch-strategy-binding`, rebase and re-test (re-running `/cadence-review` if code/context conflicts were resolved), fast-forward cleanly without direct integration-branch commits, sync tracker, prune worktree, and hand off to `/cadence-archive` |
 | `/cadence-archive` | Enshrine a merged ticket — move spec artifacts to `archive/`, backfill `merged_at` if unset, update CHANGELOG, run both `dead-citation-gate.sh` passes, and sync bound external trackers |
@@ -148,9 +148,9 @@ Skills are user-invokable slash-command workflows stored directly in `.agents/sk
 ## Workflow
 
 ```
-Problem → Classify (Triage) → Architect & Explore / Decompose & Specify (Spec) →
+Problem → Classify (Triage) → Architect & Explore / Decompose & Specify + Challenge (`cadence-spec-challenger`) →
 [Human Gate: Spec Review] → Execute via TDD (Implementation) →
-[Human Gate: Code Review] → [Human Gate: Maintainer Acceptance] → Consolidate (Merge) → Enshrine (Archive)
+[Human Gate: Code Review (`cadence-reviewer` + `cadence-breaker` + `cadence-security-auditor`)] → [Human Gate: Maintainer Acceptance] → Consolidate (Merge) → Enshrine (Archive)
 (+ [Human Gate: Deploy Validation] on High-tier changes)
 ```
 

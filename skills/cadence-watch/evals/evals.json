@@ -221,6 +221,29 @@
           }
         ]
       }
+    },
+    {
+      "id": 6,
+      "name": "rework-root-cause-generalization-and-cold-breaker",
+      "prompt": "When PR comments arrive requesting changes on an await step in merge_request ACME-112, how does /cadence-watch remediate?",
+      "expected_output": "Executes Root-Cause Generalization & Sibling Sweep across all subsequent awaits and sibling classes, runs verify-facts.sh --trace, and re-runs /cadence-review (forcing breaker-trigger.sh into mode=rework) before pushing.",
+      "assertions": [
+        "Mandates walking subsequent await steps and grepping sibling classes before pushing rework",
+        "Forces mode=rework cadence-breaker pass via /cadence-review"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-watch/SKILL.md",
+            "regex": "Root-Cause Generalization"
+          },
+          {
+            "file": "skills/cadence-watch/SKILL.md",
+            "regex": "mode=rework"
+          }
+        ]
+      }
     }
   ]
 }

@@ -83,11 +83,9 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
    - **Exit `1` (`decision=HALT`):** Return falsified `proof.ref` / `anchor_substring` / `absence` / DAG findings directly to `cadence-spec-author` until fixed.
    - **Exit `2` (`decision=ESCALATE_HUMAN`):** Surface all `ESCALATE` triggers (`unanswered_probes`, `unmapped_unknowns`, `inference_depth_exceeded`, `unruled_unknown`) explicitly in Step 7 and `## Open Questions` for Gate 1 human ruling.
 
-4.5. **Adversarial Spec Challenge (Pre-Gate-1 Red-Team, Medium/High).** Once mechanical checks exit `0`, dispatch a read-only challenger (`cadence-reviewer` or `cadence-architect` on `Deep-reasoning` tier, `xhigh` effort) supplied ONLY with `problem.md`, `design-options.md`, `spec.md`, `test-plan.md`, and repository source access (zero authoring-session reasoning) to:
-   - Attempt to construct a concrete counterexample violating each CHORD `Condition`, `Rule`, or `Delta` that lacks a negative/concurrency/timeout scenario in `test-plan.md`;
-   - Verify any `# STATUS: Verified` boundary claims or `Files Affected` signatures against real callee implementations and callers;
-   - Flag any existing target file approaching `<400` lines that lacks a split plan, or any unstated failure mode missing from `## Open Questions` (`OQ-N`).
-   Feed concrete findings back into `cadence-spec-author` (re-running Step 4 gates after any edit) before advancing.
+4.5. **Adversarial Spec Challenge (Pre-Gate-1 Red-Team, Medium/High).** Once Step 4 mechanical checks (`verify-spec.sh`, `verify-facts.sh`, `certainty-gate.sh`) exit `0`, dispatch dedicated read-only `cadence-spec-challenger` (`Deep-reasoning` tier, `xhigh` effort) supplied ONLY with `problem.md`, `design-options.md`, `spec.md`, `test-plan.md`, and repository source access (zero authoring-session reasoning) to:
+   - Probe all 6 falsification checks: upgrade/sibling default drift, exception hierarchy & callee signatures vs `# STATUS: Verified`, multi-`await`/lock/stream completeness, regex/lexer/math bounds, sibling surface parity + `<400`-line split plans, and non-mock failure-mode scenarios in `test-plan.md`;
+   - Feed any `[HIGH]`/`[MEDIUM]` findings from `Verdict: CHALLENGE_ISSUES` back into `cadence-spec-author` (re-running Step 4 mechanical gates + `cadence-spec-challenger` until `Verdict: PASS`) before advancing.
 
 5. **Verify engineering completeness (judgment review).** Confirm every AC maps cleanly to design signatures and Gherkin scenarios, the 6W×4L matrix is substantively populated, `## Design Exploration` documents the flip condition and steelman counter-argument, and risks + `OQ-N` capture every unresolved challenge.
 
