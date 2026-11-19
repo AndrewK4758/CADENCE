@@ -1,0 +1,56 @@
+# Empirical Certainty & Evidence Manifest
+# Populated by cadence-spec-author (Step 3) and updated by cadence-implementer (Phase 4).
+# Validated deterministically by: .agents/skills/cadence-certainty/certainty-gate.sh <TICKET-ID>
+#
+# CRITICAL: Never record a self-reported numeric confidence score here.
+# Certainty is computed mechanically from verifiable codebase proofs, DAG depth,
+# mapped Open Questions / human rulings, and HEAD-SHA-bound execution receipts.
+
+ticket: "{TICKET-ID}"
+stage: spec # spec | implement | review
+head_sha: "{40-char git rev-parse HEAD}"
+
+claims:
+  - id: CLM-001
+    kind: boundary_contract # behavior | boundary_contract | invariant | absence | blast_radius
+    criticality: load_bearing # load_bearing | supporting
+    status: observed # observed | inferred | unknown
+    statement: "{Single falsifiable statement grounded in code, schema, or test evidence}"
+    proof:
+      ref: "{path/to/file.ext:10-25}"
+      symbols: ["{PrimarySymbol}"]
+      anchor_substring: "{verbatim substring inside cited line range}"
+
+  - id: CLM-002
+    kind: absence
+    criticality: load_bearing
+    status: observed
+    statement: "{Absence claim, e.g. no other caller/writer touches target table or surface}"
+    proof:
+      search_pattern: "{regex pattern checked across tracked/working-tree source files}"
+      scope: "{src/}"
+      expected_files: ["{src/expected_owner.ext}"]
+
+  - id: CLM-003
+    kind: invariant
+    criticality: supporting
+    status: inferred
+    statement: "{Logical deduction derived from CLM-001 and CLM-002}"
+    premises: ["CLM-001", "CLM-002"]
+
+  - id: CLM-004
+    kind: boundary_contract
+    criticality: load_bearing
+    status: unknown
+    statement: "{Unresolved behavioral or cross-boundary question requiring human ruling}"
+    mapped_oq: "OQ-1"
+
+# Required at implement and review stages (exit_code must be 0 and head_sha must match HEAD)
+receipts:
+  - kind: test_suite
+    command: "{canonical test runner command}"
+    head_sha: "{40-char git rev-parse HEAD}"
+    exit_code: 0
+    raw_log: "/tmp/agy-triage/{repo}/{pid}.log"
+    raw_log_sha256: "{64-char sha256 hex}"
+    scenarios_observed_passing: ["S-1.1", "OS-1.1"]

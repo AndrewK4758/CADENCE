@@ -101,8 +101,6 @@ surface rows below. This section serves the same cross-cutting reference role as
 
 ---
 
----
-
 ## DTO / Response Contracts (framework-owned)
 
 | DTO Name | Used By (Endpoints) | Key Fields | Stability | Guarantee Period | Notes |
@@ -229,6 +227,7 @@ Environment variables, feature flags, and configuration keys consumed by other s
 | `/cadence-close` skill (`.agents/skills/cadence-close/SKILL.md`) | CLI / workflow command | Beta | 1 release cycle | Consolidated close-out orchestrator: reads `read_state.py`, enforces tier-gated Gate 3 `/cadence-maintain` (`Medium`/`High` when `maintainer_approved_at` unset; skipped at `Low`/`Trivial`), lands via `/cadence-merge` + tracker sync, and finalizes via `/cadence-archive` + post-close `doctor.sh`. |
 | `/cadence-housekeep` skill (`.agents/skills/cadence-housekeep/SKILL.md`) | CLI / workflow command | Beta | 1 release cycle | Consolidated maintenance workflow: runs read-only `/cadence-doctor --check-offload [--full]` + read-only `/cadence-retro` (confirmation-gated `--promote`) + optional doctor-and-confirmation-gated `/cadence-release`. |
 | `/cadence-watch` skill (`.agents/skills/cadence-watch/SKILL.md` + `pr_watch.py` / `watch_sources.py` sidecars) | CLI / workflow command | Beta | 1 release cycle | Forge PR/MR (`gh` / `glab`) and bound §9 Jira/YouTrack comment listener: defaults `--once` with optional `--watch` polling and `--all` active discovery, mirrors unseen comments into `submission.md` with write-after-completion watermarks, advances merged `spec_mr` to `/cadence-build` and merged `merge_request` to `/cadence-archive`, remediates in-scope change requests/CI failures, and escalates scope changes or hands approved PRs to `/cadence-close` without silent self-merge. |
+| `/cadence-certainty` skill & `certainty-gate.sh` (`.agents/skills/cadence-certainty/{SKILL.md,certainty-gate.sh,certainty_gate.py,certainty_claims.py}` + `specs/TEMPLATE/evidence.yaml`) | CLI / workflow command & build-tooling contract | Beta | 1 release cycle | Read-only deterministic hybrid empirical certainty and human-escalation gate invoked by `/cadence-spec`, `/cadence-define`, `/cadence-implement`, `/cadence-build`, `/cadence-review`, and `/cadence-doctor --ticket`. Runs Layer 1 zero-schema checks (unanswered probes, unmapped `UNKNOWN`s / draft contracts, reverse diff blast radius vs. `Files Affected`, dormant Security/Data pillar vs. `security-trigger.sh`, `verify-facts.sh` `UNVERIFIABLE` ratio, and review cycle oscillation) and Layer 2 `evidence.yaml` proof-graph verification (verbatim `observed` `ref`/`symbols`/`anchor_substring`, pure-Python `absence` regexes over `git ls-files`, acyclic `inferred` DAG depth `<=2`, and `HEAD`-SHA + SHA-256 test receipts). Exits `0` (`PROCEED`), `1` (`HALT` on mechanical falsification), or `2` (`ESCALATE_HUMAN` requiring a `decisions.md` ruling before progression or `ready_mr.sh`). Never uses numeric AI self-confidence scores. |
 
 ---
 

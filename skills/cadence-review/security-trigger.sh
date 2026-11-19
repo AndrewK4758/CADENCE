@@ -19,6 +19,7 @@ usage() {
 ROOT=""
 BASE=""
 BASE_EXPLICIT=0
+SCAN_SIGNALS=0
 TICKET=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -28,6 +29,8 @@ while [[ $# -gt 0 ]]; do
     --base)
       [[ $# -ge 2 ]] || usage
       BASE="$2"; BASE_EXPLICIT=1; shift 2 ;;
+    --scan-signals)
+      SCAN_SIGNALS=1; shift ;;
     -*) usage ;;
     *)
       [[ -z "$TICKET" ]] || usage
@@ -40,12 +43,13 @@ if [[ -z "$ROOT" ]]; then
   ROOT="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || pwd)"
 fi
 
-python3 - "$ROOT" "$BASE" "$BASE_EXPLICIT" "$TICKET" <<'PY'
+python3 - "$ROOT" "$BASE" "$BASE_EXPLICIT" "$TICKET" "$SCAN_SIGNALS" <<'PY'
 import pathlib, re, subprocess, sys
 
 root = pathlib.Path(sys.argv[1]).resolve()
 base_arg, base_explicit = sys.argv[2], int(sys.argv[3])
 ticket = sys.argv[4]
+scan_signals = int(sys.argv[5])
 
 ticket_dir = root / "specs" / ticket
 if not ticket_dir.is_dir():
@@ -87,7 +91,7 @@ if tier == "trivial":
     print("decision=SKIP tier=trivial signals=none reason=trivial-tier-exempt")
     sys.exit(0)
 
-if tier == "high":
+if tier == "high" and not scan_signals:
     print("decision=TRIGGER tier=high signals=high-tier reason=high-tier-mandatory")
     sys.exit(0)
 
@@ -198,7 +202,10 @@ for rel in sorted(changed_files):
 if matched_signals:
     sigs = ",".join(sorted(matched_signals))
     files = ",".join(sorted(matched_files)) or "diff"
-    print(f"decision=TRIGGER tier={tier} signals={sigs} reason=diff-signal-match files={files}")
+    reason = "high-tier-mandatory" if tier == "high" else "diff-signal-match"
+    print(f"decision=TRIGGER tier={tier} signals={sigs} reason={reason} files={files}")
+elif tier == "high":
+    print("decision=TRIGGER tier=high signals=high-tier reason=high-tier-mandatory")
 else:
     print(f"decision=SKIP tier={tier} signals=none reason=no-risk-signals")
 PY

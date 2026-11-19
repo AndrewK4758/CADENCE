@@ -214,6 +214,8 @@ if [[ -n "$TICKET" ]]; then
   [[ -e "$T_VERIFY_FACTS" ]] || T_VERIFY_FACTS="$SELF_SKILLS_DIR/cadence-spec/verify-facts.sh"
   T_AC_CLASSIFY="$SKILLS_DIR/cadence-implement/ac-classify.sh"
   [[ -e "$T_AC_CLASSIFY" ]] || T_AC_CLASSIFY="$SELF_SKILLS_DIR/cadence-implement/ac-classify.sh"
+  T_CERTAINTY="$SKILLS_DIR/cadence-certainty/certainty-gate.sh"
+  [[ -e "$T_CERTAINTY" ]] || T_CERTAINTY="$SELF_SKILLS_DIR/cadence-certainty/certainty-gate.sh"
 
   TDIR=""
   [[ -d "$ROOT/specs/$TICKET" ]] && TDIR="$ROOT/specs/$TICKET"
@@ -255,6 +257,22 @@ if [[ -n "$TICKET" ]]; then
       pass "ticket $TICKET tier=trivial (spec/AC gates exempt)"
     else
       warn "ticket $TICKET tier unset or unrecognized ('${tier:-empty}')"
+    fi
+    if [[ "$tier" == "medium" || "$tier" == "high" || "$tier" == "low" ]]; then
+      if [[ -x "$T_CERTAINTY" ]]; then
+        cert_rc=0
+        cert_out="$(cd "$ROOT" && bash "$T_CERTAINTY" --root "$ROOT" "$TICKET" 2>&1)" || cert_rc=$?
+        cert_line="$(printf '%s\n' "$cert_out" | tail -n 1)"
+        if [[ "$cert_rc" -eq 0 ]]; then
+          pass "certainty-gate ($TICKET): $cert_line"
+        elif [[ "$cert_rc" -eq 2 ]]; then
+          warn "certainty-gate ($TICKET) ESCALATE_HUMAN: $cert_line"
+        else
+          fail "certainty-gate ($TICKET) HALT: $cert_line"
+        fi
+      else
+        skip "certainty-gate ($TICKET) (not installed)"
+      fi
     fi
   fi
 fi
