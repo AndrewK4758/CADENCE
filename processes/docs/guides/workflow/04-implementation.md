@@ -1,12 +1,12 @@
 # Workflow Step 04 — Implementation
 
-> Part of the per-step workflow guide series. This guide details the **Implementation** step. For the preceding human gate see [`03-spec-approval.md`](03-spec-approval.md); for the end-to-end workflow overview see [`../getting-started.md`](../getting-started.md) §2.3.
+> Part of the per-step workflow guide series. This guide details the **Implementation** step. For the preceding human gate see [`03-spec-approval.md`](03-spec-approval.md); for the per-tier matrix see [`../../policies/change-tiers.md`](../../policies/change-tiers.md).
 
 | | |
 |---|---|
 | **Step** | Implementation (`/cadence-implement`) |
 | **Who** | Contributor / Implementer (invokes the skill; `cadence-implementer` + `log-triage` execute the TDD loops) |
-| **Consumes** | A ticket **in the active sprint** (when sprint enforcement is enabled in `CADENCE_ORG.md` §13); and — for **Medium/High tiers** — an **approved** specification (`spec.md` + `test-plan.md` at `status: spec-approved`) |
+| **Consumes** | A ticket **in the active sprint** (when sprint enforcement is enabled in `CADENCE_ORG.md#sprint-enforcement-binding`); and — for **Medium/High tiers** — an **approved** specification (`spec.md` + `test-plan.md` at `status: spec-approved`) |
 | **Produces** | An `impl/{type}/{id}` branch (in a dedicated git worktree) with tests + production code, one commit per TDD scenario cycle; `submission.md` drafted; `status: in-review` |
 | **Leads to** | **[Gate 2: Code Review](05-code-review.md)** — a reviewer evaluates the MR against the approved contract |
 
@@ -20,17 +20,17 @@ The Implementation step builds the exact change specified in `spec.md` (or `prob
 
 Two precondition gates govern entry into `/cadence-implement`:
 
-### 1. Sprint enforcement check (all tiers, governed by `CADENCE_ORG.md` §13)
+### 1. Sprint enforcement check (all tiers, governed by `CADENCE_ORG.md#sprint-enforcement-binding`)
 
-Before implementation starts, `/cadence-implement` evaluates the repository's [Sprint-Enforcement Binding](../../agentic-sdlc/CADENCE_ORG.md#sprint-enforcement-binding) (§13) via `ci-templates/scripts/org-binding-resolve.sh --sprint <PREFIX>`. Intent issues originate in the backlog and remain there through Triage ([`00-problem.md`](00-problem.md)); active implementation represents committed sprint work, so the ticket should be assigned to the **current active sprint** across all tiers (Trivial, Low, Medium, High) before coding begins.
+Before implementation starts, `/cadence-implement` evaluates the repository's [Sprint-Enforcement Binding](../../agentic-sdlc/CADENCE_ORG.md#sprint-enforcement-binding) via `ci-templates/scripts/org-binding-resolve.sh --sprint <PREFIX>`. Intent issues originate in the backlog and remain there through Triage ([`00-problem.md`](00-problem.md)); active implementation represents committed sprint work, so the ticket should be assigned to the **current active sprint** across all tiers (Trivial, Low, Medium, High) before coding begins.
 
-### 2. Spec-approval and integration-branch preconditions (`change-tiers.md` & `CADENCE_ORG.md` §14)
+### 2. Spec-approval and integration-branch preconditions (`change-tiers.md` & `#integration-branch-enforcement`)
 
 `/cadence-implement` reads the authoritative `#per-tier-spec-requirements` table in [`change-tiers.md`](../../policies/change-tiers.md) to verify required artifacts and pre-implementation status:
 
-- **Medium and High tiers:** Require `metadata.yaml`, `problem.md`, `spec.md`, and `test-plan.md` at `status: spec-approved` (and when `CADENCE_ORG.md` §14 `integration-branch-enforcement-enabled` is `yes`, verify P1/P2 that the approved spec is already merged onto the integration branch). If the spec is still at `spec-in-review`, `/cadence-implement` **halts loudly** — [Gate 1: Spec Approval](03-spec-approval.md) is never bypassed.
+- **Medium and High tiers:** Require `metadata.yaml`, `problem.md`, `spec.md`, and `test-plan.md` at `status: spec-approved` (and when `CADENCE_ORG.md#integration-branch-enforcement` `integration-branch-enforcement-enabled` is `yes`, verify P1/P2 that the approved spec is already merged onto the integration branch). If the spec is still at `spec-in-review`, `/cadence-implement` **halts loudly** — [Gate 1: Spec Approval](03-spec-approval.md) is never bypassed.
 - **Low tier:** Requires `metadata.yaml` and `problem.md` at `status: triaged` — `problem.md`'s Acceptance Criteria checklist serves as the behavioral contract, with no `spec.md`, `test-plan.md`, or Gate 1 required.
-- **Trivial tier:** Requires `metadata.yaml` at `status: triaged`.
+- **Trivial tier:** Requires `metadata.yaml` at `status: triaged` and executes directly via `/cadence-build`'s *The Trivial Path* (or direct ad-hoc edit) rather than `/cadence-implement`, which refuses `Trivial` tier.
 
 ## Who does what
 
@@ -40,15 +40,15 @@ Invoke `/cadence-implement` from your agentic CLI runtime (`.agents/skills/caden
 /cadence-implement <ticket-id>         # e.g. /cadence-implement TT-6547
 ```
 
-The `/cadence-implement` skill owns **lifecycle status transitions and external tracker projections** (`CADENCE_ORG.md` §9), while delegating code and test authoring to the **`cadence-implementer`** subagent (which in turn delegates database migrations to **`cadence-migration-author`** when schema changes are present). The orchestration sequence is:
+The `/cadence-implement` skill owns **lifecycle status transitions and external tracker projections** (`CADENCE_ORG.md#tracker-binding`), while delegating code and test authoring to the **`cadence-implementer`** subagent (with `/cadence-build` invoking `/cadence-migrate` -> `cadence-migration-author` right after `/cadence-implement` when schema changes are declared). The orchestration sequence is:
 
-1. **Pre-delegation:** Verify preconditions (`change-tiers.md`, §13 sprint guard, §14 integration-branch guard), transition `metadata.yaml` to `status: in-progress` + `implementation_started_at`, and project to the bound tracker (`CADENCE_ORG.md` §9).
+1. **Pre-delegation:** Verify preconditions (`change-tiers.md`, `#sprint-enforcement-binding` sprint guard, `#integration-branch-enforcement` integration-branch guard), transition `metadata.yaml` to `status: in-progress` + `implementation_started_at`, and project to the bound tracker (`CADENCE_ORG.md#tracker-binding`).
 2. **Delegation:** Invoke `cadence-implementer` to execute the red-green-accumulate-commit cycles on a dedicated worktree branch (`impl/{type}/{id}`).
 3. **Post-delegation:** Once all scenarios pass and exit criteria are verified, transition `metadata.yaml` to `status: in-review`, append the `implementation` `stage_effort` entry into `actual_effort`, and project to the bound tracker.
 
-## Automatic Local Offload during TDD Loops (`log-triage` & `offload_log_triage`)
+## Optional Local Offload during TDD Loops (`log-triage` & `offload_log_triage`, Cloud Fallback)
 
-Running full test suites and builds across dozens of red-green-accumulate cycles generates massive terminal output that would rapidly saturate an LLM's context window if ingested raw. During Step 04, `cadence-implementer` automatically delegates test and build log analysis to CADENCE's read-only local log-triage coprocessor (`enable_write_tools: false`):
+Running full test suites and builds across dozens of red-green-accumulate cycles generates large terminal output that can saturate an LLM's context window. During Step 04, when local offload (`:11434`) is reachable, `cadence-implementer` routes verbose test and build logs through CADENCE's read-only local log-triage coprocessor (`enable_write_tools: false`, degrading cleanly to direct inspection when offline):
 
 1. **Test & Compiler Log Compaction (`offload_log_triage` / `log-triage` via `inference`):** On every **RED**, **GREEN**, and **ACCUMULATE** test execution (as well as migration `apply → rollback → reapply` verification), test runner output is routed through `offload_log_triage` (`inference` on port `11434`).
 2. **Verbatim Evidence Preservation:** `offload_log_triage` never paraphrases compiler errors or failing assertions — it returns the exact test runner command evidence, verbatim compiler/assertion error messages, pass/fail/skip counts, test coverage metrics, linter warnings, and exact `file:line` coordinates.
@@ -81,7 +81,7 @@ Unit-level scenarios execute first, followed by full-stack integration scenarios
 - **CHORD observability seams** — implement and test `OS-{N}` scenarios (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`) per [`observability-patterns.md`](../../policies/observability-patterns.md) using the exact same red-green-accumulate-commit loop.
 
 ### Phase 3.5–4 — Final verification & `submission.md` drafting
-Run the complete test suite, linter/formatter, and post-implementation traceability gate (`verify-facts.sh --trace <ticket-id>`) one final time (via `offload_log_triage`), verify `run-gates.sh` passes if `artifacts/` were touched, record `branch: impl/{type}/{id}` in `metadata.yaml`, and instantiate **`specs/{ticket-id}/submission.md`** from [`specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) (populating `## Description` and `## Forge metadata` while leaving `## Discussion` and `## Resolution` for the review and maintainer gates).
+Run the complete test suite, linter/formatter, and post-implementation traceability gate (`verify-facts.sh --trace <ticket-id>`) one final time (routing >30-line outputs via `offload_log_triage` when `:11434` is reachable), run `doctor.sh` / CI checks if governance files were touched, record `branch: impl/{type}/{id}` in `metadata.yaml`, and instantiate **`specs/{ticket-id}/submission.md`** from [`specs/TEMPLATE/submission.md`](../../../specs/TEMPLATE/submission.md) (populating `## Description` and `## Forge metadata` while leaving `## Discussion` and `## Resolution` for the review and maintainer gates).
 
 ## Boundary & Comment Discipline (`C1`–`C8`)
 
@@ -96,7 +96,7 @@ All inline comments authored or modified during implementation must comply with 
 ## Core discipline (the rules that govern every cycle)
 
 - **Never write production code without a failing test first.**
-- **Never skip ACCUMULATE.** Every green scenario is followed by a full suite run (triaged via `offload_log_triage` / `log-triage`).
+- **Never skip ACCUMULATE.** Every green scenario is followed by a full suite run (compacted via `offload_log_triage` / `log-triage` when `:11434` is reachable).
 - **Keep files strictly `< 400` lines** (Agentic DX Engineering Pillar).
 - **Touch only what the contract requires.** Leave adjacent files you opened for context untouched, except when reconciling a comment or fact your change itself falsified (`CADENCE_DIRECTIVES.md` Behavior 6).
 - **Follow the spec, but trust empirical test failures.** If TDD uncovers an impossible constraint in `spec.md`, record a `DEC-NNN` deviation in `decisions.md` and surface it prominently in `submission.md` — never diverge silently.
@@ -107,15 +107,15 @@ All inline comments authored or modified during implementation must comply with 
 Each red-green-accumulate cycle produces one atomic commit on the `impl/{type}/{id}` branch:
 
 ```
-{ticket} {sprint}: test({scope}): S-1.1 campaign activation with valid bundles
-{ticket} {sprint}: test({scope}): S-2.4 campaign not found returns failure
-{ticket} {sprint}: migration(expand): add status column [reversible, idempotent]
-{ticket} {sprint}: feat({scope}): complete implementation with all BDD tests passing
+{ticket}: test({scope}): S-1.1 campaign activation with valid bundles
+{ticket}: test({scope}): S-2.4 campaign not found returns failure
+{ticket}: migration(expand): add status column [reversible, idempotent]
+{ticket}: feat({scope}): complete implementation with all BDD tests passing
 ```
 
 ## Exit criteria (Definition of done)
 
-- [ ] Full test suite passes (unit, integration, contract, and journey + chaos passes where applicable), verified via `offload_log_triage`.
+- [ ] Full test suite passes (unit, integration, contract, and journey + chaos passes where applicable), compacted via `offload_log_triage` when `:11434` is reachable.
 - [ ] Every acceptance criterion and `test-plan.md` scenario is covered by a passing automated test carrying its `C5` tag.
 - [ ] Commit history on `impl/{type}/{id}` shows one atomic commit per TDD scenario cycle.
 - [ ] All modified source files remain strictly `< 400` lines and comply with `comment-discipline.md` (`C1`–`C8`).
@@ -135,7 +135,7 @@ Each red-green-accumulate cycle produces one atomic commit on the `impl/{type}/{
 
 - [`03-spec-approval.md`](03-spec-approval.md) — Gate 1, which approves the specification consumed here (Medium/High).
 - [`05-code-review.md`](05-code-review.md) — Gate 2, where the resulting implementation MR is reviewed.
-- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier matrix.
+- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — per-tier requirements and gate matrix.
 - [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — `#per-tier-spec-requirements` table read by `/cadence-implement`.
 - [`../../policies/branch-strategy/long-lived-feature-release.md`](../../policies/branch-strategy/long-lived-feature-release.md) · [`trunk-based.md`](../../policies/branch-strategy/trunk-based.md) — branch naming and protection rules.
 - [`../../policies/comment-discipline.md`](../../policies/comment-discipline.md) — rules `C1`–`C8` for inline comments and `C5` test tags.

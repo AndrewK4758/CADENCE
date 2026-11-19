@@ -1,6 +1,6 @@
 # Workflow Step 05 — Gate: Code Review
 
-> Part of the per-step workflow guide series. This is a **human governance gate** (Gate 2), assisted by the `/cadence-review` skill — AI agents execute the mechanical and adversarial first pass, and an accountable human makes the approval decision. For the preceding step see [`04-implementation.md`](04-implementation.md); for the end-to-end workflow overview see [`../getting-started.md`](../getting-started.md) §2.3. Authoritative gate specification: [`human-gates.md`](../../agentic-sdlc/human-gates.md) §Gate 2.
+> Part of the per-step workflow guide series. This is a **human governance gate** (Gate 2), assisted by the `/cadence-review` skill — AI agents execute the mechanical and adversarial first pass, and an accountable human makes the approval decision. For the preceding step see [`04-implementation.md`](04-implementation.md); for the per-tier gate matrix see [`../../policies/change-tiers.md`](../../policies/change-tiers.md). Authoritative gate specification: [`human-gates.md`](../../agentic-sdlc/human-gates.md) §Gate 2.
 
 | | |
 |---|---|
@@ -20,18 +20,18 @@ At Gate 2 you are evaluating the **implementation against the contract** — not
 
 ## When this gate applies
 
-Every change tier that modifies source code or configuration passes through Code Review, with rigor scaled to the tier (see [`change-tiers.md`](../../policies/change-tiers.md) and [`../getting-started.md`](../getting-started.md) §2.3):
+Every change tier that modifies source code or configuration passes through Code Review, with rigor scaled to the tier (see [`change-tiers.md`](../../policies/change-tiers.md)):
 
-- **Trivial** — documentation-only changes auto-merge on green CI (no human reviewer); configuration value changes, dependency bumps, and release cuts require **one** human reviewer.
+- **Trivial** — documentation-only changes follow [`change-tiers.md`](../../policies/change-tiers.md); configuration value changes, dependency bumps, and release PRs require **one** human reviewer.
 - **Low** — **one** human reviewer; Gate 2 is the **sole human gate** at Low tier (no separate Gate 1 Spec Approval or Gate 3 Maintainer Acceptance), so `/cadence-review` also serves as the primary follow-up filing point for `out-of-scope-defect` findings.
 - **Medium / High** — Gate 2 sits between Gate 1 (Spec Approval) and Gate 3 (Maintainer Acceptance).
 
-## Automatic Local Offload during Code Review (`offload_deep_review` & `offload_log_triage`)
+## Optional Local Offload during Code Review (`offload_deep_review` & `offload_log_triage`, Cloud Fallback)
 
-Before `cadence-reviewer` synthesizes its formal review verdict, `/cadence-review` automatically invokes CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`) to run fast mechanical pre-scans:
+When local offload (`:11434`) is reachable before `cadence-reviewer` synthesizes its formal review verdict, `/cadence-review` invokes CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`, degrading cleanly to direct cloud review/inspection when offline) to run fast mechanical pre-scans:
 
 1. **Advisory Mechanical Pre-Scan (`offload_deep_review` via `inference`):** Scans the diff against `spec.md` / `test-plan.md` to check Pillar 3's file-size ceiling, comment discipline rules `C1`–`C8` (`docs/policies/comment-discipline.md`), CHORD observability seam wiring (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`), and non-blocking finding classification (`docs/policies/finding-classes.md`).
-2. **Test & Gate Runner Verification (`offload_log_triage` / `log-triage` via `inference`):** Compacts test suite and `run-gates.sh` verification logs (`:11434`) while preserving verbatim assertion output and `file:line` coordinates (with full raw output written to `/tmp/agy-last-triage.log`).
+2. **Test & Gate Runner Verification (`offload_log_triage` / `log-triage` via `inference`):** Compacts test suite and CI gate logs (`:11434`) while preserving verbatim assertion output and `file:line` coordinates (with full raw output written to `/tmp/agy-last-triage.log`).
 
 Every advisory finding surfaced by `offload_deep_review` is independently verified by the primary `cadence-reviewer` reasoning model before being included in the review report.
 
@@ -45,19 +45,19 @@ Launch the governed review pass from your agentic CLI runtime (`.agents/skills/c
 
 > **Always run `/cadence-review`, never a generic `/code-review` command.** Gate 2 requires the **CADENCE** `/cadence-review` skill — which resolves the integration branch from `CADENCE_ORG.md#branch-strategy-binding`, evaluates the diff against the ticket's approved contract (`spec.md` + `test-plan.md` at Medium/High tier, or `problem.md`'s Acceptance Criteria at Low tier), classifies every non-blocking finding under [`finding-classes.md`](../../policies/finding-classes.md), processes `out-of-scope-defect` follow-up candidates, and logs `code-review` `stage_effort` in `metadata.yaml`. A generic IDE diff checker lacks spec awareness, finding classification, and governance tracking, and **never satisfies Gate 2**.
 
-`/cadence-review` resolves the ticket ID from the final `/`-delimited segment of the branch name (`impl/{type}/{id}`), computes the diff against the bound integration branch (`CADENCE_ORG.md` §15), runs the `offload_deep_review` pre-scan plus mechanical `verify-facts.sh --trace <ticket-id>` and `security-trigger.sh` verification, and delegates to the read-only **`cadence-reviewer`** subagent (alongside **`cadence-security-auditor`** when `decision=TRIGGER`). Because its inputs are repository-resident (`git diff` and `submission.md`), it requires no proprietary forge API tokens. `cadence-reviewer` verifies:
+`/cadence-review` resolves the ticket ID from the final `/`-delimited segment of the branch name (`impl/{type}/{id}`), computes the diff against the bound integration branch (`CADENCE_ORG.md#branch-strategy-binding`), runs any `:11434` `offload_deep_review` pre-scan plus mechanical `verify-facts.sh --trace <ticket-id>` and `security-trigger.sh` verification, and delegates to read-only **`cadence-reviewer`** (alongside **`cadence-security-auditor`** when `decision=TRIGGER`). Because its inputs are repository-resident (`git diff` and `submission.md`), it requires no proprietary forge API tokens. `cadence-reviewer` verifies:
 
 - **Contract compliance** — every acceptance criterion in `spec.md` (or `problem.md` at Low tier) is implemented completely.
 - **Test coverage & scope** — every Gherkin scenario in `test-plan.md` (or AC at Low tier) has a passing test tagged per `C5`, and no test reads forbidden governance paths ([`test-scope.md`](../../policies/test-scope.md)).
-- **Engineering Pillars** — Simplicity, Operability (structured JSON logs + CHORD seams), Agentic Ergonomics (authored file-size ceiling per `CADENCE_ORG.md`), Data Integrity (audit records with actor from auth context), Security Posture, and Backwards Compatibility.
+- **Engineering Pillars** — Structural Simplicity, Operational Resilience (structured JSON logs + CHORD seams), Agentic Ergonomics (authored file-size ceiling per `CADENCE_ORG.md`), Data & Audit Fidelity, Surface Compatibility (`cadence-surfaces.md` / `surface-registry.md`), and Security Boundary Posture.
 - **Architecture & comment discipline** — Clean Architecture layer boundaries, `C7` boundary comments on cross-boundary files/functions, and `C1`–`C8` comment rules ([`comment-discipline.md`](../../policies/comment-discipline.md)).
 - **Documentation freshness** — flow/system doc updates or explicit acknowledgment, plus the two-search reconciliation sweep record (`doc-maintenance-policy.md`; an affirmative flow-doc-absence claim without a recorded search return is **blocking** per BTG-293).
 - **Migration safety** — schema/data separation, reversibility, and idempotency guards ([`migration-policy.md`](../../policies/migration-policy.md)).
-- **The adversarial lens** — actively hunts for **silent failure paths**: broad catch blocks, silent fallback defaults that violates Behavior 5, unvalidated third-party session state (`CP-11`), and **unchanged callers whose contract the diff subtly altered**.
+- **The adversarial lens** — actively hunts for **silent failure paths**: broad catch blocks, silent fallback defaults that violate Behavior 5, unvalidated third-party session state (`CP-11`), and **unchanged callers whose contract the diff subtly altered**.
 
 Every non-blocking observation emitted by `cadence-reviewer` carries one of the five mandatory lowercase class tokens from [`finding-classes.md`](../../policies/finding-classes.md): `out-of-scope-defect`, `adr-owed`, `nit`, `hygiene`, or `observation`. At Step 6 of `/cadence-review`, any `out-of-scope-defect` candidate is deduplicated against `specs/` and `archive/` and presented to the human reviewer for confirmation to file via `/cadence-triage --file-only <draft-path>`.
 
-> **Re-run `/cadence-review` after rebasing onto new upstream changes.** Whenever an implementation branch is rebased onto integration-branch commits that landed after the initial review, run `/cadence-review` again so cross-change interaction defects are caught before merge.
+> **Re-run `/cadence-review` after conflicting or context-overlapping rebases.** Whenever an implementation branch is rebased onto newer integration-branch commits **and** rebase resolved code/test conflicts OR upstream commits touched files in the diff's bounded context or direct dependencies, re-run `/cadence-review` before merging. Trivial conflict-free rebases over disjoint files require only passing CI/tests.
 
 ## Step 2 — Orient in the architecture (before reading the diff)
 
@@ -104,7 +104,7 @@ Silent or partial failure paths are **always blocking**, even if they were overl
 ## Recording the decision
 
 - Mirror the review assessment, AC checklist, classified non-blocking findings, and human verdict into [`submission.md`](../../../specs/TEMPLATE/submission.md) (`## Discussion`), and record confirmed follow-up dispositions (`Filed`, `Duplicate of <id>`, `Folded into <id>`, `None owed`, `Declined`, or `Deferred` plus the non-blocking class tally) under `## Resolution -> Follow-ups created`.
-- `/cadence-review` appends the `code-review` `stage_effort` entry to `metadata.yaml`, accumulates `actual_effort`, and projects to the bound tracker (`CADENCE_ORG.md` §9). **Approving Gate 2 does not alter `metadata.yaml`'s `status`** — the ticket remains `in-review` until Merge (`07-merge.md`).
+- `/cadence-review` appends the `code-review` `stage_effort` entry to `metadata.yaml`, accumulates `actual_effort`, and projects to the bound tracker (`CADENCE_ORG.md#tracker-binding`). **Approving Gate 2 does not alter `metadata.yaml`'s `status`** — the ticket remains `in-review` until Merge (`07-merge.md`).
 
 ## What this gate is NOT
 

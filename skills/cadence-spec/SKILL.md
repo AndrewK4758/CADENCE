@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Glob Grep Bash Skill
 
 ## Task
 
-Author a complete engineering specification and Gherkin test plan for the triaged issue `$ticket_id`. Delegate divergent design exploration to `cadence-explorer` and specification authoring to the `cadence-spec-author` subagent.
+Author a complete engineering specification and Gherkin test plan for the triaged issue `$ticket_id`. Delegate divergent design exploration to `cadence-explorer`, structural/architectural pre-flight review (`tier: High` mandatory, `tier: Medium` opt-in) to `cadence-architect`, and specification authoring to the `cadence-spec-author` subagent.
 
 ## Prerequisites
 
@@ -27,9 +27,9 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
 ## Steps
 
-1. **Read the intake artifacts and run automatic local codebase discovery:**
+1. **Read the intake artifacts and run optional local codebase discovery:**
    - Read `specs/$ticket_id/problem.md` and `specs/$ticket_id/metadata.yaml`.
-   - **Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `repo-scout`).** Prior to broad repository file reads, automatically invoke `local_semantic_embed` (`top_k=6` on `:11434`) and/or `repo-scout` to map affected codebase symbols, cross-boundary contracts, CHORD seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`), and prior architecture records (`docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`). Forward the resulting symbol map and exact `file:line` references to `cadence-explorer` (Step 2) and `cadence-spec-author` (Step 3).
+   - **Optional Local Discovery Pre-Pass (`local_semantic_embed` / `repo-scout`, Cloud-Only Fallback).** Prior to broad repository file reads, when local offload (`:11434`) is reachable, invoke `local_semantic_embed` (`top_k=6` on `:11434`) and/or `repo-scout` to map affected codebase symbols, cross-boundary contracts, CHORD seams (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`), and prior architecture records (`docs/ADR/`, `docs/agentic-sdlc/intent-insights.md`), falling back cleanly to cloud-only `Grep`/`Glob` if unavailable. Forward the resulting symbol map and exact `file:line` references to `cadence-explorer` (Step 2) and `cadence-spec-author` (Step 3).
 
 2. **Explore the design space (mandatory independent pre-step).** Invoke the `cadence-explorer` subagent (`Deep-reasoning` tier, `xhigh` effort), which will:
    - Inspect `specs/$ticket_id/problem.md`, `specs/$ticket_id/metadata.yaml`, and the affected source files identified in Step 1
@@ -43,7 +43,9 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
    If `cadence-explorer` fails or is unavailable, **surface the failure** to the operator and **ask explicitly whether to proceed** without divergent exploration. Only if the operator confirms proceeding may `cadence-spec-author` record the explicit **not-performed marker** disclosing the skipped exploration in `spec.md`. **Never bypass Step 2 silently** — an undisclosed skip masquerades as a fully explored design.
 
-3. **Delegate to `cadence-spec-author` (`Deep-reasoning` tier, `xhigh` effort).** The subagent will:
+2.5. **Architectural pre-flight review (`cadence-architect` -- mandatory at `tier: High`, opt-in at `tier: Medium` per `docs/policies/change-tiers.md`).** Dispatch `cadence-architect` (`Deep-reasoning` tier, `xhigh` effort) after Step 2 exploration to check cross-boundary dependencies, contract compatibility, and failure modes before authoring converges. Pass all returned findings, Draft Contracts, and Open Questions into `cadence-spec-author` in Step 3; because `cadence-architect` is strictly headless, resolve any clarification questions it returns interactively with the operator here in `/cadence-spec` before final Gate 1 sign-off.
+
+3. **Delegate to `cadence-spec-author` (`Deep-reasoning` tier, `xhigh` effort).** Pass `specs/$ticket_id/problem.md`, `design-options.md`, and any Step 2.5 `cadence-architect` outputs. The subagent will:
    - Inspect all relevant source files and contracts surfaced in Step 1
    - Populate the Contextual Grounding Matrix (6W×4L) across What, How, Where, Who, When, and Why
    - Evaluate every mandatory Engineering Pillar (Structural Simplicity, Operational Resilience, Agentic Ergonomics, plus triggered Data & Audit Fidelity, Security Boundary Posture, and Surface Compatibility)
@@ -59,7 +61,7 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
    This deterministic structural gate — the specification counterpart to `/cadence-elicit`'s unfilled-probe grep — verifies that all required headings are present, every mandatory Engineering Pillar is evaluated, CHORD decompositions (`UNSOUND_CONDITION`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`) and Gherkin scenarios exist, and zero template placeholders remain unfilled.
 
-   - **Automatic Failure Triage (`offload_log_triage`).** Whenever `verify-spec.sh` exits **non-zero** (or emits multi-line failure output), automatically pass its output through `offload_log_triage` (`cwd="<repo-root>"`, preserving raw numbered lines in `/tmp/agy-last-triage.log`) to extract the verbatim failing check assertions and exact `file:line` coordinates. Return those failures to `cadence-spec-author`, then **re-run `verify-spec.sh` until exit 0.**
+   - **Optional Failure Triage (`offload_log_triage`).** Whenever `verify-spec.sh` exits **non-zero** (or emits multi-line failure output exceeding 30 lines) and local offload (`:11434`) is reachable, pass its output through `offload_log_triage` (`cwd="<repo-root>"`, preserving raw numbered lines in `/tmp/agy-last-triage.log`; otherwise inspect directly) to extract the verbatim failing check assertions and exact `file:line` coordinates. Return those failures to `cadence-spec-author`, then **re-run `verify-spec.sh` until exit 0.**
    - **`design-options.md` neutrality & completeness:** When `design-options.md` is present, `verify-spec.sh` also validates `Axis of variation`, all 6 required per-option bullets, non-empty `UNKNOWN` modes, and zero ranking leakage.
    - `WARN` diagnostics must be surfaced to the operator in Step 7 so Gate 1 verifies nothing was dropped.
 
@@ -91,8 +93,8 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
 6. **Update ticket metadata and project to tracker:**
    - Set `status: spec-in-review` in `specs/$ticket_id/metadata.yaml`
-   - **Record the spec stage effort** (`CADENCE_ORG.md` §12): invoke `(test -x ci-templates/scripts/stage-effort.sh && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage spec --observed <minutes>`, verify `0m` or a 15-minute multiple, and append to `stage_effort` + `actual_effort` using `date -u +%Y-%m-%dT%H:%M:%SZ`.
-   - Execute the repository's designated tracker sync skill (`CADENCE_ORG.md` §9) for `$ticket_id`.
+   - **Record the spec stage effort** (`CADENCE_ORG.md#actual-effort-accumulation`): invoke `(test -x ci-templates/scripts/stage-effort.sh && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage spec --observed <minutes>`, verify `0m` or a 15-minute multiple, and append to `stage_effort` + `actual_effort` using `date -u +%Y-%m-%dT%H:%M:%SZ`.
+   - Execute the repository's designated tracker sync skill (`CADENCE_ORG.md#tracker-binding`) for `$ticket_id`.
 
 7. **Report to the operator:**
    - Concise overview of the proposed architecture and CHORD decomposition
@@ -109,6 +111,6 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 ```
 
 ## Local Model Offload Integration (:11434)
-- Step 1 automatically invokes `local_semantic_embed` (`top_k=6` on `:11434`) to gather type signatures, cross-boundary contracts, and prior insights without polluting the primary context window.
-- Step 4 automatically pipes any `verify-spec.sh` or `verify-facts.sh` failure output through `offload_log_triage` (`cwd="<repo-root>"` on `:11434`) to extract verbatim `FAIL` assertions and `file:line` coordinates.
+- When `:11434` is reachable, Step 1 optionally invokes `local_semantic_embed` (`top_k=6` on `:11434`) to gather type signatures, cross-boundary contracts, and prior insights without polluting the primary context window (cloud `Grep`/`Glob` fallback when absent).
+- When `:11434` is reachable, Step 4 optionally pipes `verify-spec.sh` or `verify-facts.sh` failure output through `offload_log_triage` (`cwd="<repo-root>"` on `:11434`) to extract verbatim `FAIL` assertions and `file:line` coordinates.
 - Specification authoring, convergent judgment, and the Step 4.5 Adversarial Spec Challenge remain 100% owned by `Deep-reasoning` models (`effort: xhigh`, routed by `CADENCE_ORG.md#model-tier-mapping`).

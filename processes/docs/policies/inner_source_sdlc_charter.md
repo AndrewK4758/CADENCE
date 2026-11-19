@@ -95,7 +95,7 @@ For contributor onboarding, progression along the contribution ladder (Contribut
 
 ### AI Agent Roles
 
-AI agents execute within strictly bounded tool permissions (configured in `.agents/agents/` and `.agents/skills/`, or `.gemini/` on Antigravity) and generate draft artifacts and structured evaluations that require human sign-off at designated gates.
+AI agents execute within strictly bounded tool permissions (configured in `.agents/agents/` and `.agents/skills/`, projected to `.gemini/` / `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`) and generate draft artifacts and structured evaluations that require human sign-off at designated gates.
 
 | Agent | Purpose | Supports human role |
 |---|---|---|
@@ -114,7 +114,7 @@ Agents produce structured evidence and recommendations; accountable humans make 
 
 Work items originate from product roadmaps, user feedback, support trends, operational telemetry, regulatory changes, dependency upgrades, or internal engineering improvements. Every proposal enters the workflow as a traceable issue rather than an unrecorded chat request.
 
-During Phase 1, `cadence-triage-agent` (assisted by zero-VRAM local semantic search via `local_semantic_embed` and `repo-scout` when configured) classifies the incoming issue by type (`feature`, `bug`, `tech-debt`, `security`, `documentation`, `epic`), evaluates scope against `PROJECT_INTENT.md`, searches `specs/` and `archive/` for duplicates or prior art, and populates a structured problem statement. Every triaged item captures at minimum:
+During Phase 1, `cadence-triage-agent` (assisted by optional local semantic search via `local_semantic_embed` and `repo-scout` when `:11434` is configured) classifies the incoming issue by leaf type (`feature`, `bug`, `tech-debt`, `security`, `documentation`; `epic` is reserved for `/cadence-elicit` decomposition parents), evaluates scope against `PROJECT_INTENT.md`, searches `specs/` and `archive/` for duplicates or prior art, and populates a structured problem statement. Every triaged item captures at minimum:
 
 - Problem statement grounded in observable business context.
 - Affected users or stakeholders.
@@ -232,7 +232,7 @@ The `cadence-reviewer` agent (augmented by local pre-review mechanical checks vi
 Human reviewers at Gate 2 then focus on high-judgment dimensions that AI cannot replace — subtle production failure modes, domain nuances, concurrency hazards, and design maintainability. See [Human Gates & Governance](../agentic-sdlc/human-gates.md) for the complete human/AI division of labor. Minimum enterprise criteria for code review approval are:
 
 - Linked ticket and approved specification contract.
-- Green CI pipeline (build, lint, unit/integration/contract/chaos suites, and `run-gates.sh` where applicable).
+- Green CI pipeline (build, lint, unit/integration/contract/chaos suites, and installed governance checks where applicable).
 - Explicit approval by an authorized human reviewer.
 - Verified satisfaction of all acceptance criteria.
 - Compatibility sign-off whenever registered surfaces are touched.
@@ -319,12 +319,12 @@ Where appropriate, teams employ expand/contract schema migrations, feature flags
 
 ### Archive and Closed-Loop Governance
 
-Once a change merges to the integration branch, `cadence-archivist` (invoked via `/cadence-archive`) closes the governance loop:
+Once a change merges to the integration branch, `/cadence-archive` (with `cadence-archivist`) closes the governance loop:
 
-- Finalizes `submission.md` and moves the ticket's artifact directory from `specs/{ticket-id}/` to `archive/{ticket-id}/` alongside a generated `summary.md`.
-- Updates `CHANGELOG.md` in Keep a Changelog format.
+- Finalizes `submission.md` and moves the ticket's artifact directory from `specs/{ticket-id}/` to `archive/{ticket-id}/` alongside a generated `summary.md` (backfilling `merged_at` if unset).
+- Updates `CHANGELOG.md` in Keep a Changelog format and updates `Closed by:` on matching `production-insights.md` entries.
 - Disposes of `adr-owed` findings by authoring Architecture Decision Records under `docs/ADR/` and promotes reusable non-bug lessons to `docs/agentic-sdlc/intent-insights.md`.
-- Projects final `archived` status and accumulated stage effort to the bound external tracker (`CADENCE_ORG.md` §9).
+- Projects final `archived` status and accumulated stage effort to the bound external tracker (`CADENCE_ORG.md#tracker-binding`) via `/cadence-archive`.
 - Records total accumulated `actual_effort` across lifecycle stages for engineering capacity and capitalization reporting.
 
 This closed loop guarantees that every change shipped by the repository leaves a permanent, self-contained audit trail from initial intent through specification, TDD implementation, multi-gate review, release, and archival.
@@ -349,11 +349,11 @@ Whenever product, architecture, and engineering perspectives conflict, resolutio
 
 AI agents operate within a strictly enforced permission boundary. Agents perform automated drafting, analysis, implementation, and archival work in Phases 1, 2, 4, and 7, and supply structured review assessments in Phase 5. Agents are **never** authorized to act as the final approver for prioritization, specification sign-off (Gate 1), code review approval (Gate 2), maintainer acceptance (Gate 3), production release, or policy exceptions.
 
-Furthermore, local hardware coprocessor models (`gemma-4-e2b`, `gemma-4-12b`, `gemma-4-26b-a4b`, `nomic-embed-text` accessed via `local-offload` MCP tools and the `repo-scout` / `log-triage` subagents) operate strictly as **read-only coprocessors** (`enable_write_tools: false`): they accelerate semantic code discovery, test/build log triage, and mechanical pre-review checks while primary reasoning and all file writes remain exclusively with the primary reasoning model and human gates.
+Furthermore, local hardware coprocessor models (`embedding` and `inference` accessed via optional `local-offload` MCP tools on `:11434` and the `repo-scout` / `log-triage` subagents, with clean cloud-only fallback when absent) operate strictly as **read-only coprocessors** (`enable_write_tools: false`): they accelerate semantic code discovery, test/build log triage, and mechanical pre-review checks while primary reasoning and all file writes remain exclusively with the primary reasoning model and human gates.
 
 Every domain operating AI agents under this charter ensures that:
 
-- Agent tool permissions are declaratively scoped in `artifacts/` and compiled to `.agents/` (or `.gemini/`), never left unbounded.
+- Agent tool permissions are declaratively scoped in `.agents/` (and projected to `.gemini/` / `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`), never left unbounded.
 - Every agent action produces version-controlled, inspectable repository artifacts (`problem.md`, `spec.md`, `test-plan.md`, `decisions.md`, `submission.md`, `metadata.yaml`).
 - Human override and rejection paths are built into every gate.
 - Agent drift or recurring rejection patterns are treated as documentation/context defects and corrected at the source (`docs/guides/process-metrics.md`).
@@ -387,7 +387,7 @@ An engineering domain may declare full compliance with this charter once it has 
 - Populated surface registries (`docs/policies/surface-registry.md` alongside `docs/policies/cadence-surfaces.md`).
 - A normative deprecation policy (`docs/policies/deprecation-policy.md`) aligned with the enterprise baseline.
 - Active human review gates for Spec Approval (Gate 1), Code Review (Gate 2), Maintainer Acceptance (Gate 3), and Deploy Validation (Gate 4).
-- Compiled agent and skill definitions under `.agents/` (or `.gemini/`) with scoped permissions and pre-commit drift gates (`run-gates.sh`).
+- Canonical agent and skill definitions under `.agents/` (projected to `.gemini/` / `.claude/`) with scoped permissions and installed governance/verification checks (`/cadence-doctor`).
 - Regular triage, post-incident review, and metrics review cadences (`docs/agentic-sdlc/team-rituals.md`).
 - Documented contribution standards (`AGENTS.md` and `docs/guides/contributor_experience_guide.md`).
 

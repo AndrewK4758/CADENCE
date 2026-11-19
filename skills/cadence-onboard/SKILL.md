@@ -1,6 +1,6 @@
 ---
 name: cadence-onboard
-description: Consolidated repository onboarding workflow — install or link CADENCE governance artifacts (adopt-cadence.sh, optional --linked via link-sdlc.sh --replace), populate CADENCE_ORG.md bindings via /cadence-interview, and run /cadence-doctor --check-offload. Activate when setting up CADENCE in a new or copied repository.
+description: Consolidated repository onboarding workflow -- install or link CADENCE governance artifacts (adopt-cadence.sh, optional --linked via link-sdlc.sh --replace), populate Where/Who/Why constants via /cadence-interview plus Step 3b operator-confirmed CADENCE_ORG.md bindings, and run /cadence-doctor --check-offload. Activate when setting up CADENCE in a new or copied repository.
 argument-hint: "<target-repo-root> [--linked] [--gitignore-machinery] [--claude] [--opencode] [--blitz] [--skip-interview]"
 arguments: [target_and_flags]
 allowed-tools: Read Write Edit Glob Grep Bash Skill
@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Glob Grep Bash Skill
 
 # cadence-onboard
 
-Onboard a repository to CADENCE end-to-end in a single command (`adopt` -> optional `--linked` framework symlinks -> `/cadence-interview` -> `/cadence-doctor --check-offload`).
+Onboard a repository to CADENCE end-to-end in a single command (`adopt` -> optional `--linked` framework symlinks -> `/cadence-interview` + Step 3b bindings -> `/cadence-doctor --check-offload`).
 
 ## Prerequisites & Safety Refusals
 
@@ -37,11 +37,12 @@ When `--linked` is supplied (recommended for first-party repos referencing the c
    ```
 2. Verify `.agents/agents`, `.agents/skills`, `.agents/hooks`, and `.gemini/` resolve cleanly with zero broken symlinks, while keeping repo-owned files (`AGENTS.md`, `docs/agentic-sdlc/CADENCE_ORG.md`, `docs/policies/surface-registry.md`, `specs/`, `archive/`, `CHANGELOG.md`) untouched.
 
-### 3. Populate bindings interactively (`/cadence-interview`)
+### 3. Populate identity constants (`/cadence-interview`) and operational bindings
 
 Check `docs/agentic-sdlc/CADENCE_ORG.md` for unfilled `<placeholder>` markers or table cells.
-- Unless `--skip-interview` was passed, run `/cadence-interview` interactively to populate `#branch-strategy-binding`, `#version-scheme-binding`, `#tracker-binding`, `#id-allocation-binding`, and Where/Who/Why constants.
-- If non-interactive or `--skip-interview` is set, leave `<placeholder>` entries intact and list the remaining markers explicitly so the operator can finish `/cadence-interview` before `/cadence-define`.
+- **Step 3a (Where / Who / Why constants):** Unless `--skip-interview` was passed, run `/cadence-interview` interactively to populate repository identity constants (`Where`, `Who`, `Why`, test/surface commands).
+- **Step 3b (Operator-confirmed operational bindings):** Still inside `/cadence-onboard` (unless `--skip-interview` is set or running non-interactively), interactively confirm `#branch-strategy-binding`, `#version-scheme-binding`, `#tracker-binding`, and `#id-allocation-binding`, then validate the populated file via `org-binding-resolve.sh`.
+- If non-interactive or `--skip-interview` is set, leave `<placeholder>` entries intact and list the remaining markers explicitly so the operator can finish `/cadence-interview` and binding configuration before `/cadence-define`.
 
 ### 4. Health & offload verification (`/cadence-doctor --check-offload`)
 

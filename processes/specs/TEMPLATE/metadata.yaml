@@ -91,7 +91,7 @@
 
 id: "{TICKET-ID}"                           # Tracker ticket ID (e.g., PROJ-1234). Generated if not pre-existing.
 title: "{Short descriptive title}"
-type: feature                               # feature | bug | tech-debt | security | documentation
+type: feature                               # feature | bug | tech-debt | security | documentation | epic (epic is set when decomposed_into is populated)
 priority: medium                            # critical | high | medium | low
 status: draft                               # draft | triaged | spec-in-review | spec-approved | in-progress | in-review | merged | archived | cancelled
                                             # TICKET LIFECYCLE -- the workflow state of the TICKET,
@@ -242,7 +242,7 @@ affected_integrations:                      # External service dependencies invo
 # Populated when /cadence-elicit decomposes a ticket into smaller strong-signal problems. (PI-008-FB)
 
 decomposed_from: ""                         # Parent ticket id when this ticket was created as a decomposition child.
-decomposed_into: []                         # Child ticket ids when this ticket was decomposed (written all-or-nothing).
+decomposed_into: []                         # Child ticket ids when this ticket was decomposed (written all-or-nothing; sets `type: epic` on parent in the same edit).
 idempotency_key: ""                         # Opaque 12-hex sha256 prefix; triage's duplicate-detection key on re-run.
 
 # --- Traceability ---
@@ -293,18 +293,22 @@ spec_approved_at: ""
 implementation_started_at: ""
 review_started_at: ""
 maintainer_approved_at: ""
+# postponed_at: ""                          # Set by /cadence-maintain on Postpone (exact UTC date -u +%Y-%m-%dT%H:%M:%SZ)
+# postpone_reason: ""                       # Rationale when Postpone is recorded at Gate 3
+# rejected_at: ""                           # Set by /cadence-maintain on Reject (exact UTC date -u +%Y-%m-%dT%H:%M:%SZ)
+# rejection_reason: ""                      # Rationale when Reject is recorded at Gate 3
 merged_at: ""
 archived_at: ""
 
 # Release/deploy milestones (manual; record-only at v1 -- no agent sets these).
 # Distinct from `archived` (a process-terminal status). See PI-029.
-released_at: ""                             # Semver tag cut (/cadence-release pushed a vX.Y.Z tag).
+released_at: ""                             # Release tag cut (/cadence-release pushed annotated v<version> tag).
 deployed_at: ""                             # Running in production (manual-deploy milestone).
 
 # --- Observability (populated by triage agent for BUG type) ---
 
 # observability_category: ""               # LOGIC_FAULT | DELTA_AUDIT_GAP | DRIFT_SIGNAL | BOUNDARY_FAULT
-# observability_chord_dimension: ""        # State | Constraints | Outputs | Updates | Triggers
+# observability_chord_dimension: ""        # Conditions | Handling | Outcomes | Rules | Deltas
 # production_insight_id: ""                # PROD-{NNN} reference in docs/agentic-sdlc/production-insights.md
 # related_insights: []                     # Prior PROD entries for same component (e.g., ["PROD_CADENCE-001", "PROD_CADENCE-003"])
 

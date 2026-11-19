@@ -84,6 +84,6 @@ if [ "$is_agy" -eq 1 ]; then
   exit 0
 fi
 
-agent_msg="The metadata.yaml for ${ticket} (${norm}) just changed. Per CADENCE_ORG.md §9 tracker binding, project this metadata.yaml change to the bound tracker in the current session."
+agent_msg="The metadata.yaml for ${ticket} (${norm}) just changed. Per CADENCE_ORG.md#tracker-binding, project this metadata.yaml change to the bound tracker in the current session."
 python3 -c 'import json,sys; m=sys.argv[1]; print(json.dumps({"systemMessage":m,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":m}}))' "$agent_msg"
 exit 0

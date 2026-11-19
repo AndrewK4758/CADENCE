@@ -172,4 +172,24 @@ grep -q '^decision=PROCEED tier=high stage=implement grade=VERIFIED layer=1+2' <
 out10c="$(run_gate 2 --base trunk --stage review ACME-111)"
 grep -q 'ESCALATE cycle_oscillation submission.md' <<<"$out10c"
 
-echo "PASS: test-certainty-gate (all 10 scenarios)"
+# 11. Bold Failure modes (UNKNOWN) + Additional Pillars #### boundary + Pillar 6 Security Boundary Posture
+mkdir -p "$TMP/specs/ACME-203"
+printf 'id: ACME-203\ntier: High\nstatus: spec-in-review\n' > "$TMP/specs/ACME-203/metadata.yaml"
+printf '# ACME-203\n## Acceptance Criteria\n- [ ] AC-1\n' > "$TMP/specs/ACME-203/problem.md"
+printf '## Option A\n- **Failure modes (UNKNOWN):** Retry backoff race\n' > "$TMP/specs/ACME-203/design-options.md"
+sed 's/ACME-202/ACME-203/g' "$TMP/specs/ACME-202/spec.md" | sed '/Security Boundary Posture/{n;s/.*/Active -- validated./}' > "$TMP/specs/ACME-203/spec.md"
+out11a="$(run_gate 2 --base trunk --stage spec ACME-203)"
+grep -q 'ESCALATE unmapped_unknowns spec.md' <<<"$out11a"
+cat > "$TMP/src/alpha.py" <<'PY'
+def verify_jwt_session(token):
+    return bool(token)
+PY
+printf '\n### Additional Pillars\n\n#### Custom Non-Security Pillar\nDormant -- not applicable.\n\n#### Security Boundary Posture\nActive -- auth verified.\n' >> "$TMP/specs/ACME-203/spec.md"
+out11b="$(run_gate 0 --base trunk --stage review ACME-203)"
+grep -q '^decision=PROCEED ' <<<"$out11b"
+sed -i '/^#### Security Boundary Posture/{n;s/.*/Not triggered/}' "$TMP/specs/ACME-203/spec.md"
+out11c="$(run_gate 1 --base trunk --stage review ACME-203)"
+grep -q 'HALT dormant_security_contradicted spec.md' <<<"$out11c"
+git -C "$TMP" checkout -- src/alpha.py
+
+echo "PASS: test-certainty-gate (all 11 scenarios)"

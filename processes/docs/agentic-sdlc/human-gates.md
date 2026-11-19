@@ -136,7 +136,7 @@ The derived label never blocks progression — it provides an objective audit tr
 
 #### What the AI already did
 
-Prior to your review, the local pre-review sweep (`offload_deep_review` on `:11434`) and the `cadence-reviewer` agent have already:
+Prior to your review, the optional local pre-review sweep (`offload_deep_review` on `:11434`, falling back to direct inspection when absent) and the `cadence-reviewer` agent have already:
 - Verified every acceptance criterion against its production code implementation
 - Checked automated test coverage against every Gherkin scenario in `test-plan.md` (or against `problem.md` acceptance criteria at Low tier, per `docs/policies/change-tiers.md`)
 - Audited adherence to Contextual Grounding constraints and CADENCE Engineering Pillars (`<400`-line file ceiling, comment discipline, structured logging, audit trail coverage, CHORD observability seams)
@@ -276,7 +276,7 @@ Edit the template files under `specs/TEMPLATE/`. All CADENCE agents read these t
 
 ### Tuning Agent Behavior
 
-Agent definitions in `.agents/agents/{agent-name}/AGENT.md` (and projected runtime trees such as `.gemini/` or `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`) are compiled from the runtime-neutral source under `artifacts/roles/{agent-name}/` via `ci-templates/scripts/cadence-compile.sh`. Edit the neutral source under `artifacts/roles/` and recompile. Key tuning points per role:
+Agent definitions in `.agents/agents/{agent-name}/agent.md` (canonical source of record, projected to `.gemini/` or `.claude/` via `import/link-sdlc.sh` and runtime adapters per `docs/policies/cli-runtime-adoption-policy.md`) are edited directly in `.agents/agents/` (never fork `.gemini/` or `.claude/`). Key tuning points per role:
 
 - **`cadence-explorer`:** Tune the number of required options, structural distinctness rules, and `UNKNOWN` failure-mode labeling — while preserving the strict no-ranking rule that guarantees independent exploration
 - **`cadence-spec-author`:** Adjust workflow step ordering, add domain-specific modeling rules, or tune pillar evaluation depth
@@ -286,11 +286,11 @@ Agent definitions in `.agents/agents/{agent-name}/AGENT.md` (and projected runti
 - **`cadence-maintainer`:** Adjust the 8 assessment dimensions, charter-enforcement rules, and post-decision actions
 - **`cadence-migration-author`:** Customize ORM/database discovery and expand/contract safety checks
 - **`cadence-triage-agent`:** Adjust classification heuristics, scope sizing rules, and tracker seed-read handling
-- **`cadence-archivist`:** Customize ADR promotion criteria, insight extraction, and external tracker sync hooks
+- **`cadence-archivist`:** Customize ADR promotion and insight extraction criteria (post-return tracker sync is invoked by `/cadence-archive`)
 
 ### Adding a New Skill
 
-Author the neutral command source under `artifacts/commands/{skill-name}/` and compile to `.agents/skills/{skill-name}/SKILL.md` (or create a project-local skill in `.agents/skills/{skill-name}/SKILL.md`) with standard YAML frontmatter:
+Author new skills directly under `.agents/skills/{skill-name}/SKILL.md` (canonical CLI-neutral source of record, projected to `.gemini/` or `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`) with standard YAML frontmatter:
 
 ```yaml
 ---

@@ -56,15 +56,17 @@ Treat every assumption of the form *"safe because caller/middleware/DB validates
 - **Trigger Basis:** {tier + signals from security-trigger.sh}
 - **Domains Audited:** AuthN/AuthZ | Secrets/PII | Injection/Boundary | Concurrency/Atomicity | Fail-Open/Tests
 
-### Findings
-- **[BLOCKING]** `{file:line}` (Position {1|2|3|4}): {vulnerability/race + exact exploit or interleaving sequence}
-  - *Remedy:* {concrete minimal fix}
-- **[NON-BLOCKING]** [`{out-of-scope-defect|adr-owed|nit|hygiene|observation}`] `{file:line}`: {finding + remedy}
+### Blocking Findings
+1. `{file:line}` (Position {1|2|3|4}): {vulnerability/race + exact exploit or interleaving sequence}
+   - *Remedy:* {concrete minimal fix}
+
+### Non-Blocking Findings
+1. [<class>] `{file:line}` -- {finding + remedy}
 ```
 
 ## Constraints
 
 - **Strictly read-only:** Never edit files, stage changes, run commits, or invoke `git` write operations. Return findings to `/cadence-review` for Step 5 `submission.md` persistence (and `cadence-implementer` worktree remediation when requested).
-- **Mandatory `finding-classes.md` labels:** Every non-blocking finding MUST carry exactly one lowercase class token (`out-of-scope-defect`, `adr-owed`, `nit`, `hygiene`, `observation`).
+- **Mandatory `finding-classes.md` labels:** Every non-blocking finding MUST follow `docs/policies/finding-classes.md` format (`N. [<class>] <location> -- <description>` with a single lowercase token: `out-of-scope-defect`, `adr-owed`, `nit`, `hygiene`, or `observation`, and zero uppercase `[NON-BLOCKING]` prefix).
 - **Proof-first reporting:** Never flag hypothetical generic advice ("consider adding WAF"); cite exact `file:line`, concrete attack/race mechanics, or falsified invariants.
-- **Coprocessor independence:** `offload_deep_review` output is purely advisory; verify every finding directly in source before reporting. Route verbose test/tool output (`>30` lines) via `offload_log_triage` / `log-triage` on `:11434`.
+- **Coprocessor independence:** Optional `offload_deep_review` and `offload_log_triage` (`:11434`, cloud fallback when absent) are purely advisory; verify every finding directly in source before reporting.

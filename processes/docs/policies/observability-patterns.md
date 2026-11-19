@@ -248,13 +248,13 @@ seam_boundary_fault_total{service, component, violated_seam, violation_type}
 
 ---
 
-## Automatic Local Offload Verification across Workflow Stages
+## Optional Local Offload Verification across Workflow Stages (:11434, Cloud Fallback)
 
-CADENCE weaves read-only local model offloading (`local-offload` MCP server and `repo-scout` / `log-triage` subagents) directly into the lifecycle of CHORD observability seams so that seam discovery, TDD verification, and pre-review auditing happen automatically at near-zero latency:
+When local offload (`:11434`) is reachable, CADENCE uses read-only local model offloading (`local-offload` MCP server and `repo-scout` / `log-triage` subagents, degrading cleanly to cloud-only inspection/review when offline) to streamline CHORD observability seam discovery, TDD verification, and pre-review auditing:
 
-1. **Triage & Spec Discovery (`01-triage`, `02-spec`):** `cadence-triage-agent` and `cadence-spec-author` invoke `repo-scout` and `local_semantic_embed` (`local-embed-cpu` on Ryzen 9 9955HX3D at 0 MB VRAM) to semantically search `docs/agentic-sdlc/production-insights.md`, `docs/baselines/`, and existing `UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, and `BOUNDARY_FAULT` emitters across the codebase before drafting `OS-{N}` seam specifications.
-2. **Implementation TDD Verification (`04-implementation`):** When `cadence-implementer` runs the red-green-accumulate test loop for `OS-{N}` seam scenarios, it delegates test runner log capture to `log-triage` / `offload_log_triage` (`local-fast-cpu`). The local coprocessor extracts verbatim assertion failures, structured JSON log emissions, and `file:line` coordinates while writing the complete raw output to `/tmp/agy-last-triage.log`.
-3. **Pre-Review Mechanical Seam Audit (`05-code-review`, `06-maintainer-acceptance`):** Before `cadence-reviewer` and `cadence-maintainer` issue gate assessments, `offload_deep_review` (`local-moe-hybrid` / `local-12b-gpu`) performs an advisory mechanical scan of the diff against `spec.md` to confirm every declared CHORD seam (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`) is wired with all required correlation fields and paired with positive and negative test scenarios.
+1. **Triage & Spec Discovery (`01-triage`, `02-spec`):** When `:11434` is reachable, `cadence-triage-agent` and `cadence-spec-author` use `repo-scout` (`inference`) and `local_semantic_embed` (`embedding`) to semantically search `docs/agentic-sdlc/production-insights.md`, `docs/baselines/`, and existing `UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, and `BOUNDARY_FAULT` emitters across the codebase before drafting `OS-{N}` seam specifications.
+2. **Implementation TDD Verification (`04-implementation`):** When `cadence-implementer` runs the red-green-accumulate test loop for `OS-{N}` seam scenarios and `:11434` is reachable, it routes >30-line / failing test runner logs through `log-triage` / `offload_log_triage` (`inference` on `:11434`). The local coprocessor extracts verbatim assertion failures, structured JSON log emissions, and `file:line` coordinates while writing complete raw output to `/tmp/agy-last-triage.log`.
+3. **Pre-Review Mechanical Seam Audit (`05-code-review`, `06-maintainer-acceptance`):** Before `cadence-reviewer` and `cadence-maintainer` issue gate assessments (when `:11434` is reachable), `offload_deep_review` (`inference` on `:11434`) performs an advisory mechanical scan of the diff against `spec.md` to confirm every declared CHORD seam (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`) is wired with required correlation fields and paired with positive and negative test scenarios.
 
 ---
 

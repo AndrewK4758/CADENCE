@@ -45,7 +45,7 @@ Unless `status == merged` already:
 1. Invoke `/cadence-merge <TICKET-ID> --no-archive`:
    - Resolves `#branch-strategy-binding` dynamically (`integration-branch`, never hardcoded `main`/`develop`).
    - Rebases cleanly if needed, re-runs tests (routing >30 lines or errors through `offload_log_triage` on `:11434`), and runs `offload_deep_review` when resolving non-trivial conflicts.
-   - Merges cleanly without `--no-verify`, sets `status: merged` + exact UTC `merged_at`, syncs the bound tracker (`CADENCE_ORG.md#tracker-binding`), and cleans up temporary worktree state.
+   - Merges cleanly without `--no-verify`, fast-forwards local `<integration-branch>` (`--ff-only`) without pushing direct commits onto protected `<integration-branch>`, projects `merged` status to the bound tracker (`CADENCE_ORG.md#tracker-binding`), and cleans up temporary worktree state (`/cadence-archive` persists `merged_at` if unset alongside `status: archived`).
 
 ### 4. Archival & Inbound Citation Sweep (`/cadence-archive`)
 

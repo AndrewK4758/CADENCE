@@ -8,15 +8,15 @@ allowed-tools: Read Write Edit Glob Grep Bash Skill
 
 # cadence-watch
 
-Monitor open `spec_mr` / `merge_request` / `triage_mr` threads on GitHub (`gh`) or GitLab (`glab`) plus inbound comments on the bound external tracker (`CADENCE_ORG.md` §9: Jira Server/DC or YouTrack Server), mirror unseen feedback into `specs/<TICKET-ID>/submission.md`, and advance or remediate the ticket strictly within approved scope while preserving every mandatory CADENCE human gate.
+Monitor open `spec_mr` / `merge_request` / `triage_mr` threads on GitHub (`gh`) or GitLab (`glab`) plus inbound comments on the bound external tracker (`CADENCE_ORG.md#tracker-binding`: Jira Server/DC or YouTrack Server), mirror unseen feedback into `specs/<TICKET-ID>/submission.md`, and advance or remediate the ticket strictly within approved scope while preserving every mandatory CADENCE human gate.
 
-> **Shared State & Isolation Contract:** Always inspect ticket state and poll external sources via `pr_watch.py` (using byte-identical `read_state.py` and `CADENCE_ORG.md` §15 `integration-branch`, never hardcoded `main`/`develop`). Never parse `metadata.yaml` by hand, never self-merge an unmerged PR, and never mutate files under `--dry-run`.
+> **Shared State & Isolation Contract:** Always inspect ticket state and poll external sources via `pr_watch.py` (using byte-identical `read_state.py` and `CADENCE_ORG.md#branch-strategy-binding` `integration-branch`, never hardcoded `main`/`develop`). Never parse `metadata.yaml` by hand, never self-merge an unmerged PR, never commit directly onto a protected `<integration-branch>`, and never mutate files under `--dry-run`.
 
-## Step 0 — Automatic Local Offload (`:11434`)
+## Step 0 — Optional Local Offload (:11434, Cloud-Only Fallback)
 
-1. **Failure & CI Log Compaction (`offload_log_triage`):** Pipe `ci_failed` run logs (`gh run view --log-failed` / `glab ci trace`) and any failing verification/test output >30 lines through `offload_log_triage` (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`).
-2. **Pre-Push Mechanical Diff Scan (`offload_deep_review`):** Before pushing remediation commits on `merge_request`, invoke `offload_deep_review(diff_range="<integration-branch>...HEAD", cwd="<worktree-root>")` to verify `<400`-line file ceilings, comment discipline, and CHORD seams.
-3. **Semantic Grounding & Dedupe (`local_semantic_embed` / `repo-scout`):** Use `local_semantic_embed` (`embedding` on `:11434`) when grounding reviewer questions in `specs/`, `archive/`, or codebase symbols, or checking non-blocking follow-up candidates.
+1. **Failure & CI Log Compaction (`offload_log_triage`):** When `:11434` is reachable, pipe `ci_failed` run logs (`gh run view --log-failed` / `glab ci trace`) and any failing verification/test output >30 lines through `offload_log_triage` (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`; else inspect directly).
+2. **Pre-Push Mechanical Diff Scan (`offload_deep_review`):** When `:11434` is reachable, before pushing remediation commits on `merge_request`, invoke `offload_deep_review(diff_range="<integration-branch>...HEAD", cwd="<worktree-root>")` to verify `<400`-line file ceilings, comment discipline, and CHORD seams.
+3. **Semantic Grounding & Dedupe (`local_semantic_embed` / `repo-scout`):** When `:11434` is reachable, use `local_semantic_embed` (`embedding` on `:11434`) when grounding reviewer questions in `specs/`, `archive/`, or codebase symbols, or checking non-blocking follow-up candidates (falling back to `Grep`/`Glob` when offline).
 
 ## Step 1 — Poll Forge & Bound Tracker (`pr_watch.py`)
 
@@ -29,7 +29,7 @@ python3 .agents/skills/cadence-watch/scripts/pr_watch.py <TICKET-ID-OR---all> \
 || python3 skills/cadence-watch/scripts/pr_watch.py <TICKET-ID-OR---all> ...
 ```
 
-- **Exit `2` (`cadence-watch.halt`):** Halt immediately and surface the stderr diagnostic verbatim (missing `gh`/`glab`, broken §9 binding, missing tracker auth env when `--no-tracker` is omitted, or ticket-ID case mismatch). Never expose `JIRA_PAT` / `YOUTRACK_TOKEN` values or `sign=` URLs.
+- **Exit `2` (`cadence-watch.halt`):** Halt immediately and surface the stderr diagnostic verbatim (missing `gh`/`glab`, broken `#tracker-binding`, missing tracker auth env when `--no-tracker` is omitted, or ticket-ID case mismatch). Never expose `JIRA_PAT` / `YOUTRACK_TOKEN` values or `sign=` URLs.
 - **No-op states (`event=idle`, `already_archived`, `no_active_prs`, `timeout`):** Clean up `"$SNAP"`, report the concise summary, and stop cleanly with zero file writes or git mutations.
 - **Under `--dry-run`:** Classify and present every detected event and proposed action, clean up `"$SNAP"`, and stop without mirroring, editing, dispatching, replying, or writing watermarks.
 
@@ -54,12 +54,12 @@ Evaluate the classified `event` and `pr_kind` (for `--all`, process each actiona
 ### 1. `event=merged` on `spec_mr` or `triage_mr`
 1. Fetch and fast-forward pull `<integration-branch>` (`git fetch origin <integration-branch>`; pull local `<integration-branch>` if safe).
 2. Confirm the approved contract landed (`git ls-tree origin/<integration-branch> specs/<TICKET-ID>/spec.md` for Medium/High; `problem.md` for Low/Trivial). If absent, **halt** citing missing landed artifact.
-3. Run Step 4 watermark `--ack` first, then invoke `/cadence-build <TICKET-ID>` (honoring `CADENCE_ORG.md` §13 sprint enforcement and worktree isolation).
+3. Run Step 4 watermark `--ack` first, then invoke `/cadence-build <TICKET-ID>` (honoring `CADENCE_ORG.md#sprint-enforcement-binding` and worktree isolation).
 
 ### 2. `event=merged` on `merge_request`
-1. Fetch `<integration-branch>` (`git fetch origin <integration-branch>`) and confirm the merge commit is reachable on `origin/<integration-branch>` (updating local `<integration-branch>` via `--ff-only` when clean).
-2. If `specs/<TICKET-ID>/metadata.yaml` does not yet record `status: merged` and `merged_at`, set `status: merged` and `merged_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"`, invoke the bound §9 tracker sync skill once, and safely remove the merged ticket worktree/branch (`git worktree remove` + `git branch -d`, never `git branch -D` unverified).
-3. Run Step 4 watermark `--ack`, invoke `/cadence-archive <TICKET-ID>` (pausing cleanly at any human-gated `adr-owed`, follow-up, or dead-citation disposition), and run `bash .agents/skills/cadence-doctor/doctor.sh --ticket <TICKET-ID> || bash skills/cadence-doctor/doctor.sh --ticket <TICKET-ID>`.
+1. Fetch `<integration-branch>` (`git fetch origin <integration-branch>`), confirm the merge commit is reachable on `origin/<integration-branch>`, and cleanly fast-forward local `<integration-branch>` (`git pull --ff-only origin <integration-branch>`).
+2. **Do not push direct `metadata.yaml` commits onto a protected `<integration-branch>`.** Invoke the bound `CADENCE_ORG.md#tracker-binding` sync skill once to project `merged`, and safely remove the merged ticket worktree/branch (`git worktree remove` + `git branch -d`, never `git branch -D` unverified).
+3. Run Step 4 watermark `--ack`, invoke `/cadence-archive <TICKET-ID>` (which persists `merged_at` from the merge commit/forge PR if unset alongside `status: archived` inside its `archive/{type}/{id}` PR, pausing cleanly at any human-gated `adr-owed`, follow-up, or dead-citation disposition), and run `bash .agents/skills/cadence-doctor/doctor.sh --ticket <TICKET-ID> || bash skills/cadence-doctor/doctor.sh --ticket <TICKET-ID>`.
 
 ### 3. `event=changes_requested` or `event=comments_new`
 Classify **every** unseen item against the ticket's approved `tier`, `problem.md`, `spec.md`, and ratified `decisions.md` Gate 1 rulings before editing any code or spec:
@@ -70,12 +70,12 @@ Classify **every** unseen item against the ticket's approved `tier`, `problem.md
   1. Check `ledger_cycles_completed` from Step 1. If `>= 4` (or `cycle_cap_reached=true`), **HALT and prompt the operator** — never self-authorize a 5th cycle.
   2. Resume the ticket's isolated worktree (never spawn a new worktree from a stale ref when the existing branch already carries commits).
   3. Execute the BDD fix via `/cadence-implement <TICKET-ID>` (or `cadence-implementer`), verify `verify-facts.sh --trace <TICKET-ID>`, run Step 0 `offload_deep_review`, and re-run `/cadence-review <TICKET-ID>` (incrementing `<!-- cadence-run:cycle ... -->` when a full review cycle runs).
-  4. Push updated commits to the PR branch, reply on the PR (`gh pr comment` / `glab mr note`) tagged `<!-- cadence-watch:reply for=<id> -->`, and note resolution on the tracker only if the comment originated from Jira/YouTrack (respecting `CADENCE_ORG.md` §9 one-directional sync rules).
-- **Question / clarification:** Ground the answer directly in the codebase, `spec.md`, and `decisions.md` (via `local_semantic_embed` / `read_file`), and post a concise reply tagged `<!-- cadence-watch:reply for=<id> -->`. If policy/product judgment is uncertain, halt and ask the human.
+  4. Push updated commits to the PR branch, reply on the PR (`gh pr comment` / `glab mr note`) tagged `<!-- cadence-watch:reply for=<id> -->`, and note resolution on the tracker only if the comment originated from Jira/YouTrack (respecting `CADENCE_ORG.md#tracker-binding` one-directional sync rules).
+- **Question / clarification:** Ground the answer directly in the codebase, `spec.md`, and `decisions.md` (via `local_semantic_embed` when `:11434` is reachable, or `read_file`), and post a concise reply tagged `<!-- cadence-watch:reply for=<id> -->`. If policy/product judgment is uncertain, halt and ask the human.
 - **Non-blocking out-of-scope observation:** Mirror in `submission.md` `## Discussion` tagged with explicit finding class (`[out-of-scope-defect]`, `[nit]`, `[hygiene]`, `[observation]`, `[adr-owed]`) for disposition at the next human gate (`followup-disposition.md`).
 
 ### 4. `event=ci_failed`
-Inspect failing checks (`gh pr checks` / `gh run view --log-failed` or `glab ci trace`) piped through `offload_log_triage` (`:11434`). If caused by an in-scope code, test, or lint defect (and `ledger_cycles_completed < 4`), fix in the ticket worktree, re-run verification + `offload_deep_review`, and push; halt loudly on external infra outages or cycle cap `>= 4`.
+Inspect failing checks (`gh pr checks` / `gh run view --log-failed` or `glab ci trace`), piping logs >30 lines through `offload_log_triage` when `:11434` is reachable. If caused by an in-scope code, test, or lint defect (and `ledger_cycles_completed < 4`), fix in the ticket worktree, re-run verification + optional `offload_deep_review`, and push; halt loudly on external infra outages or cycle cap `>= 4`.
 
 ### 5. `event=approved` (unmerged)
 **Never self-merge silently.**

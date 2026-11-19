@@ -10,7 +10,7 @@ allowed-tools: Read Edit Bash
 
 Walk the adopter interactively through populating `<placeholder>` value cells in their live `docs/agentic-sdlc/CADENCE_ORG.md` **Contextual Grounding Matrix (6W×4L) Where/Who/Why tables**, presenting 3 evidence-backed candidate values alongside `N/A` and a custom free-text option for each row, and applying all selected values in a single atomic edit. Supplying `--re-interview` re-opens **every** row in those three tables rather than only unfilled placeholders.
 
-This skill conducts the interactive session directly within the invoking turn without subagent delegation for the conversation itself, completing in a single turn (matching `/cadence-elicit`). Its write scope is strictly restricted to the Where/Who/Why value cells; it never modifies the operational binding sections (§7–§15) and never touches `CADENCE_ORG_TEMPLATE.md` (which remains an upstream-owned reference template).
+This skill conducts the interactive session directly within the invoking turn without subagent delegation for the conversation itself, completing in a single turn (matching `/cadence-elicit`). Its write scope is strictly restricted to the Where/Who/Why value cells; it never modifies the operational binding sections (configured separately via `/cadence-onboard` Step 3b: `#tracker-binding`..`#worklog-attribution-split`) and never touches `CADENCE_ORG_TEMPLATE.md` (which remains an upstream-owned reference template).
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ Before presenting any prompts, verify:
 
 ### 2. Scan the Where/Who/Why tables
 
-Read `docs/agentic-sdlc/CADENCE_ORG.md`. Locate the single `## ...Pre-Filled Contextual Grounding Constants` H2 section and, beneath it, the three H3 tables whose headings start with **Where**, **Who**, and **Why**. Those three tables constitute the **entire** target scope. Any `<...>` angle-bracket token appearing **anywhere else** in the document — whether inside a binding section (§7–§15) or another table — is **never prompted and never modified**; all other sections remain byte-identical.
+Read `docs/agentic-sdlc/CADENCE_ORG.md`. Locate the single `## ...Pre-Filled Contextual Grounding Constants` H2 section and, beneath it, the three H3 tables whose headings start with **Where**, **Who**, and **Why**. Those three tables constitute the **entire** target scope. Any `<...>` angle-bracket token appearing **anywhere else** in the document — whether inside an operational binding section (`#tracker-binding`..`#worklog-attribution-split`) or another table — is **never prompted and never modified**; all other sections remain byte-identical.
 
 Within each data row, the **key** is the first table column (whitespace-trimmed, case-sensitive) and the **value** is the second table column; the Where table's third **Notes** column is preserved intact. A **placeholder** is defined as a value cell whose trimmed content matches an `<...>` angle-bracket token (following the `CADENCE_ORG_TEMPLATE.md` convention shared with the BTG-048 org-fold normalizer).
 
@@ -37,7 +37,7 @@ In **default mode**, select only rows whose value cell currently holds a placeho
 
 ### 3. Gather repository evidence via local offload and offer candidates per selected row
 
-Before formulating candidates for the selected rows, **automatically invoke `local_semantic_embed` (`embedding` on `:11434`) / `repo-scout` (`inference` on `:11434`)** to gather concrete repository evidence (scanning CI/CD workflows, deployment manifests, VCS/remote configuration, authentication/IdP references, branch protection rules, and already-populated cells in `CADENCE_ORG.md` and `PROJECT_INTENT.md`).
+Before formulating candidates for the selected rows, when `:11434` is reachable, invoke `local_semantic_embed` (`embedding` on `:11434`) / `repo-scout` (`inference` on `:11434`) to gather concrete repository evidence (cloud-only `Grep`/`Glob` fallback when absent), scanning CI/CD workflows, deployment manifests, VCS/remote configuration, authentication/IdP references, branch protection rules, and already-populated cells in `CADENCE_ORG.md` and `PROJECT_INTENT.md`.
 
 Using that gathered evidence, derive **3** candidate answers per selected row, explicitly tagging each candidate as **Observed**, **Inferred**, or **Unknown** (following the architect evidence discipline — never invent false-confident citations). Present the following options for each selected row:
 
@@ -74,8 +74,8 @@ Immediately after applying the atomic edit, **re-read `docs/agentic-sdlc/CADENCE
 
 - **Residual-placeholder invariant** — every value cell that the operator **chose to populate** contains **zero** `<...>` angle-bracket markers (residual placeholder count = 0 across filled cells). Any cell the operator **intentionally skipped** (leaving it as a placeholder) is **explicitly listed by name** as left-as-placeholder — treated as an intentional skip rather than structural corruption.
 - **Row-count invariant** — the total row count of each of the Where, Who, and Why tables is **identical before and after the edit**.
-- **Scope-containment invariant** — only second-column value cells in Where/Who/Why changed; every single byte of the operational binding sections (§7–§15) remains **completely unchanged**.
+- **Scope-containment invariant** — only second-column value cells in Where/Who/Why changed; every single byte of the operational binding sections remains **completely unchanged**.
 
 When all three invariants hold, print the completion summary: rows filled, rows intentionally left as placeholder (named), `N/A` count, and explicit confirmation that "row counts preserved" and "binding sections unchanged".
 
-If **structural damage** is detected — such as a table row **added or removed**, a value written into the **wrong column**, or **any** byte modification inside §7–§15 — **halt loud** (`UNSOUND_CONDITION`): report the exact invariant violated and the affected table/row, and instruct the operator to run `git checkout -- docs/agentic-sdlc/CADENCE_ORG.md` to restore the tracked file from git. Never report success when the post-write self-check fails.
+If **structural damage** is detected — such as a table row **added or removed**, a value written into the **wrong column**, or **any** byte modification inside the operational binding sections — **halt loud** (`UNSOUND_CONDITION`): report the exact invariant violated and the affected table/row, and instruct the operator to run `git checkout -- docs/agentic-sdlc/CADENCE_ORG.md` to restore the tracked file from git. Never report success when the post-write self-check fails.

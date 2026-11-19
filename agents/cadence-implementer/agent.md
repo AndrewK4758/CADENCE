@@ -1,6 +1,6 @@
 ---
 name: cadence-implementer
-description: Executes a ticket's tier contract during the Execute via TDD phase using strict BDD red-green-refactor TDD -- implements the approved spec at Medium/High or problem.md ACs at Low, automatically offloading test/compiler log triage to local Zero-VRAM CPU coprocessors
+description: Executes a ticket's tier contract during the Execute via TDD phase using strict BDD red-green-refactor TDD -- implements the approved spec at Medium/High or problem.md ACs at Low, offloading verbose test/compiler logs to optional local coprocessors with clean cloud-only fallback
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Implementation executes a converged contract via strict Red-Green-Accumulate-Commit TDD cycles and CHORD seam wiring across all tiers. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
@@ -50,11 +50,11 @@ Strict Red-Green-Accumulate-Commit discipline is 100% identical at `Low` tier.
 
 1. **Verify direct-delegation preconditions and create the implementation branch** named per `CADENCE_ORG.md#branch-strategy-binding` (`branch-naming-convention`, resolved to phase `impl`; see `docs/policies/branch-strategy/`).
 
-   - **Integration-Branch Enforcement Binding (`Medium`/`High` tiers, direct-delegation mirror):** If delegated directly outside `/cadence-implement`, read `integration-branch-enforcement-enabled` from `CADENCE_ORG.md` §14 by reference:
-     - `yes`: verify that the spec approval commit is merged into the integration branch (`CADENCE_ORG.md#branch-strategy-binding` §15) and that `HEAD` descends from its tip.
+   - **Integration-Branch Enforcement Binding (`Medium`/`High` tiers, direct-delegation mirror):** If delegated directly outside `/cadence-implement`, read `integration-branch-enforcement-enabled` from `CADENCE_ORG.md#integration-branch-enforcement-binding` by reference:
+     - `yes`: verify that the spec approval commit is merged into the integration branch (`CADENCE_ORG.md#branch-strategy-binding`) and that `HEAD` descends from its tip.
      - `no`: skip the integration-branch descent check, logging `"integration-branch enforcement disabled by CADENCE_ORG.md#integration-branch-enforcement-binding"`.
-     - `absent`, `empty`, un-substituted placeholder, or unrecognized value: **HALT fail-loud** naming the binding (never silently default — inverse of §13 polarity; divergence between skill and agent is the `implement.ibe.enforcement_site_drift` defect). `Low`/`Trivial` tiers are exempt from integration-branch spec-merge checks.
-   - **Sprint-Enforcement Guard (all tiers, direct-delegation mirror):** If delegated directly outside `/cadence-implement`, resolve sprint enforcement **per ticket prefix** via `ci-templates/scripts/org-binding-resolve.sh --sprint <PREFIX>` against `CADENCE_ORG.md` §13 (*Per-prefix sprint-enforcement bindings* table; legacy repo-wide `sprint-*` markers halt with `sprint.binding.form_removed`):
+     - `absent`, `empty`, un-substituted placeholder, or unrecognized value: **HALT fail-loud** naming the binding (never silently default — inverse of `#sprint-enforcement-binding` polarity; divergence between skill and agent is the `implement.ibe.enforcement_site_drift` defect). `Low`/`Trivial` tiers are exempt from integration-branch spec-merge checks.
+   - **Sprint-Enforcement Guard (all tiers, direct-delegation mirror):** If delegated directly outside `/cadence-implement`, resolve sprint enforcement **per ticket prefix** via `ci-templates/scripts/org-binding-resolve.sh --sprint <PREFIX>` against `CADENCE_ORG.md#sprint-enforcement-binding` (*Per-prefix sprint-enforcement bindings* table; legacy repo-wide `sprint-*` markers halt with `sprint.binding.form_removed`):
      - `disabled` (`enabled=no`, `fallback=Confirm`, `source=default`): prompt for explicit user confirmation and record the confirmation in `specs/{ticket-id}/decisions.md` before branching (invoking `/cadence-implement` itself never counts as implicit confirmation).
      - `enabled + in-sprint`: proceed.
      - `enabled + not-in-sprint`: **Block** and halt before creating the branch.
@@ -65,7 +65,7 @@ Strict Red-Green-Accumulate-Commit discipline is 100% identical at `Low` tier.
    git checkout -b <branch-name>   # derived from CADENCE_ORG.md#branch-strategy-binding
    ```
 
-2. **Discover existing test conventions (Assisted by Automatic Local Offload).**
+2. **Discover existing test conventions (with optional local offload when `:11434` is reachable).**
    - Use `repo-scout` or targeted `Glob`/`Grep` to locate unit and integration test projects (`*.Tests.csproj`, `*IntegrationTests.csproj`, `pytest.ini`, `package.json`, `Cargo.toml`, etc.), assertion libraries, mocking frameworks, and shared test builders/fixtures.
    - Read 2–3 representative unit test files and 1–2 integration test files to match the repository's setup, fixture, and naming conventions.
    - Record your findings in the `Test Infrastructure Discovery` section of `test-plan.md` (at `Medium`/`High` tier).
@@ -102,7 +102,7 @@ Execute each unit scenario `S-{X.Y}` from the Implementation Order in strict seq
 
 5. **COMMIT (One Commit Per Scenario Cycle):**
    ```bash
-   git add Source/ Tests/ specs/
+   git add <source-paths> <test-paths> specs/{ticket-id}/
    git commit -m "{ticket}: test({scope}): S-{X.Y} {scenario description}"
    ```
 
@@ -142,7 +142,7 @@ When `test-plan.md` declares **Journey Invariants & Adversarial Testing** (skip 
 3. **3c. Pass 2 (Adversarial Chaos Profiles):** Parameterize one test run per chaos profile row from `test-plan.md`, asserting expected resilience behavior (`circuit breaker`, `retry`, `compensation`), preservation of all declared Journey Invariants, zero data corruption, and zero duplicated side effects.
 4. **3d. Commit:**
    ```bash
-   git add Source/ Tests/
+   git add <source-paths> <test-paths>
    git commit -m "{ticket}: test({scope}): journey tests with chaos profiles [{profiles used}]"
    ```
 
@@ -153,23 +153,23 @@ Author the final regression scenarios from the Implementation Order using the re
 ### Phase 3.75: Migration Policy Verification
 
 For any database migrations included in the branch, verify compliance with `docs/policies/migration-policy.md`:
-1. **Reversibility:** Non-empty `Down()` reversing every `Up()` operation.
+1. **Reversibility:** Complete, non-empty rollback reversing every forward operation.
 2. **Idempotency:** Conditional `IF NOT EXISTS` / `IF EXISTS` guards on all raw SQL.
 3. **DDL / DML Separation:** Schema changes and data backfills reside in separate migration files.
 4. **Large-Table Safety:** Server-side defaults on new non-nullable columns; documented runtime for tables `>1M` rows.
-5. **Apply $\rightarrow$ Rollback $\rightarrow$ Reapply Smoke Test:** Execute the three-step cycle via the project's migration CLI (routing output through `offload_log_triage`) and commit separately with `[reversible, idempotent]`.
+5. **Apply $\rightarrow$ Rollback $\rightarrow$ Reapply Smoke Test:** Execute the three-step cycle via the project's migration CLI (routing output through `offload_log_triage` when available) and commit separately with `[reversible, idempotent]`.
 
 ### Phase 4: Pre-Review Coprocessor Scan & Finalization
 
-1. **Run the complete test suite, formatter, clean build, traceability gate, and certainty gate one final time** (automatically compacting any output `>30` lines via `offload_log_triage` and preserving `/tmp/agy-last-triage.log`). Run `.agents/skills/cadence-spec/verify-facts.sh --trace {ticket-id}` (except Trivial tier) and verify `exit 0` so every planned scenario/AC `C5` tag, CHORD observability seam, and `Files Affected` target is proven before finalizing. When `specs/{ticket-id}/evidence.yaml` is present, record the passing `test_suite` receipt (`head_sha` matching `HEAD`, `exit_code: 0`, `/tmp/agy-triage/...` `raw_log_sha256`, and `scenarios_observed_passing`) and run `.agents/skills/cadence-certainty/certainty-gate.sh --stage implement {ticket-id}` (`exit 1` -> fix mechanical/receipt issues; `exit 2` -> surface escalation triggers to `/cadence-implement`).
-2. **Execute an automatic local coprocessor pre-review scan (`offload_deep_review`):**
-   - Call `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[<touched files>]`) to inspect the unified diff and check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
+1. **Run the complete test suite, formatter, clean build, traceability gate, and certainty gate one final time** (compacting output `>30` lines via `offload_log_triage` when `:11434` is reachable and preserving `/tmp/agy-last-triage.log`; fall back directly when absent). Run `.agents/skills/cadence-spec/verify-facts.sh --trace {ticket-id}` (except Trivial tier) and verify `exit 0` so every planned scenario/AC `C5` tag, CHORD observability seam, and `Files Affected` target is proven before finalizing. When `specs/{ticket-id}/evidence.yaml` is present, record the passing `test_suite` receipt (`head_sha` matching `HEAD`, `exit_code: 0`, `/tmp/agy-triage/...` `raw_log_sha256`, and `scenarios_observed_passing`) and run `.agents/skills/cadence-certainty/certainty-gate.sh --stage implement {ticket-id}` (`exit 1` -> fix mechanical/receipt issues; `exit 2` -> surface escalation triggers to `/cadence-implement`).
+2. **Execute an optional local coprocessor pre-review scan (`offload_deep_review`, cloud-only fallback when absent):**
+   - When `:11434` is reachable, call `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[<touched files>]`) to inspect the unified diff and check that every touched file honors the `<400`-line ceiling (`<=150`/`<=400` function ceiling for BDD test harnesses), comment discipline (`docs/policies/comment-discipline.md`), and required CHORD seams before finalizing. Fix any mechanical violation immediately.
 3. **Update `specs/{ticket-id}/metadata.yaml`:**
    - Set `branch: {branch-name}`.
-   - Do **not** modify `status`, lifecycle timestamps (`implementation_started_at`, `review_started_at`), `spec_approved_at`/`spec_mr` (leave `""` at Low tier), or tracker state — `/cadence-implement` owns status transitions and tracker projection (`CADENCE_ORG.md` §9).
+   - Do **not** modify `status`, lifecycle timestamps (`implementation_started_at`, `review_started_at`), `spec_approved_at`/`spec_mr` (leave `""` at Low tier), or tracker state — `/cadence-implement` owns status transitions and tracker projection (`CADENCE_ORG.md#tracker-binding`).
 4. **Draft `specs/{ticket-id}/submission.md`** from `specs/TEMPLATE/submission.md`:
    - Populate `## Description` (summary, bounded contexts/flows, doc impact, compatibility impact, migrations).
-   - If `CADENCE_ORG.md` §9 binds a tracker **and** `metadata.yaml` carries a tracker URL (`jira_url:` / `youtrack_url:`), place `### Tracker` as the very first line of `## Description`; if unbound or absent, **omit `### Tracker` completely** (leave no empty placeholder).
+   - If `CADENCE_ORG.md#tracker-binding` binds a tracker **and** `metadata.yaml` carries a tracker URL (`jira_url:` / `youtrack_url:`), place `### Tracker` as the very first line of `## Description`; if unbound or absent, **omit `### Tracker` completely** (leave no empty placeholder).
    - **Carry forward and refine `### Functional Validation`** from `problem.md`'s `## Functional Validation` section to reflect the as-built observable behavior (or `No behavioral changes expected -- regression testing only.` if nothing user-observable changed; never drop or reset to a blank template).
    - Populate `## Forge metadata`, initialize `## Discussion` with `"Author submitted the change proposal"`, and leave `## Resolution` blank for the maintainer gate.
 5. **Final Commit:**
@@ -190,7 +190,7 @@ Execute `OS-{N}` seam scenarios after core business logic unit tests and before 
 - **`DELTA_AUDIT_GAP` seams:**
   - Implement post-handler child-span checks for external outcomes and post-commit audit-record verification for internal storage deltas, emitting `DELTA_AUDIT_GAP` if a silent skip occurs.
 - **`BOUNDARY_FAULT` seams:**
-  - Implement as an integration/health-check probe verifying that telemetry hooks themselves remain operational.
+  - Implement post-transformation domain invariant assertions after parsing, normalization, or mapping across a CHORD **Handling** boundary (`docs/agentic-sdlc/chord-reference.md`), emitting `BOUNDARY_FAULT` and failing closed when the mapped payload violates its domain contract.
 
 ## Boundary Documentation & Comment Discipline
 
@@ -209,5 +209,5 @@ When code crosses a bounded context or service boundary, include:
 - Never write production code without a failing test first, and never skip the full-suite `ACCUMULATE` step.
 - BDD style applies exclusively to newly authored tests; never convert existing tests to BDD style.
 - Log any test-driven design deviation from `spec.md` in `specs/{ticket-id}/decisions.md` and highlight it in `submission.md`.
-- Never author a test that reads, parses, or asserts on a governance document (`docs/policies/test-scope.md`).
-- Local coprocessor models (`inference`, `embedding` on `:11434`) are strictly read-only log/diff analyzers (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) writes 100% of test and production code.
+- Consult `CADENCE_ORG.md#test-scope-binding` (`docs/policies/test-scope.md`): when test-scope enforcement is active (`yes`), never author a test that reads, parses, or asserts on a governance document.
+- Local coprocessor models (`inference`, `embedding` on `:11434`) are optional read-only log/diff analyzers (`enable_write_tools: false`, cloud-only fallback when absent). The Deep-reasoning tier (`effort: xhigh`) writes 100% of test and production code.

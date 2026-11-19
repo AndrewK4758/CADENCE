@@ -1,6 +1,6 @@
 # Workflow Step 00 — Problem
 
-> Part of the per-step workflow guide series. This guide covers the **Problem** step — the entry point of the CADENCE lifecycle. For the end-to-end workflow map, see [`../getting-started.md`](../getting-started.md) §2.3.
+> Part of the per-step workflow guide series. This guide covers the **Problem** step — the entry point of the CADENCE lifecycle. For the per-tier gate matrix see [`change-tiers.md`](../../policies/change-tiers.md); for the next step see [`01-triage.md`](01-triage.md).
 
 | | |
 |---|---|
@@ -31,7 +31,7 @@ If the proposal falls outside `PROJECT_INTENT.md`, choose one of three construct
 
 1. **Observe the problem.** Start from a concrete, observable symptom, user friction point, or operational gap — such as a support trend, a regression, a missing capability, or an operational bottleneck — rather than an unverified root-cause guess or a pre-selected technical solution.
 2. **Verify intent alignment.** Check `PROJECT_INTENT.md` (above) to confirm this repository is the right home.
-3. **File the intent issue.** Draft the concise four-part proposal below and file it **in the bound issue tracker** (e.g., Jira or YouTrack per `CADENCE_ORG.md` §9) — not as a merge request in the forge. Intent issues originate in the tracker; the forge (GitLab/GitHub/SourceHut) is used later when submitting the change proposal (`submission.md`).
+3. **File the intent issue.** Draft the concise four-part proposal below and file it **in the bound issue tracker** (e.g., Jira or YouTrack per [`CADENCE_ORG.md#tracker-binding`](../../agentic-sdlc/CADENCE_ORG.md#tracker-binding)) — not as a merge request in the forge. Intent issues originate in the tracker; the forge (GitLab/GitHub/SourceHut) is used later when submitting the change proposal (`submission.md`).
 4. **Receive the maintainer's ruling** and follow its disposition (see [Maintainer response](#maintainer-response)).
 
 The Problem step concludes once the maintainer returns **Proceed** (or **Modify** with an agreed scope adjustment). Only then does the item enter **Triage** (`01-triage.md`), where `specs/{ticket-id}/` and its `problem.md` stub are created in the repository.
@@ -62,15 +62,15 @@ Two routes are supported, and both produce a tracked issue under the authoritati
 3. **Description** — the four elements from [the anatomy above](#the-intent-issue--anatomy): **Problem**, **Proposed approach**, **Surfaces affected**, and **Ask** (three to five sentences total).
 4. Assign or flag the issue for the maintainer.
 
-The tracker assigns an authoritative key (for example, `CTS-42`). Once the maintainer rules **Proceed** or **Modify**, `/cadence-triage CTS-42` **imports** that tracker issue — reading its Summary and Description via the bound tracker skill (`CADENCE_ORG.md` §9/§10) — and seeds `specs/CTS-42/problem.md` from it. Never invent or guess a ticket number locally when a tracker is bound.
+The tracker assigns an authoritative key (for example, `CTS-42`). Once the maintainer rules **Proceed** or **Modify**, `/cadence-triage CTS-42` **imports** that tracker issue — reading its Summary and Description via the bound tracker skill (`CADENCE_ORG.md#tracker-binding` / `#id-allocation-binding`) — and seeds `specs/CTS-42/problem.md` from it. Never invent or guess a ticket number locally when a tracker is bound.
 
 **Route B — pass the proposal inline to `/cadence-triage` (for contributors already working in the CLI).**
 
-When you are already inside your agentic CLI environment (`.agents/` or `.gemini/` on Antigravity) and want to originate and triage in one flow, pass your four-part proposal text directly to [`/cadence-triage "..."`](../../../AGENTS.md). Under a `reserve-from-tracker` binding (`CADENCE_ORG.md` §10), `/cadence-triage` **reserves** the next authoritative key from the tracker *before* creating `specs/<id>/problem.md` + `metadata.yaml`, keeping the tracker and repository strictly paired.
+When you are already inside your agentic CLI environment (`.agents/` or `.gemini/` on Antigravity) and want to originate and triage in one flow, pass your four-part proposal text directly to [`/cadence-triage "..."`](../../../AGENTS.md). Under a `reserve-from-tracker` binding (`CADENCE_ORG.md#id-allocation-binding`), `/cadence-triage` **reserves** the next authoritative key from the tracker *before* creating `specs/<id>/problem.md` + `metadata.yaml`, keeping the tracker and repository strictly paired.
 
 > **Which route should I pick?** Route A keeps the initial intent check ultra-lightweight in the tracker before any repository files are touched. Choose Route B when you already have maintainer alignment (or are a maintainer originating in-scope work) and want the tracker key reserved and triaged in a single command. If the bound tracker is unreachable during Route B, `/cadence-triage` halts loudly rather than fabricating a local number.
 
-Under either route, when an external allocator is bound in `CADENCE_ORG.md` §10, the tracker owns the number space — never guess the next ticket ID by incrementing folder names in `specs/`.
+Under either route, when an external allocator is bound in `CADENCE_ORG.md#id-allocation-binding`, the tracker owns the number space — never guess the next ticket ID by incrementing folder names in `specs/`.
 
 > **Issue type and backlog placement — non-negotiable.** Every intent issue is filed as tracker type **`Issue`** and placed **in the backlog, never directly into an active sprint.** This rule applies across all routes, all change tiers, and all contributors (including core maintainers). Work moves into an active sprint only after passing the intent gate and completing Triage.
 
@@ -106,12 +106,12 @@ A *Decline* or *Amend first* disposition redirects energy before code is written
 
 ## Where this goes next
 
-Once the maintainer rules **Proceed** or **Modify**, the ticket advances to **Triage** ([`01-triage.md`](01-triage.md)), where `/cadence-triage` classifies the work item, checks for duplicates and prior insights via `repo-scout` / `local_semantic_embed`, assigns the change tier, and initializes `specs/{ticket-id}/problem.md` and `metadata.yaml`. See [`../getting-started.md`](../getting-started.md) §2.3 for the full lifecycle overview.
+Once the maintainer rules **Proceed** or **Modify**, the ticket advances to **Triage** ([`01-triage.md`](01-triage.md)), where `/cadence-triage` classifies the work item, checks for duplicates and prior insights (optionally via `repo-scout` / `local_semantic_embed` when `:11434` is reachable), assigns the change tier, and initializes `specs/{ticket-id}/problem.md` and `metadata.yaml`. See [`../../policies/change-tiers.md`](../../policies/change-tiers.md) for the per-tier lifecycle matrix.
 
 ## Related documents
 
 - [`01-triage.md`](01-triage.md) — the next step in the workflow.
-- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier matrix.
+- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — per-tier requirements and gate matrix.
 - [`../contributor_experience_guide.md`](../contributor_experience_guide.md) — "Filing an intent issue" and lightweight vs. standard tracks.
 - [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — how changes are right-sized at Triage.
 - [`../../../PROJECT_INTENT.md`](../../../PROJECT_INTENT.md) — the repository charter every Problem is evaluated against.

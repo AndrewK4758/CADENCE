@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Glob Grep Bash Skill
 
 ## Task
 
-Execute **Workflow Step 07 (Merge)** (`docs/guides/workflow/07-merge.md`) for `$ticket_id`: verify all tier-required human and automated gates have passed, confirm the branch sits cleanly on top of the repository's bound integration branch (`CADENCE_ORG.md#branch-strategy-binding`, never hardcoding `main` or `develop`), execute or merge the approved PR/MR without bypassing hooks, record `status: merged` and `merged_at`, sync the bound tracker, prune temporary worktree state, and chain `/cadence-archive $ticket_id` unless `--no-archive` is specified.
+Execute **Workflow Step 07 (Merge)** (`docs/guides/workflow/07-merge.md`) for `$ticket_id`: verify all tier-required human and automated gates have passed, confirm the branch sits cleanly on top of the repository's bound integration branch (`CADENCE_ORG.md#branch-strategy-binding`, never hardcoding `main` or `develop`), execute or merge the approved PR/MR without bypassing hooks, fast-forward local `<integration-branch>`, project `merged` status to the bound tracker without pushing direct commits onto a protected `<integration-branch>`, prune temporary worktree state, and chain `/cadence-archive $ticket_id` (which persists `merged_at` if unset alongside `status: archived` in its `archive/{type}/{id}` PR) unless `--no-archive` is specified.
 
 Because `/cadence-merge` performs protected-branch merge confirmation, possible tracker sync, and worktree/branch cleanup, it runs in the primary turn and delegates non-trivial merge conflict resolution or code adjustments back to `Deep-reasoning` (`xhigh` effort).
 
@@ -37,27 +37,27 @@ Check whether the ticket branch is behind the latest `<integration-branch>` (fet
 - If behind `<integration-branch>`, rebase the ticket worktree branch onto `<integration-branch>` **before** merging (never leave stale base conflicts hidden):
   - For trivial append-only conflicts (e.g., `CHANGELOG.md`, surface registries), preserve **both** sides' additions cleanly rather than using blind `--ours`/`--theirs`.
   - For code conflicts affecting logic or contracts, delegate resolution to `cadence-implementer` (`Deep-reasoning` tier, `xhigh` effort) in the ticket's worktree rather than forcing ad-hoc edits.
-- Re-run the repository's canonical test/gate suite after rebase (or confirm CI is green on the rebased head SHA). Route outputs `>30` lines or non-zero exits through `offload_log_triage` (`:11434`, saving raw log to `/tmp/agy-last-triage.log`). If conflict resolution modified code, run `offload_deep_review(diff_range="<integration-branch>...HEAD", cwd="<repo-root>")` before proceeding.
+- Re-run the repository's canonical test/gate suite after rebase (or confirm CI is green on the rebased head SHA). When `:11434` is reachable, route outputs `>30` lines or non-zero exits through `offload_log_triage` (`:11434`, saving raw log to `/tmp/agy-last-triage.log`; else inspect directly).
+- **Post-rebase re-review rule:** whenever rebase resolved code/test conflicts OR upstream commits touched files in the diff's bounded context or direct dependencies, **re-run `/cadence-review`** (and `offload_deep_review(diff_range="<integration-branch>...HEAD", cwd="<repo-root>")` when `:11434` is reachable) before proceeding to merge. Trivial rebases over disjoint files require only passing CI/tests.
 
 ### 2. Confirm merge posture & land onto `<integration-branch>`
 
 Honor `integration-branch-protected`:
 - **Never** pass `--no-verify` or push direct ad-hoc commits straight onto a protected integration branch.
-- **When remote PR/MR is open (`merge_request:` URL / `gh` / `glab` available):** confirm target base is `<integration-branch>`, verify CI status checks pass, prompt for operator confirmation (`Merge PR/MR into <integration-branch>? (yes/no)`), execute the squash/merge (`gh pr merge` / `glab mr merge`), and update local `<integration-branch>` (`git pull --ff-only origin <integration-branch>`).
+- **When remote PR/MR is open (`merge_request:` URL / `gh` / `glab` available):** confirm target base is `<integration-branch>`, verify CI status checks pass, prompt for operator confirmation (`Merge PR/MR into <integration-branch>? (yes/no)`), execute the squash/merge (`gh pr merge` / `glab mr merge`), and fast-forward local `<integration-branch>` (`git pull --ff-only origin <integration-branch>`).
 - **When operating local-only (no remote / explicit operator local-merge authorization):** prompt for explicit confirmation (`Fast-forward / squash-merge branch <branch> into <integration-branch>? (yes/no)`), fast-forward or squash cleanly into `<integration-branch>`, and verify the merge commit is an ancestor of `<integration-branch>`.
 
-### 3. Record `status: merged` + sync tracker + clean up worktree
+### 3. Project `merged` status to tracker + clean up worktree
 
-1. Capture exact second-precision UTC timestamp: `date -u +%Y-%m-%dT%H:%M:%SZ`.
-2. Update `specs/$ticket_id/metadata.yaml` setting `status: merged` and `merged_at: "<UTC>"` (preserving existing fields/quoting rules).
-3. If `CADENCE_ORG.md#tracker-binding` resolves to a live tracker for this ticket's prefix, invoke the designated `/cadence-sync-*` skill for `$ticket_id` once to project `merged` status.
-4. Safely clean up the temporary ticket worktree and branch **only after confirming** the ticket's changes are reachable on `<integration-branch>` (`git worktree remove` + `git branch -d` — never `git branch -D` blindly on unverified commits).
+1. Capture or note the merge commit's exact UTC timestamp (`date -u +%Y-%m-%dT%H:%M:%SZ`) for archival handoff — **do not commit `metadata.yaml` updates directly to a protected `<integration-branch>`**.
+2. If `CADENCE_ORG.md#tracker-binding` resolves to a live tracker for this ticket's prefix, invoke the designated `/cadence-sync-*` skill for `$ticket_id` once to project `merged` status.
+3. Safely clean up the temporary ticket worktree and branch **only after confirming** the ticket's changes are reachable on `<integration-branch>` (`git worktree remove` + `git branch -d` — never `git branch -D` blindly on unverified commits).
 
 ### 4. Hand off to archival
 
 Unless `--no-archive` was passed or the ticket is `Trivial` without a `specs/$ticket_id/` directory:
-- Invoke `/cadence-archive $ticket_id` (or prompt/display the exact runnable command `/cadence-archive $ticket_id` if the runtime lacks command composition).
-- Report final summary: ticket ID, tier, integration branch, merge commit/PR URL, `merged_at`, tracker sync outcome, worktree cleanup status, and next step (`/cadence-archive`).
+- Invoke `/cadence-archive $ticket_id` (or prompt/display the exact runnable command `/cadence-archive $ticket_id` if the runtime lacks command composition); `/cadence-archive` persists `merged_at` (from the merge commit/forge PR if unset) alongside `status: archived` and `archived_at` inside its `archive/{type}/{id}` PR branch.
+- Report final summary: ticket ID, tier, integration branch, merge commit/PR URL, tracker `merged` sync outcome, worktree cleanup status, and next step (`/cadence-archive` persisting `merged_at` + `archived`).
 
 ## Constraints
 
@@ -73,5 +73,5 @@ Unless `--no-archive` was passed or the ticket is `Trivial` without a `specs/$ti
 ```
 
 ## Local Model Offload Integration (:11434)
-- Post-rebase test, build, and gate outputs exceeding 30 lines or exiting non-zero automatically pipe through `offload_log_triage` (`:11434`), saving raw logs to `/tmp/agy-last-triage.log`.
+- When `:11434` is reachable, post-rebase test, build, and gate outputs exceeding 30 lines or exiting non-zero pipe through `offload_log_triage` (`:11434`), saving raw logs to `/tmp/agy-last-triage.log` (degrading cleanly to direct log inspection when unavailable).
 - Any rebase conflict resolution touching production code triggers `offload_deep_review` (`:11434`) prior to merge.

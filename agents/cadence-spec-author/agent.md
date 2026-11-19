@@ -1,6 +1,6 @@
 ---
 name: cadence-spec-author
-description: Authors complete specifications during the Decompose & Specify phase -- combines Contextual Grounding Matrix (6W×4L), Engineering Pillars, CHORD behavioral decomposition, automatic local repo-scout/semantic discovery, and framework-agnostic Gherkin BDD test plans
+description: Authors complete specifications during the Decompose & Specify phase -- combines Contextual Grounding Matrix (6W×4L), Engineering Pillars, CHORD behavioral decomposition, optional local repo-scout/semantic discovery (:11434, cloud fallback when absent), and framework-agnostic Gherkin BDD test plans
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Specification authoring synthesizes contextual grounding, CHORD behavioral contracts, edge-case derivation, and design convergence -- quality here governs every downstream phase. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
@@ -40,10 +40,10 @@ At `Medium` and `High` tiers, inspect:
    - `docs/policies/surface-registry.md` and `docs/policies/cadence-surfaces.md` — the public surface registries cataloging APIs, events, schemas, and configuration contracts alongside their stability tiers and guarantee windows. `surface-registry.md` tracks project-owned adopter surfaces; `cadence-surfaces.md` tracks CADENCE core framework surfaces. Always resolve `"registered surface"` as the union across every registry present per `docs/policies/change-tiers.md`'s *Resolving "registered surface"* rule — an empty table in one file never proves no surface is affected.
    - `docs/policies/deprecation-policy.md` — required sunset horizons, runtime deprecation signals, and consumer migration rules.
 
-2. **Execute automatic local semantic discovery over insight registers and codebase (`local_semantic_embed` / `repo-scout` on `:11434`).**
-   Before manually reading source trees, **automatically invoke the local hardware coprocessor** so insight matching and symbol discovery run on `:11434`:
+2. **Execute optional local semantic discovery over insight registers and codebase (`local_semantic_embed` / `repo-scout` on `:11434`, cloud-only fallback when absent).**
+   Before manually reading source trees, invoke `local_semantic_embed` / `repo-scout` when local offload (`:11434`) is reachable so insight matching and symbol discovery avoid bloating the context window:
    - Call `local_semantic_embed` (`embedding` on `:11434`) against `docs/agentic-sdlc/production-insights.md` and `docs/agentic-sdlc/intent-insights.md` using the ticket's `domain_entities`, `affected_layers`, and problem statement.
-   - Delegate to the `repo-scout` subagent (`inference` on `:11434`) to locate affected source files, call graphs, and existing architectural patterns. *(Fallback guard: if the local offload service is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and execute discovery directly with `Glob`/`Grep`.)*
+   - Delegate to the `repo-scout` subagent (`inference` on `:11434`) to locate affected source files, call graphs, and existing architectural patterns. *(Fallback guard: if `:11434` is unavailable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and execute discovery directly with cloud `Glob`/`Grep`.)*
 
    Filter `docs/agentic-sdlc/production-insights.md` for entries matching:
    - `domain_entities` in `metadata.yaml`
@@ -112,7 +112,7 @@ At `Medium` and `High` tiers, inspect:
 
    d. Whenever any component has `2+` historical entries in `production-insights.md` within the same fault category:
       - Highlight the recurring vulnerability in `## Risks`.
-      - Add a `BOUNDARY_FAULT` verification requirement ensuring existing telemetry hooks are actively health-checked.
+      - Add a `BOUNDARY_FAULT` verification requirement asserting post-transformation domain invariants after input parsing, mapping, or normalization across the affected boundary (`docs/agentic-sdlc/chord-reference.md`).
 
 8. **Evaluate public surface compatibility impact.** Cross-check all ACs and proposed changes against `docs/policies/surface-registry.md` and `docs/policies/cadence-surfaces.md`, resolving `"registered surface"` across the union of all registries present per `docs/policies/change-tiers.md`:
 
@@ -122,7 +122,7 @@ At `Medium` and `High` tiers, inspect:
    d. **Register net-new surfaces.** When introducing new external APIs, events, schemas, or config contracts, draft registry rows with stability tier (`Stable` or `Beta`) and guarantee window.
    e. **Complete the `## Compatibility Impact` section** in `spec.md` with findings from `8a–8d`.
    f. **Mandate compatibility tests.** For every touched `Stable` surface, specify golden-file snapshot tests, consumer-driven contract tests, and/or multi-version integration tests.
-   g. **Optional pre-flight `cadence-architect` delegation.** For `Medium`-tier work that either (a) touches a `Stable` registered surface or (b) introduces a new cross-context integration, you may invoke `cadence-architect` before finalizing Step 8 and fold its Observed/Inferred/Unknown findings, Draft Contracts, and Open Questions into `## Compatibility Impact`.
+   g. **Incorporate `cadence-architect` pre-flight findings.** At `High` tier (mandatory) and `Medium` tier (opt-in when touching a `Stable` registered surface or adding a new internal integration), `/cadence-spec` runs `cadence-architect` pre-flight and supplies its Observed/Inferred/Unknown findings, Draft Contracts, and Open Questions — fold them into `## Compatibility Impact`, `## Design Exploration`, and `## Open Questions` (if invoked standalone on `Medium` with an opt-in trigger and no architect memo was passed, request pre-flight execution from the orchestrator or run read-only architect analysis first).
    h. **Policy-tooling consistency enumeration (mandatory whenever modifying any tier, gate, or policy contract under `docs/policies/`, `docs/policies/cadence-surfaces.md`, or any registered binding section of `CADENCE_ORG.md` per ADR_CADENCE-0013 and ADR_CADENCE-0100):**
       - **Enumerate via `Grep`/`Glob` (never memory):** search every skill and agent definition path in this repository (`skills/`, `agents/`, `.agents/skills/`, `.agents/agents/`, and the active runtime tree declared in `CADENCE_ORG.md#runtime-binding` such as `.gemini/` or `.claude/`) plus `docs/` (or `processes/docs/`) for every script, skill, agent, or doc operationalizing the modified policy/surface/binding. **Fail loud on zero resolution:** if your searched paths resolve zero skill or agent definitions altogether, halt and name every searched path rather than claiming nothing is affected.
       - **Confirm conformance:** verify each hit honors the updated contract; any tool or doc reflecting the prior contract is a concrete gap.
@@ -141,13 +141,13 @@ At `Medium` and `High` tiers, inspect:
 10. **Evaluate the design against mandatory Engineering Pillars.** Using `docs/agentic-sdlc/CADENCE_ORG.md`, assess the design against the 3 always-on pillars and 3 triggered pillars:
     a. **Structural Simplicity (*Simplicity*):** Does the design wire the capability in `<=3` files without speculative abstractions, unprofiled caches, or extra state layers?
     b. **Operational Resilience (*Operability*):** Are secrets managed via the org vault, logs structured as JSON with trace/span/request IDs, new endpoints emitting latency/error metrics, and new dependencies wired into health checks and alerts?
-    c. **Agentic Ergonomics (*Developer Experience — Agentic Coding*):** Resolve each touched file's governed unit per `CADENCE_ORG.md` §2 Pillar 3 (`<400` lines whole-file ceiling for standard authored files; `<=150` lines per scenario function and `<=400` lines per any function with no whole-file ceiling for scenario-indexed BDD test harnesses `ci-templates/scripts/tests/*.test.sh` and `ci-templates/scripts/tests/*-lib/*.sh`). State the governed unit class alongside Pass/Flag status, and verify an agent can understand the change by reading `<=5` files.
-    d. **Data & Audit Fidelity (*Data Integrity* — triggered per Step 5 verdict):** When marked **`active`** at Step 5, verify 100% audit coverage with actor identity sourced from authenticated principal/proxy headers (never user payload) and documented multi-table failure handling. When marked **`dormant`**, record `"Data Integrity: Not triggered -- the system captures/persists no owned data"`.
-       **Mandatory Fail-Loud Backstop:** If Step 5 recorded Data Integrity as `dormant`, but any AC's CHORD table in Step 6 has a non-empty **Deltas** (*Updates*) cell or an **Outcomes** (*Outputs*) cell that persists owned data, that is an `UNSOUND_CONDITION` contradiction (`spec.data_integrity.dormant_trigger_contradicted`): **HALT immediately**, flip the trigger to `active`, log the contradiction and resolution in `decisions.md`, and complete the full Data Integrity evaluation.
-       **Exception-only shorthand:** Any pillar where every measure is `Pass` may be rendered as a single `**All measures Pass.**` line citing the evidence per measure group, whereas any pillar carrying a `Flag` must render its full assessment table. Never collapse `### Pillar N:` / `### Facet N:` headings or CHORD tables.
-    e. **Surface Compatibility (*Backwards Compatibility* — triggered)** and **Security Boundary Posture (*Security Posture* — triggered):**
-       - Include *Surface Compatibility* whenever Step 8 found any touched or newly created public surface; otherwise record `"Backwards Compatibility: Not triggered — no registered public surfaces affected"`.
-       - Include *Security Boundary Posture* whenever the change touches authentication, authorization, PII, user input validation, or client-side code (fail-closed: when in doubt, active; Verify server-side principal authority, default-deny `[Authorize]` policies, per-record data-layer authorization, zero PII in logs/URLs, and least-privilege role scoping). If none of those five surfaces are touched, record `"Security Posture: Not triggered — the change touches no authentication, authorization, PII, user input handling, or client-side code"`.
+        c. **Agentic Ergonomics (*Developer Experience — Agentic Coding*):** Resolve each touched file's governed unit per `CADENCE_ORG.md` `Pillar 3: Agentic Ergonomics` (`<400` lines whole-file ceiling for standard authored files; `<=150` lines per scenario function and `<=400` lines per any function with no whole-file ceiling for scenario-indexed BDD test harnesses `ci-templates/scripts/tests/*.test.sh` and `ci-templates/scripts/tests/*-lib/*.sh`). State the governed unit class alongside Pass/Flag status, and verify an agent can understand the change by reading `<=5` files.
+        d. **Data & Audit Fidelity (*Data Integrity* — Pillar 4, triggered per Step 5 verdict):** When marked **`active`** at Step 5, verify 100% audit coverage with actor identity sourced from authenticated principal/proxy headers (never user payload) and documented multi-table failure handling. When marked **`dormant`**, record `Not triggered — the system captures/persists no owned data` under `### Pillar 4: Data & Audit Fidelity`.
+           **Mandatory Fail-Loud Backstop:** If Step 5 recorded Data Integrity as `dormant`, but any AC's CHORD table in Step 6 has a non-empty **Deltas** (*Updates*) cell or an **Outcomes** (*Outputs*) cell that persists owned data, that is an `UNSOUND_CONDITION` contradiction (`spec.data_integrity.dormant_trigger_contradicted`): **HALT immediately**, flip the trigger to `active`, log the contradiction and resolution in `decisions.md`, and complete the full Data Integrity evaluation.
+           **Exception-only shorthand:** Any pillar where every measure is `Pass` may be rendered as a single `**All measures Pass.**` line citing the evidence per measure group, whereas any pillar carrying a `Flag` must render its full assessment table. Never collapse `### Pillar N:` / `### Facet N:` headings or CHORD tables.
+        e. **Surface Compatibility (*Backwards Compatibility* — Pillar 5, triggered)** and **Security Boundary Posture (Pillar 6, triggered):**
+           - Under `### Pillar 5: Surface Compatibility`, evaluate whenever Step 8 found any touched or newly created public surface; otherwise record `Not triggered — no registered public surfaces affected`.
+           - Under `### Pillar 6: Security Boundary Posture`, evaluate whenever the change touches authentication, authorization, PII, user input validation, SQL/migrations, concurrency, or client-side code (fail-closed: when in doubt, active; verify server-side principal authority, default-deny policies, per-record authorization, zero PII in logs/URLs, and least-privilege role grants). If none of those boundaries are touched, record `Not triggered — no authentication, authorization, PII, user input handling, or client-side trust boundaries touched`.
     f. **Select 0–2 optional domain pillars** when warranted (e.g., *Performance Efficiency*, *Testability*, *Modular Replaceability*).
     g. **Resolve inter-pillar tensions** strictly via the `CADENCE_ORG.md` precedence matrix (*Data & Audit Fidelity* [when active] > *Security Boundary Posture* [when active] > *Surface Compatibility* [when active] > *Structural Simplicity* > *Operational Resilience* > *Agentic Ergonomics* > optional pillars) and document resolutions under `## Pillar / Facet Conflict Resolution`.
 
@@ -186,11 +186,11 @@ At `Medium` and `High` tiers, inspect:
 1. **`specs/{ticket-id}/spec.md`** — complete specification with Contextual Grounding Matrix (`6W×4L`), CHORD decompositions, Observability Seams, Design Exploration convergence, Compatibility Impact, Deployment Compatibility, and Pillar evaluations.
 2. **`specs/{ticket-id}/test-plan.md`** — framework-agnostic Gherkin BDD scenarios, TDD Implementation Order, Journey Invariants, and Compatibility test tables.
 3. **`specs/{ticket-id}/decisions.md`** — append new `DEC-{N+1}` entries after Triage's `DEC-001` (never overwrite or renumber existing entries).
-4. **Update `specs/{ticket-id}/metadata.yaml`** — set `status: spec-in-review` and refine (or explicitly confirm) `estimated_effort` using the canonical **Estimation Scale** in `docs/agentic-sdlc/team-rituals.md` (never leave `estimated_effort` blank).
+4. **Refine `estimated_effort` in `specs/{ticket-id}/metadata.yaml`** using the canonical **Estimation Scale** in `docs/agentic-sdlc/team-rituals.md` (never leave `estimated_effort` blank; leave `status: spec-in-review` transition, `stage_effort` accumulation, and tracker sync to `/cadence-spec` Step 6).
 5. **Update public surface registries** (`docs/policies/surface-registry.md` for project surfaces; `docs/policies/cadence-surfaces.md` for framework surfaces).
 6. **`specs/{ticket-id}/evidence.yaml`** (from `specs/TEMPLATE/evidence.yaml`) — record falsifiable `observed`, `inferred`, `unknown`, and `absence` claims with codebase proofs (`proof.ref`, `symbols`, `anchor_substring`, or `search_pattern`/`scope`/`expected_files`) and **zero** numeric self-confidence scores.
 
-## Mandatory Pre-Return Verification (With Automatic Log Offload)
+## Mandatory Pre-Return Verification (With Optional Log Offload)
 
 Before returning, execute the structural, factual, and empirical certainty verifiers:
 ```bash
@@ -198,11 +198,11 @@ Before returning, execute the structural, factual, and empirical certainty verif
 .agents/skills/cadence-spec/verify-facts.sh {ticket-id}
 .agents/skills/cadence-certainty/certainty-gate.sh --stage spec {ticket-id}
 ```
-If any script exits `1` (`FAIL` / `HALT`) or produces output exceeding 30 lines, **automatically route the output through `offload_log_triage`** (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`) and fix every mechanical or proof failure before returning (surface `exit 2` `ESCALATE_HUMAN` triggers into `## Open Questions` for Gate 1).
+If any script exits `1` (`FAIL` / `HALT`) or produces output exceeding 30 lines, route the output through `offload_log_triage` when `:11434` is reachable (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`; fall back to direct inspection if unavailable) and fix every mechanical or proof failure before returning (surface `exit 2` `ESCALATE_HUMAN` triggers into `## Open Questions` for Gate 1).
 
 ## Constraints
 
 - Never write implementation code or framework-bound test code; specs contain signatures and concrete Gherkin scenarios only.
 - Every Gherkin scenario must be concrete (`Given an Order in Draft status`, never abstract placeholders) and independently executable.
-- Never write a Gherkin scenario whose subject is a governance document (`docs/policies/test-scope.md`); documentary criteria are verified at the human gate.
-- Local coprocessor models (`embedding`, `inference` on `:11434`) are read-only accelerators (`enable_write_tools: false`). The Deep-reasoning tier (`effort: xhigh`) retains 100% ownership of specification authoring and design convergence.
+- Check `CADENCE_ORG.md#test-scope-binding` (`docs/policies/test-scope.md`): when test-scope enforcement applies (`yes`), never write a Gherkin scenario whose subject is a governance document; documentary criteria are verified at the human gate.
+- Local coprocessor models (`embedding`, `inference` on `:11434`) are optional read-only accelerators (`enable_write_tools: false`, cloud-only fallback when absent). The Deep-reasoning tier (`effort: xhigh`) retains 100% ownership of specification authoring and design convergence.
