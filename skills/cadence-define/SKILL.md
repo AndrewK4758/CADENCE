@@ -106,7 +106,7 @@ Never assume an empty `spec_mr` means no MR exists (opening a second blind MR yi
    bash .agents/skills/cadence-define/scripts/ready_mr.sh <pr-url-or-number> \
      || bash skills/cadence-define/scripts/ready_mr.sh <pr-url-or-number>
    ```
-   - Exit `0`: quote the verbatim `ready_mr:` stdout line in the summary, verify `spec_mr` equals `url=` (unless Low/Trivial capture MR), and **stop immediately** (never self-merge, never monitor merge, never start implementation). Name `/cadence-build <TICKET-ID>` as the next step after human merge.
+   - Exit `0`: quote the verbatim `ready_mr:` stdout line in the summary, verify `spec_mr` equals `url=` (unless Low/Trivial capture MR), and **stop immediately** (never self-merge, never monitor merge, never start implementation). Name `/cadence-build <TICKET-ID>` as the next step after human merge (or `/cadence-watch <TICKET-ID>` to listen for PR comments and merge readiness).
    - Exit `2`: **halt** citing MR URL and cause.
 
 ## Run-End Checklist (Every Exit Path)
@@ -114,4 +114,4 @@ Never assume an empty `spec_mr` means no MR exists (opening a second blind MR yi
 1. **Terminal outcome classification:** `spec MR open and ready` | `capture MR open and ready` | `handed off for implementation` | `nothing to do` | `halt` (with exact state & cause).
 2. **Verbatim `ready_mr:` line** (when published) + confirmation that `spec_mr` matches `url=`.
 3. **Session topology & worktree status** (`session_topology=...`, `worktree_state=...`, left-standing worktree path & branch).
-4. **Stopping reason & next actor** (human spec reviewer, or unblocking step on halt).
+4. **Stopping reason & next actor** (human spec reviewer, `/cadence-watch <TICKET-ID>`, or unblocking step on halt).

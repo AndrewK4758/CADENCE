@@ -269,3 +269,7 @@ Close out a code-reviewed ticket through Gate 3 and cleanup: inspects `read_stat
 ## `/cadence-housekeep [--since <N>] [--include-active] [--full] [--promote] [--with-release [major|minor|patch]]`
 
 Run repository hygiene in one command: executes read-only `/cadence-doctor --check-offload [--full]` and `/cadence-retro`, gates `--promote` (`II-*`/`PROD-*` ID minting) behind explicit operator confirmation, and gates optional `--with-release` behind a clean doctor pass and `/cadence-release` confirmations.
+
+## `/cadence-watch [<ticket-id> | --all] [--once | --watch] [--interval <sec>] [--timeout <sec>] [--no-tracker] [--dry-run]`
+
+Listen to open GitHub PRs (`gh`), GitLab MRs (`glab`), and bound Jira/YouTrack ticket comments (`CADENCE_ORG.md` §9) via `.agents/skills/cadence-watch/scripts/pr_watch.py`: mirrors unseen external feedback into `specs/<id>/submission.md` `## Discussion` using write-after-completion watermarks and `<!-- cadence-watch:reply -->` loop suppression, automatically triggers `/cadence-build` when a `spec_mr` merges or post-merge sync + `/cadence-archive` when a `merge_request` merges, remediates in-scope change requests or CI failures within approved scope (`offload_deep_review` / `offload_log_triage`), halts on scope/tier changes or cycle cap `>=4`, and hands `APPROVED` implementation PRs to `/cadence-close` without ever self-merging silently.
