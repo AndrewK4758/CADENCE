@@ -479,7 +479,7 @@ This section declares the capability tiers and concrete model identifiers used b
 
 | Tier | Reasoning Effort | Agents |
 |---|---|---|
-| `Deep-reasoning` | `xhigh` | `cadence-architect`, `cadence-explorer`, `cadence-spec-author`, `cadence-implementer` (all tiers, including Low), `cadence-reviewer`, `cadence-security-auditor`, `cadence-migration-author`, `cadence-maintainer` |
+| `Deep-reasoning` | `xhigh` | `cadence-architect`, `cadence-explorer`, `cadence-spec-author`, `cadence-spec-challenger`, `cadence-implementer` (all tiers, including Low), `cadence-reviewer`, `cadence-breaker`, `cadence-security-auditor`, `cadence-migration-author`, `cadence-maintainer` |
 | `Fast-mechanical` | `high` | `cadence-triage-agent`, `cadence-archivist` |
 | `Local-coprocessor` (Read-Only Subagents & MCP Tools) | `medium` | `log-triage` (`offload_log_triage`), `repo-scout` (`local_semantic_embed`), `offload_deep_review` |
 
@@ -523,12 +523,12 @@ The single mandatory home for **runtime coupling** (ADR_CADENCE-0008 clause 4) �
 
 ### Role → (runtime, capability-tier) assignment (clause 6)
 
-Assign each role group to a `(runtime, tier)` pair. A repository may execute authoring and implementation roles on one runtime and bind the **review roles (`cadence-reviewer`, `cadence-security-auditor`, `cadence-maintainer`) to an independent model or runtime** — making ADR_CADENCE-0007 gate independence *physical* as well as contextual.
+Assign each role group to a `(runtime, tier)` pair. A repository may execute authoring and implementation roles on one runtime and bind the **review and challenge roles (`cadence-spec-challenger`, `cadence-reviewer`, `cadence-breaker`, `cadence-security-auditor`, `cadence-maintainer`) to an independent model or runtime** — making ADR_CADENCE-0007 gate independence *physical* as well as contextual.
 
 | Roles | Runtime | Tier |
 |---|---|---|
 | `<implementation / authoring roles>` | `<runtime>` | Deep-reasoning |
-| `<review roles: cadence-reviewer, cadence-security-auditor, cadence-maintainer>` | `<independent runtime / model>` | Deep-reasoning |
+| `<review roles: cadence-spec-challenger, cadence-reviewer, cadence-breaker, cadence-security-auditor, cadence-maintainer>` | `<independent runtime / model>` | Deep-reasoning |
 | `<mechanical roles: triage, archive>` | `<runtime>` | Fast-mechanical |
 
 ---

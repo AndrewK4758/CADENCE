@@ -41,7 +41,7 @@ Invoke `/cadence-spec` from your agentic CLI runtime (`.agents/skills/cadence-sp
 
 **Prerequisite:** `specs/{ticket-id}/problem.md` and `metadata.yaml` must already exist (`status: triaged`). If either is missing, `/cadence-spec` halts and directs you to run `/cadence-triage` first.
 
-The `/cadence-spec` skill orchestrates the phase in strict order: first dispatching **`cadence-explorer`** to produce divergent `design-options.md`, then dispatching **`cadence-architect`** for a cross-boundary pre-flight (**mandatory at `tier: High`, opt-in at `tier: Medium`** per `change-tiers.md`; returning findings and clarification questions to `/cadence-spec` headlessly), and finally delegating deep architectural synthesis to **`cadence-spec-author`**.
+The `/cadence-spec` skill orchestrates the phase in strict order: first dispatching **`cadence-explorer`** to produce divergent `design-options.md`, then dispatching **`cadence-architect`** for a cross-boundary pre-flight (**mandatory at `tier: High`, opt-in at `tier: Medium`** per `change-tiers.md`; returning findings and clarification questions to `/cadence-spec` headlessly), delegating deep architectural synthesis to **`cadence-spec-author`**, and — once Step 4 mechanical checks (`verify-spec.sh`, `verify-facts.sh`, `certainty-gate.sh`) pass — running Step 4.5 Pre-Gate-1 adversarial challenge via read-only **`cadence-spec-challenger`** (`xhigh` effort).
 
 ## Optional Local Offload during Spec Discovery (`repo-scout` & `local_semantic_embed`, Cloud Fallback)
 
@@ -86,8 +86,9 @@ Once `cadence-spec-author` returns, `/cadence-spec` runs the **mechanical specif
 
 Every specification passes through two verification layers before a human reviewer is asked to approve it:
 
-1. **Structural verification (mechanical).** `.agents/skills/cadence-spec/verify-spec.sh {ticket-id}` (or `.gemini/skills/cadence-spec/verify-spec.sh {ticket-id}` on Antigravity) verifies that all required headings exist, every mandatory Engineering Pillar is evaluated, CHORD tables and Gherkin scenarios are populated, chaos profile citations (`CP-NN`) resolve via `chaos-citation-gate.sh`, and zero un-substituted template placeholders remain. Any structural failure is returned to `cadence-spec-author` and the linter is **re-run until it exits zero.** Non-blocking `WARN` diagnostics (such as an AC count note) are surfaced explicitly for Gate 1 review.
-2. **Design completeness (semantic).** With the mechanical linter green, confirm that every AC maps to concrete design signatures and Gherkin scenarios, the Contextual Grounding Matrix (6W×4L) aligns across layers, at least one substantive alternative was weighed, and all risks carry mitigations.
+1. **Structural & certainty verification (mechanical).** `.agents/skills/cadence-spec/verify-spec.sh {ticket-id}`, `verify-facts.sh {ticket-id}`, and `certainty-gate.sh --stage spec {ticket-id}` (passing `--code-root <dir>` on satellite repos) verify structural headings, CHORD rows, chaos profile citations (`CP-NN`), resolved `# STATUS:` claims, and zero placeholder tokens.
+2. **Pre-Gate-1 adversarial challenge (`cadence-spec-challenger`).** `/cadence-spec` Step 4.5 dispatches read-only `cadence-spec-challenger` to falsify upgrade/sibling defaults, exception hierarchies, multi-`await`/lock completeness, lexer/math bounds, sibling parity, `<400`-line split plans, and non-mock `test-plan.md` scenarios, looping fixes back through `cadence-spec-author` and mechanical gates until `Verdict: PASS`.
+3. **Design completeness (semantic).** With mechanical gates green and `cadence-spec-challenger` returning `PASS`, confirm that every AC maps to concrete design signatures and Gherkin scenarios, the Contextual Grounding Matrix (6W×4L) aligns across layers, at least one substantive alternative was weighed, and all risks carry mitigations.
 
 Passing `verify-spec.sh` is the structural floor, not the ceiling — evaluating whether the architecture is *sound* belongs to the human Reviewer at [Gate 1: Spec Approval](03-spec-approval.md).
 

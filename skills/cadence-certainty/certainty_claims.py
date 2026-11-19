@@ -331,3 +331,51 @@ def evaluate_evidence(
     if stage in {"implement", "review"}:
         _verify_receipts(data.get("receipts"), head_sha, test_scenarios, halts, escalates, passes)
     return halts, escalates, passes
+
+
+def resolve_repo_base(root: pathlib.Path, repo_dir: pathlib.Path, base_arg: str) -> str | None:
+    def _g(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-C", str(repo_dir), *args], capture_output=True, text=True)
+
+    if base_arg:
+        if _g("rev-parse", "--verify", "--quiet", f"{base_arg}^{{commit}}").returncode != 0:
+            raise ValueError(f"base ref does not resolve in {repo_dir}: {base_arg}")
+        return base_arg
+    cands: list[str] = []
+    for sub in ("docs/agentic-sdlc/CADENCE_ORG.md", "CADENCE_ORG.md", "processes/docs/agentic-sdlc/CADENCE_ORG.md"):
+        cand = repo_dir / sub
+        if cand.is_file():
+            m = re.search(r"integration-branch:\s*([^\s>`'\"]+)", cand.read_text(encoding="utf-8", errors="replace"))
+            if m and not m.group(1).startswith("<"):
+                cands.extend([f"origin/{m.group(1)}", m.group(1)])
+                break
+    if repo_dir != root or not cands:
+        rs = _g("symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+        if rs.returncode == 0 and rs.stdout.strip():
+            sym = rs.stdout.strip()
+            cands.extend([sym, sym.split("/", 1)[-1]])
+        cands.extend(["origin/main", "origin/develop", "main", "develop"])
+    return next((r for r in cands + ["HEAD"] if _g("rev-parse", "--verify", "--quiet", f"{r}^{{commit}}").returncode == 0), None)
+
+
+def collect_changed_files(
+    root: pathlib.Path, code_roots: list[pathlib.Path], base_arg: str, root_base_ref: str | None
+) -> list[tuple[str, str]]:
+    multi = len(code_roots) > 1
+    out: dict[str, str] = {}
+    for cr in code_roots:
+        cr_base = root_base_ref if cr == root else resolve_repo_base(root, cr, base_arg)
+        changed: set[str] = set()
+        if cr_base:
+            r_diff = subprocess.run(["git", "-C", str(cr), "diff", "--name-only", f"{cr_base}...HEAD"], capture_output=True, text=True)
+            if r_diff.returncode == 0:
+                changed.update(p.strip() for p in r_diff.stdout.splitlines() if p.strip())
+        r_st = subprocess.run(["git", "-C", str(cr), "status", "--porcelain=v1", "-uall"], capture_output=True, text=True)
+        if r_st.returncode == 0:
+            for line in r_st.stdout.splitlines():
+                if len(line) >= 4:
+                    changed.add(line[3:].strip().split(" -> ")[-1].strip().strip('"'))
+        for rel in changed:
+            disp = f"{cr.name}:{rel}" if multi else rel
+            out[disp] = rel
+    return [(rel, disp) for disp, rel in sorted(out.items())]

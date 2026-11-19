@@ -38,7 +38,16 @@ Read the complete project-level context:
 
 ## Prerequisite Check
 
-Before running the evaluation, verify that `cadence-reviewer` has approved the change proposal (recorded in `submission.md`'s `## Discussion`, on the forge PR/MR, or in the spec artifacts). If Code Review has not completed with approval, **halt immediately** and instruct the user to run `/cadence-review` first.
+Before running the evaluation, verify Gate 2 clearance in `submission.md`'s `## Discussion`, forge PR/MR, or ticket artifacts:
+1. `cadence-reviewer` has approved the change proposal (`Approve`).
+2. When `breaker-trigger.sh` returns `decision=TRIGGER`, `cadence-breaker` has returned `Verdict: CLEAN` (recorded under `### Cold-Breaker Summary`).
+3. When `security-trigger.sh` returns `decision=TRIGGER`, `cadence-security-auditor` has returned `PASS` / approval.
+
+If any required Gate 2 verdict is missing or blocking (`REQUEST CHANGES`, `BROKEN`, or `BLOCKING_ISSUES`), **halt immediately** and instruct the user to run `/cadence-review` first.
+
+### Gate 2 Residual & Mock-Blind-Spot Backstop
+
+Inspect every non-blocking `[observation]`, `[nit]`, `[hygiene]` entry and every `"does NOT model: ..."` line in `submission.md` `## Discussion`. Per `docs/policies/finding-classes.md`'s Anti-Downgrade Clause, if any item describes an unfixed runtime race, deferred cancellation/cleanup gap, unhandled exception subclass (`ResponseError` 5xx, `OperationCanceledException`, `JsonException`), un-sanitized inner logger, existing-state upgrade clobber, partial sibling fix, or unverified stubbed collaborator behavior, reject acceptance (`REQUEST CHANGES`) as a **Blocking Issue**.
 
 ## Evaluation Process
 
