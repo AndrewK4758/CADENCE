@@ -1,12 +1,11 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/mostlygeek/llama-swap/refs/heads/main/config-schema.json
 #
-# Unified Multi-GPU AI Service configuration (4 Local Setups):
-#   1. work-gpu      Office Dual RTX 4000 Ada GPUs (10.24.1.189:80, 150ms probe) -> auto-falls back to local `3-home-gpus` / `laptop-egpu`
-#   2. 3-home-gpus   Living-Room RTX 3050 Ti (192.168.50.254:11434) embeddings + Dual-GPU RTX 5080 eGPU / RTX 5070 Ti
+# Unified Multi-GPU AI Service configuration (3 Local Setups):
+#   1. 3-home-gpus   Living-Room RTX 3050 Ti (192.168.50.254:11434) embeddings + Dual-GPU RTX 5080 eGPU / RTX 5070 Ti
 #                    with trained Gemma 4 26B-A4B Coder Q5_K_M-imatrix + Vision at 64K (65,536) ctx, q8_0 KV, reasoning on
-#   3. laptop-gpu    Internal RTX 5070 Ti 12GB only with Gemma 4 12B + Vision (128K ctx, q4_0 KV, reasoning on, --fit-target 1200, ttl: 60)
+#   2. laptop-gpu    Internal RTX 5070 Ti 12GB only with Gemma 4 12B + Vision (128K ctx, q4_0 KV, reasoning on, --fit-target 1200, ttl: 60)
 #                    + Google EmbeddingGemma 2 BF16 GPU embeddings (protects system display / KWin / VA-API VRAM)
-#   4. laptop-egpu   Dual-GPU RTX 5080 16GB eGPU + RTX 5070 Ti 12GB (inference-dual setup):
+#   3. laptop-egpu   Dual-GPU RTX 5080 16GB eGPU + RTX 5070 Ti 12GB (inference-dual setup):
 #                    Gemma 4 26B-A4B Coder Q5_K_M-imatrix (+ Vision, 64K ctx, q8_0 KV, reasoning on) & `laptop-egpu-text` (Text-only, 128K ctx, q8_0 KV);
 #                    Gemma 4 31B QAT (+ MTP drafter) preserved under `31b` (Vision, 64K) and `31b-text` (Text-only, 128K)
 
@@ -36,20 +35,6 @@ models:
       --no-cache-prompt -sps 0
       --ctx-size 8192 --parallel 2 --batch-size 2048 --ubatch-size 2048
       --threads 4 --threads-batch 4
-
-  # ----------------------------------------------------------------------------
-  # 1. work-gpu: Office Dual RTX 4000 Ada GPUs (10.24.1.189:80, 150ms probe -> local fallback)
-  # ----------------------------------------------------------------------------
-  work-gpu:
-    ttl: 0
-    cmd: |
-      /home/ak/.local/bin/llama-lan-proxy --port ${PORT}
-      --upstream http://10.24.1.189:80/upstream/inference
-      --fallback-upstream http://127.0.0.1:11434/upstream/laptop-egpu
-      --probe-timeout 0.15
-    capabilities:
-      in: [text, image]
-      out: [text]
 
   # ----------------------------------------------------------------------------
   # 2. 3-home-gpus: 3050 Ti LAN Embeddings + Dual-GPU 5080 eGPU / 5070 Ti Gemma 4 26B-A4B Coder (64K ctx, Vision, q8_0 KV, reasoning on)
@@ -223,7 +208,7 @@ routing:
           persistent: true
           swap: false
           exclusive: false
-          members: [work-gpu, 3-home-gpus, _mcp-inference, _mcp-embed]
+          members: [3-home-gpus, _mcp-inference, _mcp-embed]
         gpu:
           swap: true
           exclusive: false

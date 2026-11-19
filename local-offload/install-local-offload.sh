@@ -64,7 +64,7 @@ chmod +x "$HOME/.local/bin/llamaswap-server"
 sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/llama-swap/local-ai-offload-serve" > "$HOME/.local/bin/local-ai-offload-serve"
 chmod +x "$HOME/.local/bin/local-ai-offload-serve"
 
-for helper in llama-lan-proxy llama-server-dropcache; do
+for helper in llama-lan-proxy llama-server-dropcache llama-3050-embed-gate; do
   if [[ -f "$SCRIPT_DIR/llama-swap/$helper" ]]; then
     sed "s|/home/ak|$HOME|g" "$SCRIPT_DIR/llama-swap/$helper" > "$HOME/.local/bin/$helper"
     chmod +x "$HOME/.local/bin/$helper"
@@ -128,7 +128,7 @@ echo "Installed CADENCE LiteRT / Local Offload stack:"
 echo "  - MCP Server:      $HOME/.local/bin/antigravity-local-offload-mcp"
 echo "  - MCP Schemas:     $HOME/.gemini/antigravity-cli/mcp/local-offload/*.json"
 echo "  - Lifecycle Hook:  $HOME/.local/bin/antigravity-local-offload-hook"
-echo "  - llama-swap CLI:  $HOME/.local/bin/{llamaswap-server,local-ai-offload-serve,llama-lan-proxy,llama-server-dropcache}"
+echo "  - llama-swap CLI:  $HOME/.local/bin/{llamaswap-server,local-ai-offload-serve,llama-lan-proxy,llama-server-dropcache,llama-3050-embed-gate}"
 echo "  - llama-swap YAML: $HOME/.config/llama-swap/{llama-swap.egpu.yaml,llama-swap.single.yaml,llama-swap.livingroom.yaml}"
 echo "  - LiteRT Config:   $HOME/.litert-lm/config.json"
 echo "  - Systemd Unit:    $HOME/.config/systemd/user/local-ai-offload.service"
