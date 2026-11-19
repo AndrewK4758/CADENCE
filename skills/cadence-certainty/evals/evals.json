@@ -1,0 +1,68 @@
+{
+  "skill_name": "cadence-certainty",
+  "notes": "Evaluates empirical certainty gate guarantees: zero AI self-grading, Layer 1 zero-schema checks (probes, unmapped unknowns, undeclared diff blast radius, dormant pillar contradiction, cycle oscillation), and Layer 2 evidence.yaml proof-graph + absence-regex + HEAD-SHA receipt verification.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "proceed-verified-manifest",
+      "prompt": "Run /cadence-certainty on a ticket whose observed proofs, absence regex, 1-hop inferred DAG, and HEAD-SHA test receipt all match repo ground truth.",
+      "expected_output": "certainty-gate.sh exits 0 emitting decision=PROCEED grade=VERIFIED layer=1+2 halt=0 escalate=0.",
+      "assertions": [
+        "Verifies observed ref, symbols, and anchor_substring against HEAD",
+        "Verifies absence search_pattern matches only expected_files",
+        "Verifies HEAD-SHA test_suite receipt before returning decision=PROCEED"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "git checkout -q -b impl/feat/ACME-CERT && sha=$(git rev-parse HEAD) && cat > specs/ACME-201/evidence.yaml <<YAML\nticket: ACME-201\nstage: spec\nhead_sha: $sha\nclaims:\n  - id: CLM-001\n    kind: behavior\n    criticality: load_bearing\n    status: observed\n    statement: compute_total returns len(items)\n    proof:\n      ref: src/alpha.py:1-2\n      symbols: [compute_total]\n      anchor_substring: return len(items)\n  - id: CLM-002\n    kind: invariant\n    criticality: supporting\n    status: inferred\n    statement: compute_total has no side effects\n    premises: [CLM-001]\nYAML\necho 'Gate 1 ruling: unknowns -- agree -- documented in ACME-201' >> specs/ACME-201/decisions.md",
+        "cmd": "bash \"$ROOT/skills/cadence-certainty/certainty-gate.sh\" --root \"$FIX\" --base trunk --stage spec ACME-201",
+        "stdout_regex": [
+          "decision=PROCEED tier=high stage=spec grade=VERIFIED layer=1\\+2 halt=0 escalate=0"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "halt-falsified-absence-and-stale-receipt",
+      "prompt": "An implementer submits an evidence.yaml with a falsified absence claim and a stale test receipt head_sha.",
+      "expected_output": "certainty-gate.sh exits 1 emitting decision=HALT grade=INSUFFICIENT with falsified_absence and stale_test_receipt.",
+      "assertions": [
+        "Falsifies absence search_pattern against real repo files without executing arbitrary shell",
+        "Rejects stale receipt whose head_sha differs from git rev-parse HEAD"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "git checkout -q -b impl/feat/ACME-HALT && cat > specs/ACME-201/evidence.yaml <<YAML\nticket: ACME-201\nstage: implement\nhead_sha: deadbeef1234\nclaims:\n  - id: CLM-001\n    kind: absence\n    criticality: load_bearing\n    status: observed\n    statement: No compute_total anywhere in src\n    proof:\n      search_pattern: compute_total\n      scope: src/\n      expected_files: []\nreceipts:\n  - kind: test_suite\n    command: pytest\n    head_sha: deadbeef1234\n    exit_code: 0\nYAML",
+        "cmd": "rc=0; out=$(bash \"$ROOT/skills/cadence-certainty/certainty-gate.sh\" --root \"$FIX\" --base trunk --stage implement ACME-201) || rc=$?; echo \"rc=$rc\"; echo \"$out\"; test \"$rc\" -eq 1",
+        "stdout_regex": [
+          "rc=1",
+          "HALT falsified_absence",
+          "HALT stale_test_receipt",
+          "decision=HALT"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "escalate-human-unanswered-probes",
+      "prompt": "Evaluate ticket ACME-120 where problem.md still has an unanswered probe.",
+      "expected_output": "certainty-gate.sh exits 2 emitting decision=ESCALATE_HUMAN grade=CONDITIONAL triggers=unanswered_probes and pauses for human ruling.",
+      "assertions": [
+        "Detects unanswered probe markers in problem.md via Layer 1 checks",
+        "Pauses autonomous progression on exit 2 before advancing to spec approval or ready_mr"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "cmd": "rc=0; out=$(bash \"$ROOT/skills/cadence-certainty/certainty-gate.sh\" --root \"$FIX\" --stage spec ACME-120) || rc=$?; echo \"rc=$rc\"; echo \"$out\"; test \"$rc\" -eq 2",
+        "stdout_regex": [
+          "rc=2",
+          "ESCALATE unanswered_probes",
+          "decision=ESCALATE_HUMAN tier=high stage=spec grade=CONDITIONAL"
+        ]
+      }
+    }
+  ]
+}

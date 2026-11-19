@@ -59,7 +59,7 @@ Invoke `/cadence-triage <TICKET-ID>`. Re-read state; if `triaged_at` or `stage: 
 
 ### State: `triaged`
 - **`tier` Medium or High:**
-  - If `specs/<TICKET-ID>/spec.md` does **not** exist AND `grep -c '_(not yet answered)_' specs/<TICKET-ID>/problem.md` `>= 1`, invoke `/cadence-elicit <TICKET-ID>` directly **first** (never pre-skip based on background session topology; if interactive prompts are unavailable/unanswered, proceed to `/cadence-spec` and disclose how many probes remained unanswered). Never log duplicate `triage` effort inside `/cadence-define`.
+  - If `specs/<TICKET-ID>/spec.md` does **not** exist AND `grep -c '_(not yet answered)_' specs/<TICKET-ID>/problem.md` `>= 1`, invoke `/cadence-elicit <TICKET-ID>` directly **first** (never pre-skip based on background session topology; if probes remain `_(not yet answered)_`, `certainty-gate.sh` will raise `ESCALATE_HUMAN` (`unanswered_probes`) before spec approval). Never log duplicate `triage` effort inside `/cadence-define`.
   - Invoke `/cadence-spec <TICKET-ID>`.
 - **`tier` Low or Trivial** → jump to *Stopping at Low and Trivial*.
 - **Missing/empty/unrecognized `tier`** → **halt** (never default to `Low`).
@@ -74,7 +74,7 @@ Check `git ls-tree origin/<integration-branch> specs/<TICKET-ID>/`:
 ### State: `spec-in-review`
 - If `spec_mr` is already populated → inspect live forge state via `State: spec-approved` step 1.
 - If `spec_mr` is empty:
-  1. Unless `spec_approved_at` is already populated, present open questions (`## Open Questions` + `design-options.md` if present) as structured option menus; when `**Gate 1 rulings:** required` appears in `spec.md`, record Gate 1 rulings in `decisions.md` and verify via `verify-facts.sh --rulings <TICKET-ID>`.
+  1. Unless `spec_approved_at` is already populated, present open questions (`## Open Questions` + `design-options.md` if present) as structured option menus; when `**Gate 1 rulings:** required` appears in `spec.md`, record Gate 1 rulings in `decisions.md` and verify via `verify-facts.sh --rulings <TICKET-ID>`. Also run `(.agents/skills/cadence-certainty/certainty-gate.sh --stage spec <TICKET-ID> || skills/cadence-certainty/certainty-gate.sh --stage spec <TICKET-ID>)` before approving or publishing (`exit 1` -> fix via `/cadence-spec`; `exit 2` -> present Escalation Packet and record human rulings in `decisions.md` until `exit 0`).
   2. Set `status: spec-approved` and `spec_approved_at` (`date -u +%Y-%m-%dT%H:%M:%SZ`) **into the spec branch commit before opening the MR** (never defer until after merge).
   3. Commit, push, and execute *Opening the Spec MR*.
 

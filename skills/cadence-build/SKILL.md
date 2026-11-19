@@ -94,6 +94,8 @@ Halt verbatim on any non-zero exit (including `sprint.binding.form_removed` / `s
 
 ## Finishing the Implementation MR
 
+Before calling `ready_mr.sh` (for Low, Medium, or High), run `(.agents/skills/cadence-certainty/certainty-gate.sh --stage review <TICKET-ID> || skills/cadence-certainty/certainty-gate.sh --stage review <TICKET-ID>)`: `exit 1` -> remediate in cycle; `exit 2` -> pause and prompt the operator to record rulings for the escalation triggers in `decisions.md` before publishing ready.
+
 ```bash
 bash .agents/skills/cadence-build/scripts/ready_mr.sh <pr-url-or-number> \
   || bash skills/cadence-build/scripts/ready_mr.sh <pr-url-or-number>

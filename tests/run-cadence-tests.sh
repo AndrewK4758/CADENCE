@@ -54,7 +54,7 @@ for p in root.rglob("*"):
     if (
         rel.startswith(("agents/", "hooks/", "local-offload/mcp/", "tests/"))
         or re.match(r"skills/.*/SKILL\.md$", rel)
-        or rel.startswith(("skills/cadence-spec/", "skills/cadence-review/references/", "skills/cadence-build/references/", "skills/cadence-adopt/", "skills/cadence-doctor/", "skills/cadence-define/scripts/", "skills/cadence-build/scripts/", "skills/cadence-watch/scripts/"))
+        or rel.startswith(("skills/cadence-spec/", "skills/cadence-review/references/", "skills/cadence-build/references/", "skills/cadence-adopt/", "skills/cadence-doctor/", "skills/cadence-define/scripts/", "skills/cadence-build/scripts/", "skills/cadence-watch/scripts/", "skills/cadence-certainty/"))
     ):
         if len(text.splitlines()) >= 400:
             errs.append(f"line ceiling >=400 ({len(text.splitlines())}L) in {rel}")
@@ -141,7 +141,7 @@ PY
 t1b_syntax() {
   while IFS= read -r -d '' shf; do
     bash -n "$shf"
-  done < <(find "$ROOT/hooks" "$ROOT/import" "$ROOT/skills/cadence-adopt" "$ROOT/skills/cadence-doctor" "$ROOT/skills/cadence-review" "$ROOT/skills/cadence-spec" "$ROOT/skills/cadence-implement" "$ROOT/skills/cadence-upgrade" "$ROOT/processes/ci-templates/scripts" "$ROOT/tests" -maxdepth 2 -name '*.sh' -print0)
+  done < <(find "$ROOT/hooks" "$ROOT/import" "$ROOT/skills/cadence-adopt" "$ROOT/skills/cadence-doctor" "$ROOT/skills/cadence-review" "$ROOT/skills/cadence-spec" "$ROOT/skills/cadence-implement" "$ROOT/skills/cadence-upgrade" "$ROOT/skills/cadence-certainty" "$ROOT/processes/ci-templates/scripts" "$ROOT/tests" -maxdepth 2 -name '*.sh' -print0)
   python3 -B - "$ROOT" <<'PY'
 import pathlib, sys
 root = pathlib.Path(sys.argv[1])
@@ -347,8 +347,9 @@ PY
 }
 EVAL_TMP="$(mktemp -d)"
 TMP_DIRS+=("$EVAL_TMP")
-run_subtest "T8 executable eval runner across all 29 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
+run_subtest "T8 executable eval runner across all 30 skills (+ fail-closed check)" t8_eval_runner "$EVAL_TMP"
 run_subtest "T9 /cadence-watch PR & bound-tracker listener gates" bash "$ROOT/tests/test-pr-watch.sh" "$ROOT"
+run_subtest "T10 certainty-gate empirical evidence & escalation gates" bash "$ROOT/tests/test-certainty-gate.sh" "$ROOT"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]
