@@ -1,11 +1,10 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/mostlygeek/llama-swap/refs/heads/main/config-schema.json
 #
 # Single-GPU Unified AI Service configuration (Undocked Internal RTX 5070 Ti 12GB Laptop GPU):
-#   1. work-gpu      Office Dual RTX 4000 Ada GPUs (10.24.1.189:80, 150ms probe) -> auto-falls back to local `laptop-gpu`
-#   2. 3-home-gpus   Routes to `laptop-gpu` when undocked away from the RTX 5080 eGPU
-#   3. laptop-gpu    Internal RTX 5070 Ti 12GB only with Gemma 4 12B + Vision (128K ctx, q4_0 KV, reasoning on, --fit-target 1200, ttl: 60)
+#   1. 3-home-gpus   Routes to `laptop-gpu` when undocked away from the RTX 5080 eGPU
+#   2. laptop-gpu    Internal RTX 5070 Ti 12GB only with Gemma 4 12B + Vision (128K ctx, q4_0 KV, reasoning on, --fit-target 1200, ttl: 60)
 #                    + Google EmbeddingGemma 2 BF16 GPU embeddings (protects system display / KWin / VA-API VRAM)
-#   4. laptop-egpu   Routes to `laptop-gpu` when undocked away from the RTX 5080 eGPU
+#   3. laptop-egpu   Routes to `laptop-gpu` when undocked away from the RTX 5080 eGPU
 
 healthCheckTimeout: 600
 logLevel: info
@@ -33,20 +32,6 @@ models:
       --no-cache-prompt -sps 0
       --ctx-size 8192 --parallel 2 --batch-size 2048 --ubatch-size 2048
       --threads 4 --threads-batch 4
-
-  # ----------------------------------------------------------------------------
-  # 1. work-gpu: Office Dual RTX 4000 Ada GPUs (10.24.1.189:80, 150ms probe -> local fallback)
-  # ----------------------------------------------------------------------------
-  work-gpu:
-    ttl: 0
-    cmd: |
-      /home/ak/.local/bin/llama-lan-proxy --port ${PORT}
-      --upstream http://10.24.1.189:80/upstream/inference
-      --fallback-upstream http://127.0.0.1:11434/upstream/laptop-gpu
-      --probe-timeout 0.15
-    capabilities:
-      in: [text, image]
-      out: [text]
 
   # ----------------------------------------------------------------------------
   # 2. 3-home-gpus: Routes to laptop-gpu when undocked without the RTX 5080 eGPU
@@ -147,7 +132,7 @@ routing:
           persistent: true
           swap: false
           exclusive: false
-          members: [work-gpu, 3-home-gpus, laptop-egpu, laptop-egpu-text, _mcp-inference, _mcp-embed]
+          members: [3-home-gpus, laptop-egpu, laptop-egpu-text, _mcp-inference, _mcp-embed]
         gpu:
           swap: true
           exclusive: false

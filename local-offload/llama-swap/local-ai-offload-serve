@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Unified Local AI Service (llama-swap on 127.0.0.1:11434):
 # - 3-GPU Home Docked: uses llama-swap.egpu.yaml (Living-Room RTX 3050 Ti LAN embedding + Dual-GPU 5080/5070 Ti 26B-A4B Coder / 31B on-demand)
-# - 2-GPU Office: uses work-gpu proxy (10.24.1.189:80 Dual RTX 4000 Ada -> local fallback) + RTX 5080 eGPU embedding/inference when docked
+# - 2-GPU Local Docked: uses llama-swap.egpu.yaml (Dual-GPU RTX 5080 eGPU + RTX 5070 Ti with local GPU embedding fallback when off home LAN)
 # - 1-GPU Laptop Undocked: falls back to llama-swap.single.yaml (Internal RTX 5070 Ti 12B with ttl: 60 + GPU embedding)
 
 # Allow NVIDIA driver / eGPU enumeration a brief window on fresh userspace boot

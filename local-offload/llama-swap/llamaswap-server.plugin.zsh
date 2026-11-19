@@ -5,14 +5,13 @@
 # ZSH wrapper and completion for llama-swap: one address (default :11434) that
 # serves the local GPU setups + persistent GPU embeddings:
 #   embedding        Google EmbeddingGemma 2 BF16: LAN-first to Living-Room RTX 3050 Ti (192.168.50.254:11434), fallback to local GPU
-#   work-gpu         Office Dual RTX 4000 Ada GPUs (10.24.1.189:80, 150ms probe) -> fallback to local inference
 #   3-home-gpus      3050 Ti embeddings + 5080 eGPU / 5070 Ti Gemma 4 26B-A4B Coder Q5_K_M + Vision (64K ctx, q8_0 KV, reasoning on)
 #   laptop-gpu       Internal RTX 5070 Ti 12GB only: Gemma 4 12B + Vision (128K ctx, q4_0 KV, reasoning on, fit-target 1200, ttl: 60) + EmbeddingGemma 2 BF16
 #   laptop-egpu      Dual-GPU RTX 5080 eGPU + RTX 5070 Ti (Gemma 4 26B-A4B Coder Q5_K_M + Vision, 64K ctx, q8_0 KV; 31b preserved under '31b')
 #   laptop-egpu-text Dual-GPU RTX 5080 eGPU + RTX 5070 Ti text-only Gemma 4 26B-A4B Coder Q5_K_M (128K ctx, q8_0 KV; 31b-text under '31b-text')
 #
 # Configurations:
-#   ~/projects/scripts/btg/llama-swap.egpu.yaml        Docked (RTX 5080 eGPU + RTX 5070 Ti + LAN 3050 Ti / Office Ada)
+#   ~/projects/scripts/btg/llama-swap.egpu.yaml        Docked (RTX 5080 eGPU + RTX 5070 Ti + LAN 3050 Ti)
 #   ~/projects/scripts/btg/llama-swap.single.yaml      Undocked (Internal RTX 5070 Ti laptop fallback)
 #   ~/projects/scripts/btg/llama-swap.livingroom.yaml  Living-Room headless server (RTX 3050 Ti 4GB + LAN 5080 proxy)
 #   apis/website/api/llama-swap.production.yaml        Production two-GPU server config (btgai1 Dual RTX 4000 Ada)
@@ -108,7 +107,7 @@ function llamaswap-server() {
 
     # Show Help
     if [[ -v "opts[-h]" || -v "opts[--help]" ]]; then
-        echo -e "\033[1;36mllamaswap-server\033[0m - Unified llama-swap (work-gpu, 3-home-gpus, laptop-gpu, laptop-egpu + 3050 Ti embeddinggemma-2)"
+        echo -e "\033[1;36mllamaswap-server\033[0m - Unified llama-swap (3-home-gpus, laptop-gpu, laptop-egpu + 3050 Ti embeddinggemma-2)"
         echo -e "\033[1;33mUsage:\033[0m llamaswap-server [OPTIONS] [EXTRA_ARGS...]"
         echo ""
         echo -e "\033[1;33mOptions:\033[0m"

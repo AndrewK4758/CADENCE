@@ -20,6 +20,7 @@ HOME_STR = str(pathlib.Path.home())
 LLAMA_SWAP_URL = os.environ.get("LLAMA_SWAP_URL", "http://127.0.0.1:11434/v1")
 LAN_EMBED_URL = os.environ.get("LIVING_ROOM_EMBED_URL", "http://192.168.50.254:11434/v1")
 LAN_PROBE_TIMEOUT = float(os.environ.get("LIVING_ROOM_PROBE_TIMEOUT", "0.15"))
+LAN_READ_TIMEOUT = float(os.environ.get("LIVING_ROOM_READ_TIMEOUT", "15.0"))
 TIER1_CPU_URL = os.environ.get("LOCAL_AI_TIER1_URL", LLAMA_SWAP_URL)
 TIER2_GPU_URL = os.environ.get("LOCAL_AI_TIER2_URL", LLAMA_SWAP_URL)
 DEFAULT_OFFLOAD_MODEL = os.environ.get("OFFLOAD_GPU_MODEL", "inference")
@@ -141,18 +142,21 @@ def post_json(url: str, payload: dict[str, Any], timeout: float = 180.0) -> dict
         pooled = pool.get(sp.netloc)
         reused = pooled is not None and pooled.sock is not None
         conn = pooled if reused else None
+        req_to = min(timeout, LAN_READ_TIMEOUT) if (url.startswith(LAN_EMBED_URL) and TIER1_CPU_URL != LAN_EMBED_URL) else timeout
         try:
             if conn is None:
-                conn = _open_lan_conn(sp.netloc, read_timeout=timeout) if url.startswith(LAN_EMBED_URL) else http.client.HTTPConnection(sp.netloc, timeout=timeout)
+                conn = _open_lan_conn(sp.netloc, read_timeout=req_to) if url.startswith(LAN_EMBED_URL) else http.client.HTTPConnection(sp.netloc, timeout=req_to)
                 pool[sp.netloc] = conn
-            _configure_conn(conn, timeout)
+            _configure_conn(conn, req_to)
             conn.request("POST", sp.path or "/", body=body, headers={"Content-Type": "application/json", "Connection": "keep-alive"})
-            _configure_conn(conn, timeout)
+            _configure_conn(conn, req_to)
             resp = conn.getresponse()
             raw = resp.read()
             if resp.will_close:
                 conn.close()
                 pool.pop(sp.netloc, None)
+            if resp.status in {502, 503, 504} and url.startswith(LAN_EMBED_URL) and TIER1_CPU_URL != LAN_EMBED_URL:
+                reused = False; raise http.client.HTTPException(f"LAN HTTP {resp.status}")
             if resp.status >= 400:
                 raise RuntimeError(f"HTTP {resp.status}: {raw[:200]!r}")
             return json.loads(raw.decode("utf-8"))

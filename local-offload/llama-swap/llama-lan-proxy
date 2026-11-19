@@ -9,9 +9,9 @@ Modes:
    Probes the living-room 3050 Ti in <50ms; if reachable on the home LAN, forwards `/v1/embeddings`
    to the 3050 Ti. When away at work (no VPN needed), transparently spawns/forwards to a local
    `llama-server-dropcache` GPU embedding instance on `archlaptop` (RTX 5080 eGPU or RTX 5070 Ti).
-3. LAN-first with upstream URL fallback (`work-gpu` -> Office Dual-Ada `10.24.1.189:80/upstream/inference`):
-   Probes the office Dual RTX 4000 Ada server in <150ms; if off-LAN, forwards transparently to
-   `--fallback-upstream http://127.0.0.1:11434/upstream/inference` on local GPUs.
+3. LAN-first with upstream URL fallback (`--upstream` -> `--fallback-upstream`):
+   Probes the configured upstream URL within `--probe-timeout` (default 50ms); if unreachable,
+   forwards transparently to `--fallback-upstream` (e.g. local `llama-swap` GPU endpoint).
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ class ProxyConfig:
     upstream: str = "http://192.168.50.155:11434"
     fallback_upstream: str = ""
     probe_timeout: float = 0.05
+    primary_read_timeout: float = 15.0
     wait_for_upstream: bool = True
     wait_timeout: float = 120.0
     fallback_cmd: list[str] = []
@@ -39,6 +40,8 @@ LAST_FALLBACK_AT: float = 0.0
 FALLBACK_IDLE_RECLAIM_SECONDS: float = 30.0
 UPSTREAM_PROBE_INTERVAL_SECONDS: float = 15.0
 UPSTREAM_RECOVER_STREAK: int = 2
+PRIMARY_DOWN_UNTIL: float = 0.0
+PRIMARY_COOLDOWN_SECONDS: float = 30.0
 POOL_LOCK = threading.Lock()
 UPSTREAM_POOL: dict[tuple[str, int], list[http.client.HTTPConnection]] = {}
 
@@ -153,12 +156,16 @@ def _release_fallback_inflight() -> None:
         LAST_FALLBACK_AT = time.monotonic()
 
 
-def _resolve_target(force_probe: bool = False) -> tuple[str, int, str, bool]:
+def _resolve_target(force_probe: bool = False, force_fallback: bool = False) -> tuple[str, int, str, bool]:
     global FALLBACK_INFLIGHT, LAST_FALLBACK_AT
     u_host, u_port, u_prefix = _parse_url(CONFIG.upstream)
 
     if CONFIG.fallback_cmd:
-        if _can_reach(u_host, u_port, CONFIG.probe_timeout, force_probe=force_probe, keep_conn=not force_probe):
+        if (
+            not force_fallback
+            and time.monotonic() >= PRIMARY_DOWN_UNTIL
+            and _can_reach(u_host, u_port, CONFIG.probe_timeout, force_probe=force_probe, keep_conn=not force_probe)
+        ):
             return u_host, u_port, u_prefix, False
         with FALLBACK_LOCK:
             fb_host, fb_port = _ensure_fallback_running_locked()
@@ -167,7 +174,11 @@ def _resolve_target(force_probe: bool = False) -> tuple[str, int, str, bool]:
         return fb_host, fb_port, "", True
 
     if CONFIG.fallback_upstream:
-        if _can_reach(u_host, u_port, CONFIG.probe_timeout, force_probe=force_probe, keep_conn=not force_probe):
+        if (
+            not force_fallback
+            and time.monotonic() >= PRIMARY_DOWN_UNTIL
+            and _can_reach(u_host, u_port, CONFIG.probe_timeout, force_probe=force_probe, keep_conn=not force_probe)
+        ):
             return u_host, u_port, u_prefix, False
         fb_host, fb_port, fb_prefix = _parse_url(CONFIG.fallback_upstream)
         return fb_host, fb_port, fb_prefix, False
@@ -194,7 +205,7 @@ def _fallback_reclaim_loop() -> None:
                 FALLBACK_INFLIGHT == 0
                 and (time.monotonic() - LAST_FALLBACK_AT) >= FALLBACK_IDLE_RECLAIM_SECONDS
             )
-        if not proc_alive or not idle_enough:
+        if not proc_alive or not idle_enough or time.monotonic() < PRIMARY_DOWN_UNTIL:
             streak = 0
             continue
         if _can_reach(u_host, u_port, CONFIG.probe_timeout, force_probe=True, keep_conn=False):
@@ -240,6 +251,7 @@ class LANProxyHandler(BaseHTTPRequestHandler):
         return
 
     def _handle(self) -> None:
+        global PRIMARY_DOWN_UNTIL
         if self.path == "/health":
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -268,6 +280,8 @@ class LANProxyHandler(BaseHTTPRequestHandler):
             base_headers["Connection"] = "keep-alive"
 
             for attempt in range(2):
+                is_primary = not using_fallback_proc and has_fallback and target_host == u_host and target_port == u_port
+                req_timeout = CONFIG.primary_read_timeout if is_primary else UPSTREAM_TIMEOUT
                 req_path = self.path
                 if target_prefix and not req_path.startswith(target_prefix):
                     req_path = f"{target_prefix}{req_path if req_path.startswith('/') else '/' + req_path}"
@@ -276,7 +290,6 @@ class LANProxyHandler(BaseHTTPRequestHandler):
 
                 conn = _pop_pooled(target_host, target_port) if attempt == 0 else None
                 if conn is None:
-                    is_primary = not using_fallback_proc and has_fallback and target_host == u_host and target_port == u_port
                     connect_timeout = CONFIG.probe_timeout if is_primary else UPSTREAM_TIMEOUT
                     conn = http.client.HTTPConnection(target_host, target_port, timeout=connect_timeout)
                     try:
@@ -284,21 +297,36 @@ class LANProxyHandler(BaseHTTPRequestHandler):
                     except (OSError, http.client.HTTPException):
                         conn.close()
                         conn = None
-                        if attempt == 0 and not using_fallback_proc and has_fallback:
+                        if attempt == 0 and is_primary:
                             target_host, target_port, target_prefix, using_fallback_proc = _resolve_target(force_probe=True)
                             continue
                         raise
-                _configure_upstream_sock(conn)
+                _configure_upstream_sock(conn, req_timeout)
                 try:
                     conn.request(self.command, req_path, body=body, headers=fwd_headers)
-                    _configure_upstream_sock(conn)
+                    _configure_upstream_sock(conn, req_timeout)
                     resp = conn.getresponse()
+                    if attempt == 0 and is_primary and resp.status in {502, 503, 504}:
+                        resp.read()
+                        resp.close()
+                        conn.close()
+                        resp = None
+                        conn = None
+                        _drop_pooled(u_host, u_port)
+                        PRIMARY_DOWN_UNTIL = time.monotonic() + PRIMARY_COOLDOWN_SECONDS
+                        target_host, target_port, target_prefix, using_fallback_proc = _resolve_target(force_fallback=True)
+                        continue
                     break
-                except (OSError, http.client.HTTPException):
+                except (OSError, http.client.HTTPException) as exc:
                     conn.close()
                     conn = None
-                    if attempt == 0 and not using_fallback_proc and has_fallback:
-                        target_host, target_port, target_prefix, using_fallback_proc = _resolve_target(force_probe=True)
+                    if attempt == 0 and is_primary:
+                        if isinstance(exc, TimeoutError):
+                            _drop_pooled(u_host, u_port)
+                            PRIMARY_DOWN_UNTIL = time.monotonic() + PRIMARY_COOLDOWN_SECONDS
+                            target_host, target_port, target_prefix, using_fallback_proc = _resolve_target(force_fallback=True)
+                        else:
+                            target_host, target_port, target_prefix, using_fallback_proc = _resolve_target(force_probe=True)
                         continue
                     if attempt == 1:
                         raise
@@ -369,6 +397,7 @@ def main() -> None:
     parser.add_argument("--upstream", type=str, default="http://192.168.50.155:11434")
     parser.add_argument("--fallback-upstream", type=str, default="")
     parser.add_argument("--probe-timeout", type=float, default=0.05)
+    parser.add_argument("--primary-read-timeout", type=float, default=15.0)
     parser.add_argument("--wait-timeout", type=float, default=120.0)
     parser.add_argument("--fallback-port", type=int, default=0)
     parser.add_argument("fallback_cmd", nargs=argparse.REMAINDER)
@@ -378,6 +407,7 @@ def main() -> None:
     CONFIG.upstream = args.upstream
     CONFIG.fallback_upstream = args.fallback_upstream
     CONFIG.probe_timeout = args.probe_timeout
+    CONFIG.primary_read_timeout = args.primary_read_timeout
     CONFIG.wait_timeout = args.wait_timeout
     CONFIG.fallback_port = args.fallback_port or (args.port + 100)
     if args.fallback_cmd and args.fallback_cmd[0] == "--":
