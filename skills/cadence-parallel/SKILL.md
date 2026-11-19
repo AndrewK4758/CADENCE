@@ -86,6 +86,8 @@ As each ticket clears its final tier-appropriate human gate (Maintainer Acceptan
 
 Upon batch completion — and whenever the requester asks for a progress check — display a structured status table with one row per ticket showing its tier, current lifecycle phase, worktree branch, and any pending human gate or dependency blocker. Never allow a ticket to disappear from status reports; if a ticket is waiting on a dependency, paused at a human gate, or halted on an error, state that condition explicitly.
 
+- **Batch Watch Handoff Prompt:** `/cadence-parallel` owns the watch prompt for the batch (suppressing per-ticket inner prompts from delegated stages). Whenever one or more batch tickets have open `spec_mr` or `merge_request` PRs awaiting human gate review/merge and an interactive operator is present, ask whether to invoke `/cadence-watch --all` (`watch` = `--watch` live poll / `once` = `--once` single check / `no` = stop here) or `/cadence-watch <TICKET-ID>` for a single ticket, invoking `/cadence-watch` only on explicit confirmation (skip when unattended or when every batch ticket is archived) and never auto-polling silently.
+
 ---
 
 ## Worked Example (Agentic CLI Runtime)

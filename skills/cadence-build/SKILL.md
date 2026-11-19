@@ -50,7 +50,7 @@ Run `read_state.py` and evaluate `status` jointly with `tier`:
 | unreadable, empty, or unknown | **halt**, quoting raw `status` / `tier` verbatim (never default unknown tier to `Low`) |
 
 - **Gate at `spec-approved` (Medium/High):** Run `git ls-tree origin/<integration-branch> specs/<TICKET-ID>/` (corroborating `SPEC_MR` when online). Because `/cadence-define` writes `status: spec-approved` into the spec branch commit before merging, `spec.md` absent from `origin/<integration-branch>` means **not yet** admitted — direct operator to merge the spec MR via `/cadence-define` first, never cut an implementation branch against an unmerged spec.
-- **Gate at `in-review`:** If `merge_request` is populated, check `gh pr view "$MERGE_REQUEST" --json state,isDraft,url`: `OPEN` + `isDraft: false` -> clean exit directing to `/cadence-close` (or `/cadence-maintain`); `MERGED` -> clean exit noting stale `status` ready for `/cadence-archive`; `CLOSED` -> **halt**; offline -> inspect local `ledger_cycles_completed` & `submission.md` and avoid redundant cycles if latest blocking count is `0`.
+- **Gate at `in-review`:** If `merge_request` is populated, check `gh pr view "$MERGE_REQUEST" --json state,isDraft,url`: `OPEN` + `isDraft: false` -> run the *Optional Watch Handoff Prompt* below and exit cleanly directing to `/cadence-close` (or `/cadence-maintain`); `MERGED` -> clean exit noting stale `status` ready for `/cadence-archive`; `CLOSED` -> **halt**; offline -> inspect local `ledger_cycles_completed` & `submission.md` and avoid redundant cycles if latest blocking count is `0`.
 
 ## Step 3 — State Loop
 
@@ -98,7 +98,12 @@ Halt verbatim on any non-zero exit (including `sprint.binding.form_removed` / `s
 bash .agents/skills/cadence-build/scripts/ready_mr.sh <pr-url-or-number> \
   || bash skills/cadence-build/scripts/ready_mr.sh <pr-url-or-number>
 ```
-Exit `0`: quote verbatim `ready_mr:` line, verify `metadata.yaml` `merge_request` equals `url=` (commit/push if reconciled), and **stop immediately** (never self-merge or monitor merge). Name `/cadence-close <TICKET-ID>` (or `/cadence-maintain <TICKET-ID>`, or `/cadence-watch <TICKET-ID>` to monitor PR responses) as the next step. Exit `2`: **halt** citing MR and failure cause.
+Exit `0`: quote verbatim `ready_mr:` line, verify `metadata.yaml` `merge_request` equals `url=` (commit/push if reconciled), present the Run-End Checklist, run the *Optional Watch Handoff Prompt* below, and **stop immediately** unless explicitly confirmed (never self-merge or auto-monitor merge). Name `/cadence-close <TICKET-ID>` (or `/cadence-maintain <TICKET-ID>`) as the next step. Exit `2`: **halt** citing MR and failure cause.
+
+### Optional Watch Handoff Prompt
+`/cadence-build` owns the single watch prompt for this run (inner `/cadence-implement` and `/cadence-review` cycles skip their standalone watch prompts while running inside `/cadence-build`). Whenever the implementation MR is open and ready on the forge and an interactive operator is present, ask:
+> `Invoke /cadence-watch <TICKET-ID> now to monitor PR reviews, CI, merge, and bound tracker comments? (watch = --watch live poll / once = --once single check / no = stop here; or use /schedule for recurring --once checks)`
+Invoke `/cadence-watch <TICKET-ID> --watch` or `/cadence-watch <TICKET-ID> --once` **only** on explicit confirmation (`watch` / `once`); if declined or non-interactive/unattended, stop immediately with zero polling.
 
 ## Run-End Checklist (Every Exit Path)
 
@@ -106,6 +111,6 @@ Exit `0`: quote verbatim `ready_mr:` line, verify `metadata.yaml` `merge_request
 2. **Verbatim `ready_mr:` line** + confirmation `merge_request` matches `url=`.
 3. **Cycle count summary:** prior cycles, cycles run this invocation, final `blocking`/`nonblocking`.
 4. **Session topology & worktree status** (`worktree_state`, left-standing path & branch).
-5. **Stopping reason & next actor** (`/cadence-close <TICKET-ID>`, `/cadence-maintain <TICKET-ID>`, `/cadence-watch <TICKET-ID>`, or unblock action).
+5. **Stopping reason & next actor** (`/cadence-close <TICKET-ID>`, `/cadence-maintain <TICKET-ID>`, opt-in `/cadence-watch <TICKET-ID>` handoff, or unblock action).
 6. **Sprint-enforcement record** (`org-binding-resolve.sh --sprint` output, single-run confirmation or `in-sprint`).
 7. **Held follow-up disposition summary** (held count at Medium/High, or final Low-tier gate dispositions).

@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Automated PR & bound-tracker listener (`/cadence-watch`):** Added `/cadence-watch` with `pr_watch.py` and `watch_sources.py` to monitor GitHub PRs, GitLab MRs, and bound Jira/YouTrack ticket comments (`--once`, `--watch`, `--all`), mirror unseen feedback into `submission.md` using write-after-completion watermarks and reply loop suppression, advance merged `spec_mr` -> `/cadence-build` and merged `merge_request` -> `/cadence-archive`, remediate in-scope change requests/CI failures, and escalate scope changes or hand approved PRs to `/cadence-close` without silent self-merge.
 
+### Changed
+
+- **Interactive `/cadence-watch` handoff prompts across PR-facing stage skills:** Added opt-in confirmation prompts (`watch` / `once` / `no`, skipped when non-interactive or invoked inside a parent orchestrator) at PR-ready boundaries in `/cadence-define`, `/cadence-build`, `/cadence-parallel`, `/cadence-close` (on Gate 3 `Postpone`/`Reject`), and standalone `/cadence-spec`, `/cadence-implement`, `/cadence-review`, and `/cadence-maintain`.
+- **README cloud/hybrid deployment & AI harness offload architecture:** Clarified that CADENCE runs provider-neutrally across cloud-only, hybrid cloud + local offload, and local-only setups, marked local GPU setup steps as optional, and added a Mermaid diagram showing how AI CLI harnesses, hooks, cloud frontier models, `local-offload` FastMCP/subagents, and `llama-swap` (`:11434`) interoperate.
+
 ## [2026.47.0] - 2026-11-18
 
 > Milestone release **`cadence-v1.1.0`**. See [cadence-v1.1.0 release notes](docs/releases/cadence-v1.1.0.md) for narrative context and upgrade notes.

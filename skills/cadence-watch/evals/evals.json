@@ -165,6 +165,62 @@
           ]
         }
       }
+    },
+    {
+      "id": 5,
+      "name": "stage-skills-prompt-for-watch-handoff-without-auto-polling",
+      "prompt": "Verify PR-facing stage skills prompt interactively for /cadence-watch handoff without auto-polling or double-prompting.",
+      "expected_output": "All 8 PR-facing stage skills expose Skill tool, ask interactively before invoking /cadence-watch (watch/once/no), suppress auto-polling when declined or unattended, and inner skills skip prompting when called by a parent orchestrator.",
+      "assertions": [
+        "All 8 PR-facing stage skills reference /cadence-watch with interactive watch/once/no confirmation",
+        "cadence-spec and cadence-implement include Skill in allowed-tools",
+        "Inner skills skip standalone watch prompt when invoked by parent orchestrators"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-define/SKILL.md",
+            "regex": "Optional Watch Handoff Prompt[\\s\\S]*?/cadence-watch <TICKET-ID>[\\s\\S]*?stop immediately with zero polling"
+          },
+          {
+            "file": "skills/cadence-build/SKILL.md",
+            "regex": "Optional Watch Handoff Prompt[\\s\\S]*?/cadence-watch <TICKET-ID>[\\s\\S]*?stop immediately with zero polling"
+          },
+          {
+            "file": "skills/cadence-spec/SKILL.md",
+            "regex": "^allowed-tools:.*\\bSkill\\b"
+          },
+          {
+            "file": "skills/cadence-spec/SKILL.md",
+            "regex": "Standalone Watch Handoff Prompt[\\s\\S]*?skip when invoked inside `/cadence-define` or `/cadence-parallel`[\\s\\S]*?/cadence-watch"
+          },
+          {
+            "file": "skills/cadence-implement/SKILL.md",
+            "regex": "^allowed-tools:.*\\bSkill\\b"
+          },
+          {
+            "file": "skills/cadence-implement/SKILL.md",
+            "regex": "Standalone Watch Handoff Prompt[\\s\\S]*?skip when invoked inside `/cadence-build` or `/cadence-parallel`[\\s\\S]*?/cadence-watch"
+          },
+          {
+            "file": "skills/cadence-review/SKILL.md",
+            "regex": "Standalone Watch Handoff Prompt[\\s\\S]*?skip when invoked inside `/cadence-build` or `/cadence-parallel`[\\s\\S]*?/cadence-watch"
+          },
+          {
+            "file": "skills/cadence-maintain/SKILL.md",
+            "regex": "Standalone Watch Handoff Prompt[\\s\\S]*?skip when invoked inside `/cadence-close` or `/cadence-parallel`[\\s\\S]*?/cadence-watch"
+          },
+          {
+            "file": "skills/cadence-close/SKILL.md",
+            "regex": "On `Postpone` or `Reject`[\\s\\S]*?/cadence-watch <TICKET-ID>[\\s\\S]*?never auto-poll silently"
+          },
+          {
+            "file": "skills/cadence-parallel/SKILL.md",
+            "regex": "Batch Watch Handoff Prompt[\\s\\S]*?/cadence-watch --all[\\s\\S]*?never auto-polling silently"
+          }
+        ]
+      }
     }
   ]
 }

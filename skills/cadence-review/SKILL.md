@@ -76,6 +76,7 @@ Audit the change proposal `$mr_ref` (whether a GitLab MR, GitHub PR, or SourceHu
    - Count of blocking defects
    - Count of non-blocking findings and their follow-up dispositions
    - Concise synthesis of architectural and adversarial review findings
+   - **Standalone Watch Handoff Prompt:** Only when `/cadence-review` was invoked directly (skip when invoked inside `/cadence-build` or `/cadence-parallel`, or when non-interactive) and an MR/PR URL is recorded (`merge_request` or `spec_mr` in `metadata.yaml`), ask whether to invoke `/cadence-watch {ticket-id}` (`watch` = `--watch` live poll / `once` = `--once` single check / `no` = stop here) to monitor follow-up comments, fixes, or merge, invoking `/cadence-watch` only on explicit confirmation and never auto-polling silently.
 
 ## Example
 

@@ -72,6 +72,7 @@ Prior to invoking `cadence-maintainer`, verify both preconditions:
    - **Project to tracker.** Once `metadata.yaml` is saved, invoke the repository's designated tracker sync skill (resolved from `CADENCE_ORG.md` §9, Tracker Binding) for `{ticket-id}` to project the maintainer decision and post the new `stage_effort` entry as a per-stage worklog.
 
 8. **Report outcome** to the operator summarizing the recorded decision, follow-up dispositions, and tracker projection status.
+   - **Standalone Watch Handoff Prompt:** Only when `/cadence-maintain` was invoked directly (skip when invoked inside `/cadence-close` or `/cadence-parallel`, or when non-interactive) and the MR/PR remains open (`merge_request` non-empty in `metadata.yaml`), ask whether to invoke `/cadence-watch {ticket-id}` (`watch` = `--watch` live poll / `once` = `--once` single check / `no` = stop here) to monitor merge or follow-up responses, invoking `/cadence-watch` only on explicit confirmation and never auto-polling silently.
 
 ## Example
 
