@@ -135,6 +135,7 @@ Skills are user-invokable slash-command workflows stored directly in `.agents/sk
 | `/cadence-retro` | Run a read-only cross-ticket retrospective across `archive/*/` via `retro_scan.py` and `:11434` semantic clustering, surfacing rework hotspots, effort variance, deferred follow-ups, and confirmation-gated `II-NNN`/`PROD-NNN` insight candidates |
 | `/cadence-watch` | Poll open GitHub PRs, GitLab MRs, and bound Jira/YouTrack ticket comments (`pr_watch.py`), mirror new feedback into `submission.md` with idempotent watermarks, advance merged `spec_mr` -> `/cadence-build` or `merge_request` -> `/cadence-archive`, and remediate in-scope change requests while preserving mandatory human gates |
 | `/cadence-certainty` | Run the deterministic hybrid empirical certainty gate (`certainty-gate.sh`) across Layer 1 zero-schema signals (probes, unknowns, blast radius, dormant pillars, cycle oscillation) and Layer 2 `evidence.yaml` proofs + `HEAD`-SHA receipts (`0` proceed / `1` halt / `2` escalate to human) |
+| `/cadence-trainlog` | Inspect, backfill (`ingest`), tag (`public-eligible`/`private`/`client-restricted`), verify, and export external CADENCE turn logs (`Stop` hook `cadence-turn-logger.sh`) into scrubbed, Chinese-wall-enforced SFT/DPO/RLVR JSONL datasets |
 
 ---
 

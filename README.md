@@ -41,7 +41,7 @@ Every letter of **CADENCE** maps directly to a governed phase of the software en
 ```mermaid
 flowchart TB
     subgraph Source["1. Universal Governance Source (.agents/ + AGENTS.md)"]
-        AG[".agents/ (12 Agents, 30 Skills, Hooks & Manifests)"]
+        AG[".agents/ (12 Agents, 31 Skills, Hooks & Manifests)"]
         AD["Runtime Projections (import/link-sdlc.sh & adapters/)"]
         AG --> AD
     end
@@ -125,7 +125,7 @@ CADENCE/
 │   ├── cadence-triage-agent/
 │   ├── log-triage/
 │   └── repo-scout/
-├── skills/                          # 30 governed /cadence-* workflow skills
+├── skills/                          # 31 governed /cadence-* workflow skills
 │   ├── cadence-adopt/
 │   ├── cadence-archive/
 │   ├── cadence-build/
@@ -153,11 +153,15 @@ CADENCE/
 │   ├── cadence-spec/
 │   ├── cadence-sync-jira/
 │   ├── cadence-sync-youtrack/
+│   ├── cadence-trainlog/
 │   ├── cadence-triage/
 │   ├── cadence-upgrade/
 │   └── cadence-watch/
 ├── hooks/                           # Custom PreInvocation, PostToolUse & Stop lifecycle hooks
 │   ├── antigravity-local-offload-hook
+│   ├── cadence-turn-logger.sh
+│   ├── cadence_turn_logger.py
+│   ├── cadence_turn_parsers.py
 │   ├── local-offload-enforcer.sh
 │   ├── tms-sync-reminder.sh
 │   ├── tms-doc-sync-stop.sh
@@ -201,13 +205,14 @@ CADENCE/
 │   ├── ci-templates/
 │   ├── docs/
 │   └── specs/
-└── tests/                           # Offline CADENCE regression suite & 30-skill eval runner
+└── tests/                           # Offline CADENCE regression suite & 31-skill eval runner
     ├── eval_runner.py
     ├── run-cadence-tests.sh
     ├── run-evals.sh
     ├── test-certainty-gate.sh
     ├── test-pr-watch.sh
     ├── test-security-trigger.sh
+    └── test-turn-logger.sh
     └── test-trace-gates.sh
 ```
 
