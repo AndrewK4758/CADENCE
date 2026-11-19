@@ -14,8 +14,8 @@ Every letter of **CADENCE** maps directly to a governed phase of the software en
 2. **A — Architect & Explore**: Cross-boundary implicit contract discovery and 2–3 structurally distinct, unranked steelmanned design options (`cadence-architect`, `cadence-explorer`, `/cadence-define`).
 3. **D — Decompose & Specify**: Grounding via the **Contextual Grounding Matrix (`6W×4L`)**, evaluation against **Engineering Pillars**, and **CHORD** 5-part behavioral decomposition (**C**onditions [`Given`], **H**andling/Triggers [`When`], **O**utcomes [`Then` external], **R**ules [`Then` invariants], **D**eltas [`Then` internal mutations]) into `spec.md` and Gherkin `test-plan.md`, gated by `[Human Gate: Spec Approval]` (`cadence-spec-author`, `/cadence-spec`, `/cadence-onboard`, `/cadence-interview`, `/cadence-doctor`).
 4. **E — Execute via TDD**: Strict BDD Red $\rightarrow$ Green $\rightarrow$ Accumulate $\rightarrow$ Commit cycles, wide mechanical refactors, and expand/contract schema migrations (`cadence-implementer`, `cadence-migration-author`, `/cadence-implement`, `/cadence-refactor`, `/cadence-migrate`, `/cadence-build`, `/cadence-parallel`).
-5. **N — Navigate Gates**: Automatic local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-reviewer`, `cadence-security-auditor`, `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`).
-6. **C — Consolidate**: Tier-gated integration merges, same-session tracker projection to YouTrack or Jira, and clean deliverable ejects (`/cadence-close`, `/cadence-merge`, `/cadence-sync-youtrack`, `/cadence-sync-jira`, `/cadence-eject`).
+5. **N — Navigate Gates**: Automatic local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-reviewer`, `cadence-security-auditor`, `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`, `/cadence-watch`).
+6. **C — Consolidate**: Tier-gated integration merges, same-session tracker projection to YouTrack or Jira, and clean deliverable ejects (`/cadence-close`, `/cadence-merge`, `/cadence-watch`, `/cadence-sync-youtrack`, `/cadence-sync-jira`, `/cadence-eject`).
 7. **E — Enshrine**: Relocation to `archive/{ticket-id}/`, two-pass dead-citation sweeps, ADR and intent-insight promotion, cross-ticket retrospectives, living business flow updates (`docs/flows/`), and release cutting (`cadence-archivist`, `/cadence-archive`, `/cadence-retro`, `/cadence-release`, `/cadence-housekeep`).
 
 ---
@@ -39,7 +39,7 @@ CADENCE/
 │   ├── cadence-triage-agent/
 │   ├── log-triage/
 │   └── repo-scout/
-├── skills/                          # 28 governed /cadence-* workflow skills
+├── skills/                          # 29 governed /cadence-* workflow skills
 │   ├── cadence-adopt/
 │   ├── cadence-archive/
 │   ├── cadence-build/
@@ -67,7 +67,8 @@ CADENCE/
 │   ├── cadence-sync-jira/
 │   ├── cadence-sync-youtrack/
 │   ├── cadence-triage/
-│   └── cadence-upgrade/
+│   ├── cadence-upgrade/
+│   └── cadence-watch/
 ├── hooks/                           # Custom PreInvocation, PostToolUse & Stop lifecycle hooks
 │   ├── antigravity-local-offload-hook
 │   ├── local-offload-enforcer.sh
@@ -113,10 +114,11 @@ CADENCE/
 │   ├── ci-templates/
 │   ├── docs/
 │   └── specs/
-└── tests/                           # Offline CADENCE regression suite & 25-skill eval runner
+└── tests/                           # Offline CADENCE regression suite & 29-skill eval runner
     ├── eval_runner.py
     ├── run-cadence-tests.sh
     ├── run-evals.sh
+    ├── test-pr-watch.sh
     ├── test-security-trigger.sh
     └── test-trace-gates.sh
 ```
@@ -271,7 +273,7 @@ curl -s http://127.0.0.1:11434/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"inference","messages":[{"role":"user","content":"Reply with OK"}],"max_tokens":8}' | jq -r '.choices[0].message.content'
 
-# 5. Run the offline regression suite and 25-skill executable eval runner
+# 5. Run the offline regression suite and 29-skill executable eval runner
 bash tests/run-cadence-tests.sh
 bash tests/run-evals.sh --verbose        # Add --with-offload for advisory :11434 rubric grading
 ```
