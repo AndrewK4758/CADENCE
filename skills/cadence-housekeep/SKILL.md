@@ -23,11 +23,11 @@ bash .agents/skills/cadence-doctor/doctor.sh --check-offload [--full] \
   || bash skills/cadence-doctor/doctor.sh --check-offload [--full]
 ```
 
-Route >30 lines or non-zero exits through `offload_log_triage` (`:11434`, raw log in `/tmp/agy-last-triage.log`). Preserve all `PASS`, `WARN`, `FAIL`, and `SKIP` counts accurately.
+When `:11434` is reachable, route >30 lines or non-zero exits through `offload_log_triage` (`:11434`, raw log in `/tmp/agy-last-triage.log`; else inspect directly). Preserve all `PASS`, `WARN`, `FAIL`, and `SKIP` counts accurately.
 
 ### 2. Cross-Ticket Retrospective (`/cadence-retro`)
 
-Run read-only quantitative scan + semantic pattern clustering (`local_semantic_embed` on `:11434`):
+Run read-only quantitative scan + optional semantic pattern clustering (`local_semantic_embed` on `:11434` when reachable, else direct text clustering):
 
 ```bash
 python3 .agents/skills/cadence-retro/retro_scan.py [--since <N>] [--include-active] \

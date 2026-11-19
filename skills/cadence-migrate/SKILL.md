@@ -1,6 +1,6 @@
 ---
 name: cadence-migrate
-description: Author reversible database schema and data migrations using the expand/contract pattern (EF Core, Alembic, Prisma/Drizzle, Room, or SQL scripts) with automatic log triage and pre-review diff verification
+description: Author reversible database schema and data migrations using the expand/contract pattern (EF Core, Alembic, Prisma/Drizzle, Room, or SQL scripts) with optional local log triage and pre-review diff verification (:11434, cloud fallback when absent)
 argument-hint: "[ticket-id] [--contract]"
 arguments: [ticket_id, flags]
 allowed-tools: Read Write Edit Glob Grep Bash
@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Glob Grep Bash
 
 ## Task
 
-Author reversible database schema migrations for `$ticket_id` adhering to the expand/contract pattern. Delegate stack/topology discovery, migration generation, and apply/rollback/reapply verification to the `cadence-migration-author` subagent (`Deep-reasoning` tier, `xhigh` effort), with automatic `offload_log_triage` compaction on build/migration logs and diff-aware `offload_deep_review` pre-scanning prior to MR creation.
+Author reversible database schema migrations for `$ticket_id` adhering to the expand/contract pattern. Delegate stack/topology discovery, migration generation, and apply/rollback/reapply verification to the `cadence-migration-author` subagent (`Deep-reasoning` tier, `xhigh` effort), with optional `:11434` `offload_log_triage` compaction on build/migration logs and diff-aware `offload_deep_review` pre-scanning prior to MR creation (degrading cleanly to cloud-only inspection when `:11434` is unavailable).
 
 ## Prerequisites
 
@@ -29,11 +29,11 @@ When neither a specification nor schema diffs exist, prompt the operator to desc
 2. **Detect stack and verify tooling environment:**
    - Identify which database migration stack applies and verify its CLI/test harness responds cleanly before scaffolding.
 
-3. **Delegate to `cadence-migration-author` (`Deep-reasoning` tier, `xhigh` effort, with `offload_log_triage`).** Supply ticket ID `$ticket_id` and mode `expand` or `contract`. The subagent discovers project topology, derives schema deltas, generates stack-idiomatic expand/contract migrations (DDL separate from DML, complete rollback path, idempotency guards), runs the apply -> rollback -> reapply cycle (compacting `>30`-line or failing outputs via `offload_log_triage`), and records deferred `--contract` entries in `specs/$ticket_id/decisions.md`.
+3. **Delegate to `cadence-migration-author` (`Deep-reasoning` tier, `xhigh` effort; optional `offload_log_triage`).** Supply ticket ID `$ticket_id` and mode `expand` or `contract`. The subagent runs headlessly: if explicit human confirmation is required (missing `contract` prerequisite evidence or `--contract` confirmation), `cadence-migration-author` halts without writing destructive changes and returns the confirmation prompt to `/cadence-migrate` so this skill can obtain explicit operator confirmation before re-invoking. Otherwise it discovers project topology, derives schema deltas, generates stack-idiomatic expand/contract migrations (DDL separate from DML, complete rollback path, idempotency guards), runs the apply -> rollback -> reapply cycle (compacting `>30`-line or failing outputs via `offload_log_triage` when `:11434` is reachable), and records deferred `--contract` entries in `specs/$ticket_id/decisions.md`.
 
-4. **Verify migration outputs and run automatic pre-MR scan (`offload_deep_review`):**
-   - Confirm generated migration/snapshot artifacts exist and clean build + tests pass (compacting logs `>30` lines via `offload_log_triage`).
-   - Run `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[...]`) to verify expand/contract safety, absence of unguarded destructive DDL in expand mode, `<400`-line ceiling compliance, and CHORD seams (`BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
+4. **Verify migration outputs and run optional pre-MR scan (`offload_deep_review`, Cloud-Only Fallback):**
+   - Confirm generated migration/snapshot artifacts exist and clean build + tests pass (compacting logs `>30` lines via `offload_log_triage` when `:11434` is reachable, else inspecting directly).
+   - When `:11434` is reachable, run `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd="<repo-root>"`, `context_files=[...]`) to verify expand/contract safety, absence of unguarded destructive DDL in expand mode, `<400`-line ceiling compliance, and CHORD seams (`BOUNDARY_FAULT`, `DELTA_AUDIT_GAP`).
 
 5. **Report to the operator:**
    - Generated migration file paths and a summary of schema operations
@@ -50,6 +50,6 @@ When neither a specification nor schema diffs exist, prompt the operator to desc
 ```
 
 ## Local Model Offload Integration (:11434)
-- Step 3 and Step 4 automatically pipe any build or migration verification output exceeding 30 lines through `offload_log_triage` (`inference` on `:11434`), saving raw numbered logs to `/tmp/agy-last-triage.log`.
-- Step 4 automatically runs `offload_deep_review` (`inference` on `:11434`) on the generated migration diff before MR creation/update.
+- When `:11434` is reachable, Step 3 and Step 4 optionally pipe build or migration verification output exceeding 30 lines through `offload_log_triage` (`inference` on `:11434`), saving raw numbered logs to `/tmp/agy-last-triage.log` (or inspecting directly when offline).
+- When `:11434` is reachable, Step 4 optionally runs `offload_deep_review` (`inference` on `:11434`) on the generated migration diff before MR creation/update (degrading cleanly to direct review if unavailable).
 - All migration authoring and schema verification decisions remain 100% owned by the `Deep-reasoning` tier (`effort: xhigh`, routed by `CADENCE_ORG.md#model-tier-mapping`).

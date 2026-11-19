@@ -50,8 +50,8 @@ Because multi-word inline skill arguments can truncate across runtimes (BTG-281)
 
 ### 4. Choose intake next step
 
-Offer three clean routes matching `CADENCE_ORG.md` §9/§10 and `00-problem.md`:
-1. **File raw stub now (Recommended for backlog / multi-step intake):** invoke `/cadence-triage --file-only specs/drafts/<slug>.md` (passing `--prefix <PREFIX>` when `CADENCE_ORG.md` §9 has `>=2` prefix rows or running non-interactively).
+Offer three clean routes matching `CADENCE_ORG.md#tracker-binding` / `#id-allocation-binding` and `00-problem.md`:
+1. **File raw stub now (Recommended for backlog / multi-step intake):** invoke `/cadence-triage --file-only specs/drafts/<slug>.md` (passing `--prefix <PREFIX>` when `CADENCE_ORG.md#tracker-binding` has `>=2` prefix rows or running non-interactively).
 2. **Define end-to-end or triage immediately (Route B):** invoke `/cadence-define` (or `/cadence-triage specs/drafts/<slug>.md`) to allocate + classify + advance through specification right away.
 3. **Keep draft for tracker-first Route A / maintainer discussion:** leave `specs/drafts/<slug>.md` on disk and display its exact text ready to paste as tracker type `Issue` in the backlog.
 
@@ -68,4 +68,4 @@ Offer three clean routes matching `CADENCE_ORG.md` §9/§10 and `00-problem.md`:
 ```
 
 ## Local Model Offload Integration (:11434)
-- Step 1 automatically calls `local_semantic_embed` (`:11434`) across `specs/`, `archive/`, `production-insights.md`, and `intent-insights.md` to catch duplicate proposals and prior incident context early.
+- When `:11434` is reachable, Step 1 calls `local_semantic_embed` (`:11434`) across `specs/`, `archive/`, `production-insights.md`, and `intent-insights.md` to catch duplicate proposals and prior incident context early (cloud-only `Grep`/`Glob` fallback when offline).

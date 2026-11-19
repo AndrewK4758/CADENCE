@@ -24,14 +24,15 @@
 # because "make sure it is ready" is the caller's actual intent and a second run
 # should not fail just because the first one worked.
 #
-# Usage:  ready_mr.sh <pr-url-or-number> [--repo R]
+# Usage:  ready_mr.sh <pr-url-or-number> [--repo R] [--forge github|gitlab]
 # Exit:   0 ready for review | 2 could not publish, or could not confirm
 set -u
 
-PR=""; REPO=""
+PR=""; REPO=""; FORGE=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --repo) REPO="${2:?--repo needs a value}"; shift 2 ;;
+    --repo)  REPO="${2:?--repo needs a value}"; shift 2 ;;
+    --forge) FORGE="${2:?--forge needs a value}"; shift 2 ;;
     -*) echo "ready_mr: unknown option $1" >&2; exit 2 ;;
     *)  if [ -z "$PR" ]; then PR="$1"; shift; else
           echo "ready_mr: unexpected argument $1" >&2; exit 2; fi ;;
@@ -52,19 +53,71 @@ finish() { # result cause
 }
 
 [ -n "$PR" ] || { echo "ready_mr: no MR given" >&2; finish ERROR no-mr-argument; exit 2; }
-command -v gh >/dev/null 2>&1 || {
-  echo "ready_mr: gh not installed -- cannot ask the forge anything" >&2
-  finish ERROR gh-missing; exit 2; }
 
-VIEW_ARGS=(pr view "$PR" --json state,isDraft,url)
-READY_ARGS=(pr ready "$PR")
-[ -n "$REPO" ] && { VIEW_ARGS+=(--repo "$REPO"); READY_ARGS+=(--repo "$REPO"); }
+detect_forge() {
+  [ -n "$FORGE" ] && { echo "$FORGE"; return; }
+  case "$PR" in
+    */-/merge_requests/*|*gitlab*) echo gitlab; return ;;
+    *github.com*|*/pull/*)        echo github; return ;;
+  esac
+  local remote=""
+  remote="$(git remote get-url origin 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)"
+  case "$remote" in
+    *gitlab*) echo gitlab; return ;;
+    *github*) echo github; return ;;
+  esac
+  if command -v gh >/dev/null 2>&1; then echo github
+  elif command -v glab >/dev/null 2>&1; then echo gitlab
+  else echo github
+  fi
+}
+
+FORGE="$(detect_forge)"
+case "$FORGE" in
+  github)
+    command -v gh >/dev/null 2>&1 || {
+      echo "ready_mr: gh not installed -- cannot ask the forge anything" >&2
+      finish ERROR gh-missing; exit 2; }
+    VIEW_ARGS=(gh pr view "$PR" --json state,isDraft,url)
+    READY_ARGS=(gh pr ready "$PR")
+    [ -n "$REPO" ] && { VIEW_ARGS+=(--repo "$REPO"); READY_ARGS+=(--repo "$REPO"); }
+    ;;
+  gitlab)
+    command -v glab >/dev/null 2>&1 || {
+      echo "ready_mr: glab not installed -- cannot ask the forge anything" >&2
+      finish ERROR glab-missing; exit 2; }
+    VIEW_ARGS=(glab mr view "$PR" --output json)
+    READY_ARGS=(glab mr update "$PR" --ready)
+    [ -n "$REPO" ] && { VIEW_ARGS+=(--repo "$REPO"); READY_ARGS+=(--repo "$REPO"); }
+    ;;
+  *)
+    echo "ready_mr: unsupported forge $FORGE" >&2
+    finish ERROR "unsupported-forge-$FORGE"; exit 2 ;;
+esac
 
 read_pr() { # sets STATE, DRAFT, URL
-  OUT=$(gh "${VIEW_ARGS[@]}" 2>"$ERR") || return 1
-  STATE=$(printf '%s' "$OUT" | sed -n 's/.*"state":"\([A-Z]*\)".*/\1/p')
-  DRAFT=$(printf '%s' "$OUT" | sed -n 's/.*"isDraft":\([a-z]*\).*/\1/p')
-  URL=$(printf '%s' "$OUT" | sed -n 's|.*"url":"\([^"]*\)".*|\1|p')
+  OUT=$("${VIEW_ARGS[@]}" 2>"$ERR") || return 1
+  if [ "$FORGE" = "github" ]; then
+    STATE=$(printf '%s' "$OUT" | sed -n 's/.*"state":"\([A-Z]*\)".*/\1/p')
+    DRAFT=$(printf '%s' "$OUT" | sed -n 's/.*"isDraft":\([a-z]*\).*/\1/p')
+    URL=$(printf '%s' "$OUT" | sed -n 's|.*"url":"\([^"]*\)".*|\1|p')
+  else
+    _parsed=$(printf '%s' "$OUT" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+st = (d.get("state") or "").lower()
+st_map = {"opened": "OPEN", "merged": "MERGED", "closed": "CLOSED"}.get(st, st.upper())
+dr = "true" if (d.get("draft") is True or d.get("work_in_progress") is True) else "false"
+url = str(d.get("web_url") or d.get("url") or "")
+for v in (st_map, dr, url):
+    print(v.replace("\r", "").replace("\n", ""))
+' 2>/dev/null) || return 1
+    {
+      IFS= read -r STATE || true
+      IFS= read -r DRAFT || true
+      IFS= read -r URL || true
+    } <<< "$_parsed"
+  fi
   [ -n "$STATE" ] && [ -n "$DRAFT" ]
 }
 
@@ -88,19 +141,19 @@ if [ "$DRAFT" != "true" ]; then
 fi
 
 WAS_DRAFT=yes
-if ! gh "${READY_ARGS[@]}" >/dev/null 2>"$ERR"; then
+if ! "${READY_ARGS[@]}" >/dev/null 2>"$ERR"; then
   echo "ready_mr: could not publish $PR for review: $(tr -d '\n' < "$ERR" 2>/dev/null | cut -c1-200)" >&2
   finish ERROR ready-failed; exit 2
 fi
 
 # The confirming re-read. This is the whole reason the script exists; deleting it
-# reduces this to `gh pr ready` with extra steps.
+# reduces this to `gh pr ready` / `glab mr update --ready` with extra steps.
 if ! read_pr; then
   echo "ready_mr: published $PR but could not re-read it to confirm -- treat it as unproven." >&2
   finish ERROR confirm-unreachable; exit 2
 fi
 if [ "$DRAFT" = "true" ]; then
-  echo "ready_mr: gh reported success but $PR is still a draft -- not claiming it is ready." >&2
+  echo "ready_mr: forge reported success but $PR is still a draft -- not claiming it is ready." >&2
   finish ERROR still-draft; exit 2
 fi
 

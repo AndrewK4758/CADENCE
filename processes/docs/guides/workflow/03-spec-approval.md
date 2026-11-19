@@ -1,6 +1,6 @@
 # Workflow Step 03 — Gate: Spec Approval
 
-> Part of the per-step workflow guide series. This is a **human governance gate** (Gate 1), not an autonomous agent step — agents draft and verify structure, while accountable humans decide. For the specification authoring step see [`02-spec.md`](02-spec.md); for the end-to-end workflow overview see [`../getting-started.md`](../getting-started.md) §2.3. The authoritative gate specification lives in [`human-gates.md`](../../agentic-sdlc/human-gates.md) §Gate 1.
+> Part of the per-step workflow guide series. This is a **human governance gate** (Gate 1), not an autonomous agent step — agents draft and verify structure, while accountable humans decide. For the specification authoring step see [`02-spec.md`](02-spec.md); for the per-tier matrix see [`../../policies/change-tiers.md`](../../policies/change-tiers.md). The authoritative gate specification lives in [`human-gates.md`](../../agentic-sdlc/human-gates.md) §Gate 1.
 
 | | |
 |---|---|
@@ -20,11 +20,11 @@ At Gate 1 you are approving the **blueprint**. Implementation correctness is ver
 
 ## When this gate applies
 
-Only **Medium-** and **High-tier** changes pass through Gate 1 Spec Approval. Trivial changes require no spec, and Low-tier changes proceed directly from `problem.md` to `/cadence-implement` with Gate 2 Code Review as their single human gate. See the machine-readable table in [`change-tiers.md`](../../policies/change-tiers.md)#per-tier-spec-requirements and [`../getting-started.md`](../getting-started.md) §2.3.
+Only **Medium-** and **High-tier** changes pass through Gate 1 Spec Approval. Trivial changes require no spec, and Low-tier changes proceed directly from `problem.md` to `/cadence-implement` with Gate 2 Code Review as their single human gate. See the machine-readable table in [`change-tiers.md`](../../policies/change-tiers.md)#per-tier-spec-requirements.
 
-## Automatic Local Pre-Verification at Gate 1
+## Optional Local Pre-Verification at Gate 1 (Cloud Fallback)
 
-Before the specification reaches your review queue, CADENCE's local coprocessor and gate scripts have already cleared the mechanical checks:
+When `:11434` is available alongside CADENCE's deterministic gate scripts, optional local coprocessor assistance helps clear mechanical checks (all checks degrade cleanly when offline):
 
 - `repo-scout` and `local_semantic_embed` (`embedding` on `:11434`) surfaced relevant historical ADRs, `production-insights.md` (`PROD-NNN`), and `intent-insights.md` (`II-NNN`) entries during spec authoring so prior lessons are already cited in `spec.md`.
 - `.agents/skills/cadence-spec/verify-spec.sh` (or `.gemini/skills/cadence-spec/verify-spec.sh`) verified that all Contextual Grounding Matrix (6W×4L) rows, CHORD decompositions, Engineering Pillar evaluations, and Gherkin scenarios are structurally complete and that zero unresolved template placeholders remain.
@@ -93,8 +93,8 @@ Whenever feedback alters an acceptance criterion or a core architectural boundar
 ## Recording the decision
 
 - Mirror substantive review discussion into [`submission.md`](../../../specs/TEMPLATE/submission.md) (`## Discussion`) or `decisions.md` so the repository archive retains the design rationale after merge (see [`submitting-changes.md`](../submitting-changes.md)).
-- On **Approve**, update `specs/{ticket-id}/metadata.yaml` **on the spec MR branch before merging** — set `status: spec-approved` and set `spec_approved_at:` to the ISO 8601 approval date (`YYYY-MM-DD`, e.g., `2026-10-19`, or a full UTC timestamp). Committing `status: spec-approved` on the spec branch ensures that when the spec MR merges into the integration branch (`CADENCE_ORG.md#branch-strategy-binding`), the specification lands on the integration branch already marked approved — satisfying `/cadence-implement`'s P1/P2 precondition checks (`CADENCE_ORG.md` §14).
-- Project the `spec-approved` status to the bound tracker (`CADENCE_ORG.md` §9, e.g., `/cadence-sync-jira` or `/cadence-sync-youtrack`).
+- On **Approve**, record any required `Gate 1 ruling: <item> -- <diverged|examined|accepted-as-presented> -- <why>` entries in `decisions.md` (`verify-facts.sh --rulings` + `certainty-gate.sh --stage spec`), and update `specs/{ticket-id}/metadata.yaml` **on the spec MR branch before merging** — setting `status: spec-approved` and `spec_approved_at:` to the exact second-precision UTC timestamp from `date -u +%Y-%m-%dT%H:%M:%SZ` (`YYYY-MM-DDTHH:MM:SSZ`; never date-only or midnight-padded). Committing `status: spec-approved` on the spec branch ensures that when the spec MR merges into the integration branch (`CADENCE_ORG.md#branch-strategy-binding`), the specification lands already marked approved — satisfying `/cadence-implement`'s P1/P2 precondition checks (`CADENCE_ORG.md#integration-branch-enforcement`).
+- Project the `spec-approved` status to the bound tracker (`CADENCE_ORG.md#tracker-binding`, e.g., `/cadence-sync-jira` or `/cadence-sync-youtrack`).
 - On **Comment & regenerate**, `status` remains `spec-in-review` until the revised specification passes re-review.
 
 ## What this gate is NOT
@@ -108,7 +108,7 @@ Whenever feedback alters an acceptance criterion or a core architectural boundar
 
 - [`02-spec.md`](02-spec.md) — the preceding step that generates `spec.md`, `test-plan.md`, and `decisions.md`.
 - [`04-implementation.md`](04-implementation.md) — the next step once `status: spec-approved` lands on the integration branch.
-- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier gate matrix.
+- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — per-tier requirements and gate matrix.
 - [`../../agentic-sdlc/human-gates.md`](../../agentic-sdlc/human-gates.md) — authoritative definition of all four human gates (§Gate 1 is this gate).
 - [`../../SYSTEM_OVERVIEW.md`](../../SYSTEM_OVERVIEW.md) · [`../../flows/`](../../flows/) — architectural maps used during Step 1 orientation.
 - [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — `#per-tier-spec-requirements` governing Gate 1 applicability.

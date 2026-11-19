@@ -1,11 +1,11 @@
 # Workflow Step 06 — Gate: Maintainer Acceptance
 
-> Part of the per-step workflow guide series. This is a **human governance gate** (Gate 3), assisted by the `/cadence-maintain` skill — the AI produces a structured 8-dimension project-impact evaluation, and the human Maintainer makes the final acceptance decision. For the preceding gate see [`05-code-review.md`](05-code-review.md); for the end-to-end workflow overview see [`../getting-started.md`](../getting-started.md) §2.3. Authoritative gate specification: [`human-gates.md`](../../agentic-sdlc/human-gates.md) §Gate 3.
+> Part of the per-step workflow guide series. This is a **human governance gate** (Gate 3), assisted by the `/cadence-maintain` skill — the AI produces a structured 8-dimension project-impact evaluation, and the human Maintainer makes the final acceptance decision. For the preceding gate see [`05-code-review.md`](05-code-review.md); for the per-tier matrix see [`../../policies/change-tiers.md`](../../policies/change-tiers.md). Authoritative gate specification: [`human-gates.md`](../../agentic-sdlc/human-gates.md) §Gate 3.
 
 | | |
 |---|---|
 | **Gate** | Maintainer Acceptance (Gate 3) |
-| **Who** | Project Maintainer (a human), assisted by `cadence-maintainer` + `offload_deep_review` via `/cadence-maintain` |
+| **Who** | Project Maintainer (a human), assisted by read-only `cadence-maintainer` + optional `offload_deep_review` via `/cadence-maintain` |
 | **You are approving** | The MR's **repository-wide and architectural impact** — not line-level code correctness (that was Gate 2) |
 | **Consumes** | A Gate 2-approved MR, its approved `spec.md`, `submission.md`, and the repository's governing documents |
 | **Outcome** | **Accept**, **Postpone**, or **Reject** |
@@ -20,17 +20,17 @@ As Maintainer, you evaluate **system-level stewardship**, not line-by-line imple
 
 ## When this gate applies
 
-Only **Medium-** and **High-tier** changes pass through Gate 3 Maintainer Acceptance. Trivial and Low-tier changes proceed directly from Gate 2 Code Review to [Merge](07-merge.md) without a separate maintainer gate (see [`change-tiers.md`](../../policies/change-tiers.md) and [`../getting-started.md`](../getting-started.md) §2.3).
+Only **Medium-** and **High-tier** changes pass through Gate 3 Maintainer Acceptance. Trivial and Low-tier changes proceed directly from Gate 2 Code Review to [Merge](07-merge.md) without a separate maintainer gate (see [`change-tiers.md`](../../policies/change-tiers.md)).
 
 ## Prerequisite: Gate 2 Code Review has passed
 
-Before running its evaluation, `/cadence-maintain` verifies that **Gate 2 Code Review has approved the MR** (recorded in `submission.md` `## Discussion` or on the forge thread) and that the ticket's specification is at `status: spec-approved` or `in-review`. If Gate 2 has not yet passed, `/cadence-maintain` **halts** and directs you to complete `/cadence-review` first.
+Before running its evaluation, `/cadence-maintain` verifies that **Gate 2 Code Review has approved the MR** (recorded in `submission.md` `## Discussion` or on the forge thread) and that the ticket's specification is present (`spec-approved` or later, or qualified post-implementation escalation ruling in `decisions.md`). If Gate 2 has not yet passed (or `spec.md` is missing without a qualified escalation), `/cadence-maintain` **halts** cleanly.
 
-## Automatic Local Offload during Maintainer Acceptance (`offload_deep_review` & `local_semantic_embed`)
+## Optional Local Offload during Maintainer Acceptance (`offload_deep_review` & `local_semantic_embed`, Cloud Fallback)
 
-To give `cadence-maintainer` and the human Maintainer complete repository-wide visibility without context bloat, `/cadence-maintain` automatically engages CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`):
+When local offload (`:11434`) is reachable, `/cadence-maintain` and `cadence-maintainer` use CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`, degrading cleanly to direct cloud review when offline):
 
-1. **Cross-Boundary & Pillar Pre-Scan (`offload_deep_review` via `inference`):** Audits the full integration-branch diff against `docs/policies/surface-registry.md`, `docs/policies/cadence-surfaces.md`, `docs/policies/deprecation-policy.md`, and `docs/policies/doc-maintenance-policy.md` (including verifying the two-search reconciliation sweep record and Pillar 3's file-size ceiling per `CADENCE_ORG.md`).
+1. **Cross-Boundary & Pillar Pre-Scan (`offload_deep_review` via `inference`):** Audits the full integration-branch diff against `docs/policies/cadence-surfaces.md` (and `docs/policies/surface-registry.md` when present), `docs/policies/deprecation-policy.md`, and `docs/policies/doc-maintenance-policy.md` (including verifying the two-search reconciliation sweep record and Pillar 3's file-size ceiling per `CADENCE_ORG.md`).
 2. **Semantic ADR & Intent Alignment Check (`local_semantic_embed` / `repo-scout` via `embedding`):** Runs semantic vector searches (`embedding` on port `11434`) across `docs/ADR/`, `PROJECT_INTENT.md`, and `docs/flows/` to detect subtle contradictions against ratified ADRs or un-updated flow narratives.
 
 All pre-scan signals are verified by the primary `cadence-maintainer` reasoning model before producing the 8-dimension Maintainer Assessment.
@@ -43,7 +43,7 @@ Invoke `/cadence-maintain` from your agentic CLI runtime (`.agents/skills/cadenc
 /cadence-maintain <MR-number-or-branch>     # e.g. /cadence-maintain 142   or   /cadence-maintain impl/feature/TT-6547
 ```
 
-`/cadence-maintain` resolves the ticket ID from the branch name (`impl/{type}/{id}`), computes the diff against the integration branch declared in `CADENCE_ORG.md#branch-strategy-binding` (§15), and delegates to the **`cadence-maintainer`** subagent. The agent evaluates the change across **eight stewardship dimensions** — grounded in `surface-registry.md`, `cadence-surfaces.md`, `docs/ADR/`, `PROJECT_INTENT.md`, and `CADENCE_ORG.md`, citing concrete file and line evidence for every verdict:
+`/cadence-maintain` resolves the ticket ID from the branch name (`impl/{type}/{id}`), computes the diff against the integration branch declared in `CADENCE_ORG.md#branch-strategy-binding`, and delegates to the read-only **`cadence-maintainer`** subagent. The agent evaluates the change across **eight stewardship dimensions** — grounded in `cadence-surfaces.md` (plus adopter `surface-registry.md` when present), `docs/ADR/`, `PROJECT_INTENT.md`, and `CADENCE_ORG.md`, citing concrete file and line evidence for every verdict:
 
 | # | Dimension | Verdict scale |
 |---|---|---|
@@ -56,7 +56,7 @@ Invoke `/cadence-maintain` from your agentic CLI runtime (`.agents/skills/cadenc
 | 7 | **Dependency & supply-chain health** | Healthy · Concerns noted · Blocked |
 | 8 | **Documentation currency** (flow docs, SYSTEM_OVERVIEW) | Current · Needs update · Stale |
 
-`cadence-maintainer` returns a structured **Maintainer Assessment** containing an overall recommendation (`Accept` / `Postpone` / `Reject`), an executive decision brief, per-dimension verdicts with evidence, blocking issues, classified non-blocking observations (`out-of-scope-defect`, `adr-owed`, `nit`, `hygiene`, `observation` per [`finding-classes.md`](../../policies/finding-classes.md)), positive highlights, and any drafted release/documentation artifacts (`CHANGELOG.md` entry, migration guide, deprecation notice). The agent **recommends only** — it never merges the MR, and its write scope is restricted strictly to `specs/`, `docs/`, and `CHANGELOG.md` (never production source or test code).
+`cadence-maintainer` is **strictly read-only** (`write_file`/`edit_file` removed) and returns a structured **Maintainer Assessment** containing an overall recommendation (`Accept` / `Postpone` / `Reject`), an executive decision brief, per-dimension verdicts with evidence, blocking issues, classified non-blocking observations (`out-of-scope-defect`, `adr-owed`, `nit`, `hygiene`, `observation` per [`finding-classes.md`](../../policies/finding-classes.md)), positive highlights, and drafted release/documentation snippets (`CHANGELOG.md` entry, migration guide, deprecation notice). **`/cadence-maintain` collects the human verdict and executes all approved post-decision writes** (`specs/`, `docs/`, and `CHANGELOG.md`; never modifying production source or test code).
 
 **Blocking at Gate 3 is reserved** for genuine project-level hazards: unmigrated breaking changes to registered surfaces, violations of ratified ADRs or `PROJECT_INTENT.md` invariants, unmanaged security surface expansion, un-elapsed deprecation windows, irreversible schema migrations lacking an approved exception, or unrecorded reconciliation sweeps (`doc-maintenance-policy.md`).
 
@@ -82,7 +82,7 @@ If the MR's system-level impact remains opaque after reading `submission.md` and
 | Check | What to look for |
 |---|---|
 | **System model intact** | **Can you draw this change on the system map? Do `SYSTEM_OVERVIEW.md` and `docs/flows/` still hold? If not, require update.** |
-| Backwards compatibility | Registered surface changes in `surface-registry.md` and `cadence-surfaces.md` handled per `deprecation-policy.md`? Policy-tooling enumeration recorded if governance docs changed? |
+| Surface Compatibility | Registered surface changes in `cadence-surfaces.md` (and `surface-registry.md` when present) handled per `deprecation-policy.md`? Policy-tooling enumeration recorded if governance docs changed? |
 | Architectural integrity | Honors ratified ADRs in `docs/ADR/`? Any novel pattern justified and flagged `adr-owed` where appropriate? |
 | Project-intent alignment | Advances Core Mission in `PROJECT_INTENT.md` without violating Non-Goals or Architecture Invariants? |
 | Maintenance cost | Respects the Simplicity Engineering Pillar? Fewest moving parts? |
@@ -113,7 +113,7 @@ Note that `adr-owed` findings are logged in the cumulative tally here and routed
 
 ## Recording the decision
 
-- Across **every** outcome (`Accept`, `Postpone`, or `Reject`), `/cadence-maintain` appends a `maintainer` `stage_effort` entry to `metadata.yaml`, accumulates `actual_effort`, and projects the updated state to the bound tracker (`CADENCE_ORG.md` §9).
+- Across **every** outcome (`Accept`, `Postpone`, or `Reject`), `/cadence-maintain` appends a `maintainer` `stage_effort` entry to `metadata.yaml`, accumulates `actual_effort`, and projects the updated state to the bound tracker (`CADENCE_ORG.md#tracker-binding`).
 - The full Maintainer Assessment and follow-up dispositions are recorded in [`submission.md`](../../../specs/TEMPLATE/submission.md) (`## Discussion` and `## Resolution`) so the permanent archive preserves the complete stewardship record.
 
 ## What this gate is NOT
@@ -127,9 +127,9 @@ Note that `adr-owed` findings are logged in the cumulative tally here and routed
 
 - [`05-code-review.md`](05-code-review.md) — Gate 2, which must pass before Gate 3 runs.
 - [`07-merge.md`](07-merge.md) — the next step once Gate 3 returns **Accept**.
-- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier gate matrix.
+- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — per-tier requirements and gate matrix.
 - [`../../agentic-sdlc/human-gates.md`](../../agentic-sdlc/human-gates.md) — authoritative definition of all four human gates (§Gate 3 is this gate).
 - [`../../SYSTEM_OVERVIEW.md`](../../SYSTEM_OVERVIEW.md) · [`../../flows/`](../../flows/) — system architecture maps verified in Step 2.
 - [`../../policies/finding-classes.md`](../../policies/finding-classes.md) — non-blocking finding classes and follow-up filing rules.
-- [`../../policies/surface-registry.md`](../../policies/surface-registry.md) · [`../../policies/cadence-surfaces.md`](../../policies/cadence-surfaces.md) · [`../../policies/deprecation-policy.md`](../../policies/deprecation-policy.md) · [`../../policies/migration-policy.md`](../../policies/migration-policy.md) — compatibility and release policies verified here.
+- [`../../policies/cadence-surfaces.md`](../../policies/cadence-surfaces.md) · [`../../policies/deprecation-policy.md`](../../policies/deprecation-policy.md) · [`../../policies/migration-policy.md`](../../policies/migration-policy.md) — compatibility and release policies verified here (`surface-registry.md` when present in adopter repos).
 - [`../../../PROJECT_INTENT.md`](../../../PROJECT_INTENT.md) — the repository charter grounding Dimension 2 and Dimension 3.

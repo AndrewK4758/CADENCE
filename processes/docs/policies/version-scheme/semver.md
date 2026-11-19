@@ -4,7 +4,7 @@
 
 This specification models **Semantic Versioning** (`MAJOR.MINOR.PATCH`): a three-component dotted version number in which the compatibility classification of the changeset determines which numeric field increments. It is one of the two portable versioning schemes shipped with CADENCE; a repository selects it through the [Version-Scheme Binding](../../agentic-sdlc/CADENCE_ORG.md#version-scheme-binding) (`bound-version-scheme: semver`).
 
-**Relocated from the release skill.** The bump classification criteria, version arithmetic, and three worked examples below were extracted from `artifacts/commands/cadence-release.md` (its former inline step 2 and Worked Example section) when the declarative version-scheme binding was introduced (BTG-303), keeping the release skill scheme-neutral.
+**Relocated from the release skill.** The bump classification criteria, version arithmetic, and three worked examples below were extracted from `/cadence-release` (`.agents/skills/cadence-release/SKILL.md`, BTG-303), keeping the release skill scheme-neutral.
 
 ## Legal spelling
 
@@ -17,7 +17,7 @@ This specification models **Semantic Versioning** (`MAJOR.MINOR.PATCH`): a three
 
 Evaluate the entries under `[Unreleased]` in `CHANGELOG.md` against these rules in strict precedence order (the first matching level governs):
 
-- **MAJOR** — any **breaking** change. Triggers include: a `### Removed` section or an enacted `### Deprecated` sunset; an entry documenting a **removed or renamed** registered/public surface, an incompatible output/CLI/spec/wire contract change, a modified default that alters existing runtime behavior, or a completed deprecation removal; changelog prose containing markers such as "breaking", "no longer", "removed", "renamed", "incompatible", or "must migrate"; or a **non-additive** modification to a surface listed as Stable in `PROJECT_INTENT.md` §5 (such as reorganizing or deleting steps in a stable agent or skill definition rather than appending).
+- **MAJOR** — any **breaking** change. Triggers include: a `### Removed` section or an enacted `### Deprecated` sunset; an entry documenting a **removed or renamed** registered/public surface, an incompatible output/CLI/spec/wire contract change, a modified default that alters existing runtime behavior, or a completed deprecation removal; changelog prose containing markers such as "breaking", "no longer", "removed", "renamed", "incompatible", or "must migrate"; or a **non-additive** modification to a surface listed as Stable in `docs/policies/surface-registry.md` or `docs/policies/cadence-surfaces.md` (`PROJECT_INTENT.md` §5 is charter prose, not a surface registry, per BTG-275; e.g., reorganizing or deleting steps in a stable agent or skill definition rather than appending).
 - **MINOR** — **additive capability** with zero breaking changes. Triggers include: a `### Added` section; a net-new agent, skill, elicitation probe, Engineering Pillar, template, or policy; or a `### Changed` entry that strictly *expands* capability or documentation while keeping every existing contract and identifier intact.
 - **PATCH** — **bug fixes and internal housekeeping only**. Triggers include: exclusively `### Fixed` entries, documentation clarifications, internal single-context refactors, or dependency updates — with **no new or altered public surface**.
 

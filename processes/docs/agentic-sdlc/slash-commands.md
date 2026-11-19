@@ -4,13 +4,13 @@ Slash commands in `.agents/skills/` (projected to `.gemini/skills/` or `.claude/
 
 ---
 
-## Automatic Local Hardware Coprocessor Offload Across Commands
+## Automatic Local Hardware Coprocessor Offload Across Commands (Optional, Cloud-Only Fallback)
 
-When executing CADENCE slash commands, read-only discovery, test/build log compaction, and pre-review mechanical sweeps automatically offload to the local 2-tier hardware coprocessor pipeline (`local-offload` MCP server + `log-triage` and `repo-scout` subagents):
+When the optional local hardware coprocessor pipeline (`local-offload` MCP server on `127.0.0.1:11434` + `log-triage` and `repo-scout` subagents) is available, read-only discovery, test/build log compaction, and pre-review mechanical sweeps offload automatically; when `:11434` is unavailable, skills degrade cleanly to cloud-only execution:
 
-- **Tier 1 — Always-On Embedding (`127.0.0.1:11434`)**:
+- **Semantic Discovery (`embedding` on `127.0.0.1:11434`)**:
   - `embedding` (`embeddinggemma-2`) + `local_semantic_embed`: Activated during `/cadence-propose`, `/cadence-triage`, `/cadence-spec`, `/cadence-archive`, and `/cadence-retro` to run semantic duplicate detection, search `production-insights.md` / `intent-insights.md`, cluster cross-ticket patterns, and locate codebase symbols without bloating the primary model's context window.
-- **Tier 2 — On-Demand Inference (`127.0.0.1:11434`)**:
+- **On-Demand Inference (`inference` on `127.0.0.1:11434`)**:
   - `inference` via `offload_log_triage` / `log-triage` and `repo-scout`: Activated during `/cadence-implement`, `/cadence-refactor`, `/cadence-merge`, and `/cadence-doctor` to compact verbose test runner and compiler logs into verbatim failure lines, `file:line` coordinates, and coverage metrics while preserving the full raw log at `/tmp/agy-last-triage.log`.
   - `inference` via `offload_deep_review`: Activated during `/cadence-review` and `/cadence-maintain` for advisory pre-review sweeps checking Pillar 3 (`<400`-line file ceiling), comment discipline, and CHORD observability seam completeness before the `Deep-reasoning` tier (`xhigh` effort) issues gate verdicts.
 
@@ -26,7 +26,7 @@ Provision the CADENCE framework file set into a target repository. Wraps the can
 /cadence-adopt /path/to/your-repo
 ```
 
-**CLI fallback (when your coding tool has not yet loaded the skill tree):** execute `scripts/adopt-cadence.sh <target>` from a local framework checkout — the skill wraps the exact same script.
+**CLI fallback (when your coding tool has not yet loaded the skill tree):** execute `.agents/skills/cadence-adopt/adopt-cadence.sh <target>` (or `skills/cadence-adopt/adopt-cadence.sh <target>` from a core checkout).
 
 **Outputs:** Per-file `copied: <path>` and `skip (exists): <path>` audit lines followed by `Done: N copied, M skipped (already present).` All framework artifacts are installed at their canonical paths in the target repository.
 
@@ -44,10 +44,10 @@ Merge a newer CADENCE core release into an adopter's customized repository tree,
 **Pre-PI-021 adopters (no installed upgrade command tree yet):** a repository adopted prior to the `.cadence-version` stamp does not yet have `.agents/skills/cadence-upgrade/` installed. Invoke the upgrade engine directly from a local **core checkout** of the framework, pointing `UPGRADE_TARGET` at the adopter repository:
 
 ```
-UPGRADE_TARGET=<adopter-repo> bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh <new-version>
+UPGRADE_TARGET=<adopter-repo> bash <core>/skills/cadence-upgrade/upgrade-cadence.sh <new-version>
 ```
 
-The engine first executes the Step-0 footprint check. When the `artifacts/footprint.generated` boundary manifest is missing, it halts before touching `.cadence-version` and prints the Step-0 auto-generation command: `AUTOGEN_CONFIRM=1 UPGRADE_TARGET=<repo> UPGRADE_CORE=<core> bash <core>/artifacts/commands/cadence-upgrade/upgrade-cadence.sh --autogen-footprint` (which derives the footprint atomically from the core checkout). Once `footprint.generated` exists, re-run the upgrade command (optionally with `--dry-run` first). See `.agents/skills/cadence-upgrade/SKILL.md` for full details.
+The engine first executes the Step-0 footprint check. When the `artifacts/footprint.generated` boundary manifest is missing, it halts before touching `.cadence-version` and prints the Step-0 auto-generation command: `AUTOGEN_CONFIRM=1 UPGRADE_TARGET=<repo> UPGRADE_CORE=<core> bash <core>/skills/cadence-upgrade/upgrade-cadence.sh --autogen-footprint` (which derives the footprint atomically from the core checkout). Once `footprint.generated` exists, re-run the upgrade command (optionally with `--dry-run` first). See `.agents/skills/cadence-upgrade/SKILL.md` for full details.
 
 **CLI fallback:** run `.agents/skills/cadence-upgrade/upgrade-cadence.sh <new-version>` directly.
 
@@ -82,7 +82,7 @@ Classify an incoming issue, scan the codebase and insight registers (`repo-scout
 
 Guide a human stakeholder through unanswered probe questions in `specs/{ticket-id}/problem.md` and append their verbatim responses under a structured `## Elicited Intent` section. Run this after `/cadence-triage` whenever probe questions in `problem.md` remain marked `_(not yet answered)_`.
 
-This skill is **tier-gated**: it executes only on Medium or High tier tickets and refuses Trivial or Low tier work (reading `tier` from `specs/{ticket-id}/metadata.yaml` without altering it). It enforces a **hard ceiling of 7 probes** per invocation (the standard `problem.md` template includes 5 probes; the remaining 2 slots provide forward-compatibility headroom rather than ad-hoc follow-up generation). See `docs/policies/change-tiers.md`.
+This skill is **tier-gated**: it executes only on Medium or High tier tickets and refuses Trivial or Low tier work (reading `tier` from `specs/{ticket-id}/metadata.yaml` without altering it). It enforces a **hard ceiling of 7 probes** per invocation (the standard `problem.md` template includes 5 fixed probes in slots 1–5; slots 6–7 hold optional adaptive follow-up questions tailored to critical ambiguities). See `docs/policies/change-tiers.md`.
 
 If `## Elicited Intent` already exists in `problem.md`, the skill displays a summary and requests explicit confirmation before replacing it.
 
@@ -142,20 +142,20 @@ Evaluate a change proposal at Gate 3 (Maintainer Acceptance) after Gate 2 code r
 
 ## `/cadence-migrate [ticket-id] [--contract]`
 
-Author EF Core database migrations following the expand/contract discipline. Defaults to `expand` mode (strictly additive changes shipped alongside the feature). Pass `--contract` in a follow-up ticket/MR to remove retired schema elements once production telemetry confirms zero legacy usage.
+Author reversible, idempotent schema and data migrations across stacks following the expand/contract discipline. Defaults to `expand` mode (strictly additive changes shipped alongside the feature, invoked after entity/model and interim compatibility code changes are committed). Pass `--contract` in a follow-up ticket/MR to remove retired schema elements once production telemetry confirms zero legacy usage.
 
 ```
 /cadence-migrate TT-1234
 /cadence-migrate TT-1234 --contract
 ```
 
-**Prerequisite:** Domain/ORM entity class changes must be present before running in `expand` mode.
+**Prerequisite:** Domain/ORM/schema model changes (plus Phase 2.25 interim compatibility code where needed) must be committed before running in `expand` mode.
 
-**Outputs:** Reversible, idempotent migration files in the project's migrations directory, verified via a local `apply → rollback → reapply` cycle. `cadence-migration-author` discovers the repository's `DbContext`, migrations path, startup project, and database provider automatically.
+**Outputs:** Reversible, idempotent migration files in the project's migrations directory, verified via a local `apply → rollback → reapply` cycle. `cadence-migration-author` discovers the repository's ORM/migration framework, migrations path, and database provider automatically (see `docs/guides/ef-migration-examples.md` for .NET examples).
 
 ## `/cadence-archive [ticket-id]`
 
-Enshrine a merged ticket into the permanent repository archive. Delegates to `cadence-archivist`, which finalizes `submission.md`, moves `specs/{ticket-id}/` to `archive/{ticket-id}/`, **dispositions every inbound citation of the moved `specs/{ticket-id}/` path (blocking — see below)**, compiles `summary.md` with cycle metrics, updates `CHANGELOG.md`, promotes architectural decisions to `docs/ADR/` and intent discoveries to `docs/agentic-sdlc/intent-insights.md`, syncs the bound tracker (`CADENCE_ORG.md#tracker-binding`), and cleans up the merged feature branch.
+Enshrine a merged ticket into the permanent repository archive. `/cadence-archive` executes pre- and post-relocation `dead-citation-gate.sh` sweeps, delegates artifact relocation (`specs/{ticket-id}/` to `archive/{ticket-id}/`), `summary.md` generation (including `merged_at` backfill if unset), `CHANGELOG.md` updates, `production-insights.md` (`Closed by:`), and ADR/insight promotion to `cadence-archivist`, and invokes the bound external tracker sync skill (`CADENCE_ORG.md#tracker-binding`) once `cadence-archivist` returns.
 
 ```
 /cadence-archive TT-1234
@@ -190,11 +190,11 @@ Project specification metadata, lifecycle status, and stage-effort worklogs from
 
 ## `/cadence-bump-model <from-model> <to-model>`
 
-Update the concrete model identifier across agent YAML frontmatter (`.agents/agents/*/AGENT.md` and `artifacts/roles/*/ROLE.md`) AND the Concrete Model column of `CADENCE_ORG.md#model-tier-mapping` within a single capability tier. Displays a confirmation diff before applying changes and verifies consistency afterward.
+Update the concrete model identifier across matching-tier agent YAML frontmatter (`.agents/agents/*/agent.md` `default_model`), runtime adapters (`ci-templates/scripts/adapters/`), AND the Concrete Model column of `CADENCE_ORG.md#model-tier-mapping` within a single capability tier. Displays a confirmation diff before applying changes and verifies consistency afterward.
 
-**Scope:** Modifies only `model:` declarations in agent frontmatter and the matching tier row in `CADENCE_ORG.md#model-tier-mapping`. Does not alter prose documentation, CI scripts, or external routing. Operates on one capability tier per invocation — moving an agent between capability tiers is an architectural change requiring a specification.
+**Scope:** Modifies only concrete model declarations for agents belonging to the single matched capability tier in `CADENCE_ORG.md#model-tier-mapping` and runtime adapters (never substituting across tiers even when two tiers temporarily share an alias). Does not alter prose documentation or external routing. Operates on one capability tier per invocation — moving an agent between capability tiers is an architectural change requiring a specification.
 
-**Outputs:** Preview diff across all targets, operator confirmation prompt, and post-apply verification. Review with `git diff` and commit via the standard worktree PR workflow.
+**Outputs:** Preview diff across all tier-matched targets, operator confirmation prompt, symlink/adapter verification, and post-apply grep verification. Review with `git diff` and commit via the standard worktree PR workflow.
 
 ### Examples (Per-Runtime Substitution)
 
@@ -206,37 +206,37 @@ Update the concrete model identifier across agent YAML frontmatter (`.agents/age
 
 ---
 
-## `/cadence-release [major|minor|patch]`
+## `/cadence-release [<bump-arg>]`
 
-Cut a governed release from the accumulated `## [Unreleased]` entries in `CHANGELOG.md`. Resolves the repository's bound versioning scheme from `CADENCE_ORG.md#version-scheme-binding`, computes the appropriate version increment under that scheme's rules (**major** for breaking surface changes or enacted deprecations; **minor** for additive capabilities, new agents/skills, or non-breaking enhancements; **patch** for bug fixes and documentation updates), presents the proposed version number and rationale, and **requests operator confirmation before modifying any file**. Passing an explicit `major|minor|patch` argument forces that bump level while still displaying the computed analysis and warning if the forced level under-bumps a breaking change.
+Cut a governed release from the accumulated `## [Unreleased]` entries in `CHANGELOG.md`. Resolves the repository's bound versioning scheme from `CADENCE_ORG.md#version-scheme-binding` (`calver-yyyy-ww` default or `semver`), computes the next version increment (`YYYY.WW.N` under CalVer; `major|minor|patch` under SemVer), presents the proposed version number and rationale, and **requests confirmation (Gate A) before modifying any file or opening the release PR**. Passing an explicit override argument (`YYYY.WW.N` or `major|minor|patch`) forces that version/bump while still displaying the computed analysis and warning if it conflicts with detected changelog entries.
 
-Upon confirmation, the skill finalizes `## [Unreleased]` as `## [X.Y.Z] - <YYYY-MM-DD>`, opens a fresh empty `## [Unreleased]` section, updates the version stamp in `README.md` (and `.cadence-version` where applicable), drafts `docs/releases/vX.Y.Z.md`, creates the `RELEASE-X.Y.Z` commit and an **annotated** git tag, and prompts a second time before pushing the branch and tag to `origin`.
+Upon Gate A confirmation, the skill finalizes `## [Unreleased]` as `## [<version>] - <YYYY-MM-DD>`, opens a fresh empty `## [Unreleased]` section, updates the version stamp in `.cadence-version` and `README.md`, drafts `docs/releases/v<version>.md` and `specs/RELEASE-<version>/submission.md`, and commits & opens the release PR. Once merged to the integration branch, Gate B prompts before creating and pushing the **annotated** `v<version>` git tag.
 
-**Scope:** Executes inline in the main session (because it pauses for two operator confirmations). Modifies `CHANGELOG.md`, `README.md`, and `docs/releases/vX.Y.Z.md`, creating one commit and one annotated tag.
+**Scope:** Executes inline in the main session (two explicit confirmation gates). Modifies `CHANGELOG.md`, `README.md`, `.cadence-version`, `docs/releases/v<version>.md`, and `specs/RELEASE-<version>/submission.md`, creating one release PR commit and one annotated tag.
 
-**Outputs:** Proposed version + rationale, two confirmation checkpoints (pre-edit and pre-push), the release commit, the annotated tag, and a drafted release-notes document in `docs/releases/vX.Y.Z.md`.
+**Outputs:** Proposed version + rationale, Gate A pre-edit/PR confirmation, Gate B post-merge annotated-tag confirmation, release-notes document in `docs/releases/v<version>.md`, and `specs/RELEASE-<version>/submission.md`.
 
 ### Example
 
 ```
-/cadence-release           # analyze Unreleased, propose bump, confirm, cut, tag, push
-/cadence-release minor     # force minor bump (still displays analysis)
-/cadence-release patch     # force patch — warns if Unreleased contains features or breaking changes
+/cadence-release           # analyze Unreleased, propose bump per bound scheme, confirm Gate A, open PR, confirm Gate B, tag
+/cadence-release minor     # SemVer repo: force minor bump (displays analysis)
+/cadence-release patch     # warn if Unreleased contains features or breaking changes
 ```
 
 ---
 
 ## `/cadence-propose "<summary>"`
 
-Mechanize Workflow Step 00 (Problem) before IDs are allocated: validates fit against `PROJECT_INTENT.md` and registered surface registries, runs `local_semantic_embed` (`:11434`) to surface duplicate tickets or prior `PROD-*`/`II-*` insights, writes a concise 3–5 sentence 4-part outcome proposal (`Problem`, `Proposed approach`, `Surfaces affected`, `Ask`) into `specs/drafts/<slug>.md`, and hands off to `/cadence-triage --file-only specs/drafts/<slug>.md` (or full `/cadence-triage`).
+Mechanize Workflow Step 00 (Problem) before IDs are allocated: validates fit against `PROJECT_INTENT.md` and registered surface registries, runs optional `local_semantic_embed` (`:11434`, cloud-only fallback when absent) to surface duplicate tickets or prior `PROD-*`/`II-*` insights, writes a concise 3–5 sentence 4-part outcome proposal (`Problem`, `Proposed approach`, `Surfaces affected`, `Ask`) into `specs/drafts/<slug>.md`, and hands off to `/cadence-triage --file-only specs/drafts/<slug>.md` (or full `/cadence-triage`).
 
 ## `/cadence-refactor "<transform-spec>" [scope]`
 
-Execute wide, deterministic, behavior-preserving refactors inside a dedicated worktree under `Fast-mechanical` (`high` effort) over an exhaustive pre-computed manifest (`local_semantic_embed` + `rg` + dual `docs/` searches), halting and escalating to `/cadence-spec` (`Deep-reasoning`, `xhigh`) if registered surfaces, schemas, or behavioral contracts would change, and running canonical tests + `offload_deep_review` (`:11434`) post-sweep.
+Execute wide, deterministic, behavior-preserving refactors inside a dedicated worktree under `Fast-mechanical` (`high` effort) over an exhaustive pre-computed manifest (`local_semantic_embed` + `rg` + dual `docs/` searches), halting and escalating to `/cadence-spec` (`Deep-reasoning`, `xhigh`) if registered surfaces, schemas, or behavioral contracts would change, and running canonical tests + optional `offload_deep_review` (`:11434`) post-sweep.
 
 ## `/cadence-merge <ticket-id> [--no-archive]`
 
-Mechanize Workflow Step 07 (Merge): checks tier-conditional Gate 2 / Gate 3 approval (`maintainer_approved_at` for Medium/High; Gate 2 only for Low), resolves the integration branch dynamically from `CADENCE_ORG.md#branch-strategy-binding`, rebases cleanly and re-runs tests via `offload_log_triage` (`:11434`), lands the change without `--no-verify`, sets `status: merged` + exact UTC `merged_at`, syncs the bound tracker, cleans up temporary worktree state, and chains `/cadence-archive` unless `--no-archive` is passed.
+Mechanize Workflow Step 07 (Merge): checks tier-conditional Gate 2 / Gate 3 approval (`maintainer_approved_at` for Medium/High; Gate 2 only for Low), resolves the integration branch dynamically from `CADENCE_ORG.md#branch-strategy-binding`, rebases cleanly and re-runs verification (re-running `/cadence-review` whenever code/test conflicts are resolved or upstream changes touch the diff's bounded context), merges via forge PR without `--no-verify`, fast-forwards local integration branch (`git pull --ff-only`, zero direct commits on protected integration branches), syncs `merged` to the bound tracker, prunes temporary worktree state, and hands off to `/cadence-archive` (which persists `merged_at` if unset alongside `status: archived` on `archive/{type}/{id}`) unless `--no-archive` is passed.
 
 ## `/cadence-doctor [--ticket <id>] [--check-offload] [--full]`
 
@@ -266,18 +266,18 @@ Onboard a repository to CADENCE end-to-end: runs `adopt-cadence.sh`, optionally 
 
 Advance a ticket through the entire definition phase and stop before implementation: optionally drafts Step 00 (`--propose` -> `/cadence-propose`), then chains `/cadence-triage`, `/cadence-elicit`, and `/cadence-spec`, resolves open questions / Gate 1 rulings, opens/publishes the spec-approval MR (`read_state.py` / `ready_mr.sh`), and offers an interactive opt-in `/cadence-watch` handoff prompt (`watch` / `once` / `no`).
 
-## `/cadence-build <ticket-id> [--with-migrations] [--max-cycles 5]`
+## `/cadence-build <ticket-id> [--with-migrations] [--max-cycles 4]`
 
-Advance an approved/triaged ticket through implementation and verification: ensures isolated worktree setup, chains `/cadence-implement` (plus `/cadence-migrate` when `--with-migrations` or schema/SQL specs trigger it), runs iterative `/cadence-review` + `security-trigger.sh`/`cadence-security-auditor` loops tracked via `<!-- cadence-run:cycle ... -->` markers, readies the PR for Gate 3 or merge, and offers an interactive opt-in `/cadence-watch` handoff prompt (`watch` / `once` / `no`).
+Advance an approved/triaged ticket through implementation and verification: ensures isolated worktree setup, checks `#integration-branch-enforcement` and `#sprint-enforcement-binding`, chains `/cadence-implement` (and runs `/cadence-migrate` *after* entity/interim compatibility commits when `--with-migrations` or schema/SQL specs trigger it), runs iterative `/cadence-review` + `security-trigger.sh`/`cadence-security-auditor` loops tracked via `<!-- cadence-run:cycle ... -->` markers (cycle cap `4`), readies the PR for Gate 3 or merge, and offers an interactive opt-in `/cadence-watch` handoff prompt (`watch` / `once` / `no`).
 
 ## `/cadence-close <ticket-id> [--no-archive]`
 
 Close out a code-reviewed ticket through Gate 3 and cleanup: inspects `read_state.py`, runs tier-conditional Gate 3 `/cadence-maintain` (`Medium`/`High` when `maintainer_approved_at` is unset; skipped on `Low`/`Trivial`), lands via `/cadence-merge` + tracker sync without `--no-verify`, and chains `/cadence-archive` + post-close `doctor.sh` unless `--no-archive` is set.
 
-## `/cadence-housekeep [--since <N>] [--include-active] [--full] [--promote] [--with-release [major|minor|patch]]`
+## `/cadence-housekeep [--since <N>] [--include-active] [--full] [--promote] [--with-release [<bump-arg>]]`
 
 Run repository hygiene in one command: executes read-only `/cadence-doctor --check-offload [--full]` and `/cadence-retro`, gates `--promote` (`II-*`/`PROD-*` ID minting) behind explicit operator confirmation, and gates optional `--with-release` behind a clean doctor pass and `/cadence-release` confirmations.
 
 ## `/cadence-watch [<ticket-id> | --all] [--once | --watch] [--interval <sec>] [--timeout <sec>] [--no-tracker] [--dry-run]`
 
-Listen to open GitHub PRs (`gh`), GitLab MRs (`glab`), and bound Jira/YouTrack ticket comments (`CADENCE_ORG.md` §9) via `.agents/skills/cadence-watch/scripts/pr_watch.py`: mirrors unseen external feedback into `specs/<id>/submission.md` `## Discussion` using write-after-completion watermarks and `<!-- cadence-watch:reply -->` loop suppression, automatically triggers `/cadence-build` when a `spec_mr` merges or post-merge sync + `/cadence-archive` when a `merge_request` merges, remediates in-scope change requests or CI failures within approved scope (`offload_deep_review` / `offload_log_triage`), halts on scope/tier changes or cycle cap `>=4`, and hands `APPROVED` implementation PRs to `/cadence-close` without ever self-merging silently. PR-facing CADENCE stage commands (`/cadence-define`, `/cadence-build`, `/cadence-parallel`, `/cadence-close` on Gate 3 deferral/rejection, and standalone `/cadence-spec`, `/cadence-implement`, `/cadence-review`, `/cadence-maintain`) prompt interactively at run end whether to invoke `/cadence-watch` (`watch` / `once` / `no`) without auto-polling silently.
+Listen to open GitHub PRs (`gh`), GitLab MRs (`glab`), and bound Jira/YouTrack ticket comments (`CADENCE_ORG.md#tracker-binding`) via `.agents/skills/cadence-watch/scripts/pr_watch.py`: mirrors unseen external feedback into `specs/<id>/submission.md` `## Discussion` using write-after-completion watermarks and `<!-- cadence-watch:reply -->` loop suppression, automatically triggers `/cadence-build` when a `spec_mr` merges or post-merge tracker sync + `/cadence-archive` when a `merge_request` merges, remediates in-scope change requests or CI failures within approved scope (`offload_deep_review` / `offload_log_triage`), halts on scope/tier changes or cycle cap `>=4`, and hands `APPROVED` implementation PRs to `/cadence-close` without ever self-merging silently. PR-facing CADENCE stage commands (`/cadence-define`, `/cadence-build`, `/cadence-parallel`, `/cadence-close` on Gate 3 deferral/rejection, and standalone `/cadence-spec`, `/cadence-implement`, `/cadence-review`, `/cadence-maintain`) prompt interactively at run end whether to invoke `/cadence-watch` (`watch` / `once` / `no`) without auto-polling silently.

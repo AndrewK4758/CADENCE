@@ -2,9 +2,9 @@
 """Resolve a CADENCE ticket's machine-readable state in one shot.
 
 SHARED FILE -- byte-identical copies of this script live in the scripts/ dir of
-every cadence-* skill that reads ticket state (/cadence-define and /cadence-build).
-They are copies rather than one shared import because the skills are distributed
-separately and each has to stand alone.
+every cadence-* skill that reads ticket state (/cadence-define, /cadence-build,
+and /cadence-watch). They are copies rather than one shared import because the
+skills are distributed separately and each has to stand alone.
 
 Keeping them identical is deliberate and cheap to enforce: this file contains NO
 per-skill text. The skill's own name is derived at runtime from the path it sits
@@ -120,7 +120,7 @@ def find_repo_root(start):
 
 
 def resolve_binding(repo_root, field):
-    """Read a §15 Branch-Strategy Binding marker.
+    """Read a #branch-strategy-binding marker in CADENCE_ORG.md.
 
     ADR-0020 makes these markers the machine-readable source; a hardcoded branch
     name is exactly what it forbids. Absent/empty/placeholder fails loud.

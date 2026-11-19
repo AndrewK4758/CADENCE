@@ -66,5 +66,5 @@ Summarize every `PASS`, `WARN`, `FAIL`, and explicit `SKIP` line accurately (nev
 ```
 
 ## Local Model Offload Integration (:11434)
-- Output exceeding 30 lines or any non-zero gate exit routes automatically through `offload_log_triage` (`:11434`), keeping raw diagnostics at `/tmp/agy-last-triage.log`.
+- When `:11434` is reachable, output exceeding 30 lines or any non-zero gate exit routes through `offload_log_triage` (`:11434`), keeping raw diagnostics at `/tmp/agy-last-triage.log` (degrading cleanly to direct inspection when offline).
 - `--check-offload` verifies `127.0.0.1:11434/health` without mutating service configuration.

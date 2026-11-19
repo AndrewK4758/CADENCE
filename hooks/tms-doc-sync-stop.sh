@@ -92,7 +92,7 @@ printf '%s' "$sig" > "$state" 2>/dev/null
 [ "$active" -eq 1 ] && exit 0
 
 tickets=$(printf '%s\n' "$all" | sed -n 's#.*\(specs\|archive\)/\([^/]*\)/.*#\2#p' | sort -u | tr '\n' ' ' | sed 's/ *$//')
-reason="CADENCE spec/metadata documents changed without a tracker sync for: ${tickets}. Per CADENCE_ORG.md §9 (Projection triggers & sync discipline), run the bound sync skill for each listed ticket before finishing, unless already synced in this session."
+reason="CADENCE spec/metadata documents changed without a tracker sync for: ${tickets}. Per CADENCE_ORG.md#tracker-binding (Projection triggers & sync discipline), run the bound sync skill for each listed ticket before finishing, unless already synced in this session."
 
 if [ "$is_agy" -eq 1 ]; then
   python3 -c 'import json,sys; print(json.dumps({"decision":"continue","reason":sys.argv[1]}))' "$reason"

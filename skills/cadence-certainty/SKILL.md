@@ -19,7 +19,7 @@ Run the read-only deterministic certainty evaluator (`certainty-gate.sh`) agains
    ( .agents/skills/cadence-certainty/certainty-gate.sh $ticket_id \
      || skills/cadence-certainty/certainty-gate.sh $ticket_id )
    ```
-   Pass `--stage spec|implement|review`, `--base <integration-branch>`, or `--require-evidence` when supplied by the caller or workflow stage. Pipe output exceeding 30 lines through `offload_log_triage` (`cwd="<repo-root>"` on `:11434`, raw escape hatch at `/tmp/agy-last-triage.log`).
+   Pass `--stage spec|implement|review`, `--base <integration-branch>`, or `--require-evidence` when supplied by the caller or workflow stage. When output exceeds 30 lines and local offload (`:11434`) is reachable, pipe it through `offload_log_triage` (`cwd="<repo-root>"`, raw escape hatch at `/tmp/agy-last-triage.log`; fall back to direct inspection if unavailable).
 
 2. **Act strictly on the deterministic exit code:**
    - **Exit `0` (`decision=PROCEED`):** All Layer 1 (and Layer 2 when `evidence.yaml` exists) checks passed. Report the final `decision=PROCEED ...` summary line and continue the calling workflow.
@@ -29,7 +29,7 @@ Run the read-only deterministic certainty evaluator (`certainty-gate.sh`) agains
 3. **Present the Human Escalation Packet (when Exit `2`):**
    - Quote the `ESCALATE` lines and final `decision=ESCALATE_HUMAN ... triggers=...` line verbatim.
    - Group only the failing triggers into concrete choices (e.g., resolve unanswered probe in `problem.md`, map `OQ-N`, promote or reject `# STATUS: Draft`, approve scope change, or decide a `CLM-N` assumption).
-   - Append each confirmed human decision to `specs/$ticket_id/decisions.md` using `Gate <1-3> ruling: <item> -- <agree|amend|override> -- <why>` (where `<item>` is `OQ-N`, `CLM-N`, `unknowns`, `probes`, `scope`, `draft`, or `oscillation`), then re-run `certainty-gate.sh` to confirm exit `0` (`decision=PROCEED`).
+   - Append each confirmed human decision to `specs/$ticket_id/decisions.md` using `Gate <1-3> ruling: <item> -- <agree|amend|override> -- <why>` (where `<item>` is `OQ-N`, `CLM-N`, `unknowns`, `probes`, `scope`, `draft`, `citations`, or `oscillation`), then re-run `certainty-gate.sh` to confirm exit `0` (`decision=PROCEED`).
 
 ## Example
 

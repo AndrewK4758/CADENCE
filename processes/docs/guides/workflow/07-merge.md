@@ -1,13 +1,13 @@
 # Workflow Step 07 — Merge
 
-> Part of the per-step workflow guide series. This guide details the **Merge** step. For the preceding gate see [`06-maintainer-acceptance.md`](06-maintainer-acceptance.md); for the end-to-end workflow overview see [`../getting-started.md`](../getting-started.md) §2.3. Branch roles and protection rules are governed by the repository's [Branch Strategy Binding](../../agentic-sdlc/CADENCE_ORG.md#branch-strategy-binding) and its bound strategy policy under [`docs/policies/branch-strategy/`](../../policies/branch-strategy/).
+> Part of the per-step workflow guide series. This guide details the **Merge** step. For the preceding gate see [`06-maintainer-acceptance.md`](06-maintainer-acceptance.md); for the per-tier matrix see [`../../policies/change-tiers.md`](../../policies/change-tiers.md). Branch roles and protection rules are governed by the repository's [Branch Strategy Binding](../../agentic-sdlc/CADENCE_ORG.md#branch-strategy-binding) and its bound strategy policy under [`docs/policies/branch-strategy/`](../../policies/branch-strategy/).
 
 | | |
 |---|---|
 | **Step** | Merge |
 | **Who** | Reviewer / Maintainer |
 | **Consumes** | A remote MR/PR whose required tier gates have passed — Maintainer Accepted (Medium/High) or Code Reviewed (Low/Trivial) |
-| **Produces** | The squash-merged change on the bound integration branch (`develop` or `main` per `CADENCE_ORG.md` §15); `status: merged` + `merged_at` set |
+| **Produces** | The squash-merged change on the bound integration branch (`develop` or `main` per `CADENCE_ORG.md#branch-strategy-binding`), local `<integration-branch>` fast-forwarded (`--ff-only`), and `merged` projected to bound tracker (`/cadence-archive` writes `merged_at` if unset + `status: archived` inside `archive/{type}/{id}`) |
 | **Leads to** | [Archive](08-archive.md) (`/cadence-archive`) |
 
 ---
@@ -16,9 +16,9 @@
 
 Merge is the explicit transition where reviewed, gate-approved work lands on the repository's integration branch and becomes part of the project's accepted state. CADENCE separates **Merge** from [Gate 3: Maintainer Acceptance](06-maintainer-acceptance.md) by design: Gate 3 *authorizes* acceptance, while Step 07 *executes* the remote MR/PR merge through the forge gate and synchronizes the local integration branch.
 
-## Resolving the integration branch (`CADENCE_ORG.md` §15)
+## Resolving the integration branch (`CADENCE_ORG.md#branch-strategy-binding`)
 
-Every repository declares its branching topology and integration branch name in [`CADENCE_ORG.md#branch-strategy-binding`](../../agentic-sdlc/CADENCE_ORG.md#branch-strategy-binding) (§15), backed by one of the two portable strategy policies:
+Every repository declares its branching topology and integration branch name in [`CADENCE_ORG.md#branch-strategy-binding`](../../agentic-sdlc/CADENCE_ORG.md#branch-strategy-binding), backed by one of the two portable strategy policies:
 
 - **[`long-lived-feature-release.md`](../../policies/branch-strategy/long-lived-feature-release.md)** — `develop` serves as the persistent integration branch where all feature MRs merge, `release/*` branches handle release stabilization, and `master`/`main` acts as the production mirror:
 
@@ -39,27 +39,27 @@ Under both strategies, **"is this change merged?" always resolves against the bo
 
 There is no "small enough to push straight to the integration branch" exception. Process right-sizing ([`change-tiers.md`](../../policies/change-tiers.md)) adjusts *which review gates run*, never branch protection.
 
-## Automatic Local Offload during Pre-Merge Verification (`offload_log_triage`)
+## Optional Local Offload during Pre-Merge Verification (`offload_log_triage`, Cloud Fallback)
 
-When verifying final pre-merge CI / local gate checks (`ci-templates/scripts/run-gates.sh` or the repository's full test runner) before executing `gh pr merge` / `glab mr merge`, CADENCE automatically routes command output through the read-only `offload_log_triage` / `log-triage` coprocessor (`inference` on `:11434`). This compacts multi-thousand-line build and test logs into a clean pass/fail summary with verbatim error coordinates while saving the complete unedited log to `/tmp/agy-last-triage.log`.
+When local offload (`:11434`) is reachable while verifying final pre-merge CI / local gate checks (`doctor.sh` or the repository's full test runner) before executing `gh pr merge` / `glab mr merge`, CADENCE routes command output exceeding 30 lines through the read-only `offload_log_triage` / `log-triage` coprocessor (`inference` on `:11434`, degrading cleanly to direct inspection when offline), saving complete raw logs to `/tmp/agy-last-triage.log`.
 
 ## What to do
 
-1. **Confirm all required gates for the ticket's tier have passed:**
-   - **Trivial tier** — CI pipeline green; documentation-only changes auto-merge, while config-value, dependency, and release-cut MRs have one human reviewer approval.
+1. **Confirm all required gates for the ticket's tier have passed (and re-run `/cadence-review` if a pre-merge rebase touched code conflicts or bounded-context dependencies):**
+   - **Trivial tier** — CI pipeline green; doc/config/dependency/release PRs follow [`change-tiers.md`](../../policies/change-tiers.md) (release PRs include `specs/RELEASE-<ver>/submission.md`).
    - **Low tier** — Gate 2 Code Review ([`05-code-review.md`](05-code-review.md)) approved by one human reviewer, with all `out-of-scope-defect` follow-up dispositions recorded in `submission.md`.
    - **Medium / High tier** — both Gate 2 Code Review ([`05-code-review.md`](05-code-review.md)) and Gate 3 Maintainer Acceptance ([`06-maintainer-acceptance.md`](06-maintainer-acceptance.md)) approved (`maintainer_approved_at` set in `metadata.yaml`).
-2. **Merge the remote MR/PR into the integration branch** on the forge (`gh pr merge --squash` or `glab mr merge`) once target CI is green, and pull the updated integration branch locally (`git pull origin <integration-branch>`).
-3. **Verify post-merge lifecycle state.** Ensure `metadata.yaml` records `status: merged` and `merged_at` (and project the `merged` status to the bound tracker per `CADENCE_ORG.md` §9). The forge automatically deletes the short-lived `impl/{type}/{id}` head branch upon merge, and the local worktree can be pruned cleanly.
+2. **Merge the remote MR/PR into the integration branch** on the forge (`gh pr merge --squash` or `glab mr merge`) once target CI is green, and fast-forward local `<integration-branch>` (`git pull --ff-only origin <integration-branch>`).
+3. **Project `merged` status & clean up temporary branch/worktree:** **Never push direct `metadata.yaml` commits onto a protected `<integration-branch>`.** Invoke the bound `CADENCE_ORG.md#tracker-binding` sync skill once to project `merged` status and clean up the temporary worktree/branch (`git worktree remove` + `git branch -d`). `/cadence-archive` persists `merged_at` (from the merge commit/forge PR if unset) alongside `status: archived` in its `archive/{type}/{id}` PR.
 
-> **"Is it merged?" always checks the bound integration branch.** Once the squash merge commit is reachable on the integration branch (`develop` or `main` per `CADENCE_ORG.md` §15), the ticket is ready for [Step 08 — Archive](08-archive.md) (`/cadence-archive`).
+> **"Is it merged?" always checks the bound integration branch.** Once the squash merge commit is reachable on the integration branch (`develop` or `main` per `CADENCE_ORG.md#branch-strategy-binding`), the ticket is ready for [Step 08 — Archive](08-archive.md) (`/cadence-archive`).
 
 ## Definition of done
 
-- [ ] All required human and CI gates for the ticket's tier have passed.
+- [ ] All required human and CI gates for the ticket's tier have passed (including post-rebase `/cadence-review` when code conflicts or bounded-context overlap occurred).
 - [ ] The remote MR/PR merged cleanly into the bound integration branch with green CI.
-- [ ] Local integration branch updated via `git pull origin <integration-branch>` and worktree cleaned up.
-- [ ] `metadata.yaml` reflects `status: merged` and `merged_at`, projected to the bound tracker.
+- [ ] Local integration branch updated via `git pull --ff-only origin <integration-branch>` and worktree cleaned up without direct commits onto protected integration branches.
+- [ ] Bound tracker (`CADENCE_ORG.md#tracker-binding`) reflects `merged` status and the ticket is ready for `/cadence-archive`.
 
 ## What this step is NOT
 
@@ -73,7 +73,7 @@ When verifying final pre-merge CI / local gate checks (`ci-templates/scripts/run
 - [`06-maintainer-acceptance.md`](06-maintainer-acceptance.md) — Gate 3, which authorizes the merge for Medium and High tier changes.
 - [`05-code-review.md`](05-code-review.md) — Gate 2, which authorizes the merge for Low tier changes.
 - [`08-archive.md`](08-archive.md) — the final lifecycle step (`/cadence-archive`), executed once the change lands on the integration branch.
-- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier matrix.
+- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — per-tier requirements and gate matrix.
 - [`../../policies/branch-strategy/long-lived-feature-release.md`](../../policies/branch-strategy/long-lived-feature-release.md) · [`trunk-based.md`](../../policies/branch-strategy/trunk-based.md) — authoritative branch-strategy policies.
 - [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — tier gate requirements prior to merge.
 - [`../submitting-changes.md`](../submitting-changes.md) — forge-specific MR/PR/patchset workflows.

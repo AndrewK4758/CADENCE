@@ -191,9 +191,24 @@ A pillar whose every measure evaluates to `Pass` may be condensed to `**All meas
 - [ ] No new required fields added to existing request contracts
 - [ ] No "fix consumers later" without a tracked deprecation entry
 
+### Pillar 6: Security Boundary Posture (include when triggered — change touches authentication, authorization, PII, user input handling, or new client-side code)
+
+| Measure | Target | This Design | Status |
+|---|---|---|---|
+| Server-side principal enforcement | Caller identity/authority established server-side from authenticated context | {How principal/authz is established without trusting caller parameters} | {Pass/Flag} |
+| Default-deny gates & per-record authz | Every endpoint, action, and record access explicitly authorized | {What authorization policy protects this change?} | {Pass/Flag} |
+| Input & secret/PII hygiene | Untrusted input validated; zero secrets/PII in logs or URLs | {How inputs, secrets, and PII are safeguarded} | {Pass/Flag} |
+
+**Anti-patterns checked:**
+- [ ] No client-supplied actor IDs or caller-asserted permissions trusted server-side
+- [ ] No new endpoint, command, or component left unguarded
+- [ ] No secrets, tokens, or PII written to logs, URLs, or unentitled responses
+
+_(If not triggered, replace the table above with: `Not triggered — <reason this change touches no auth, authorization, PII, user input, or client-side trust boundaries>`)_
+
 ### Additional Pillars
 
-{Include any additional pillars active for this repository (Security Boundary Posture, Execution Performance, Automated Verifiability, Modular Replaceability, Origin Confidentiality). Follow the identical layout: measures table, decision rule, and anti-pattern checklist. Refer to your pillar library or `CADENCE_ORG.md` for repository-specific measures.}
+{Include any additional open-slot pillars active for this repository (`Execution Performance`, `Automated Verifiability`, `Modular Replaceability`, `Origin Confidentiality`). Follow the identical layout: measures table, decision rule, and anti-pattern checklist. Refer to your pillar library or `CADENCE_ORG.md` for repository-specific measures.}
 
 ### Pillar Conflict Resolution
 

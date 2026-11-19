@@ -1,6 +1,6 @@
 ---
 name: cadence-archivist
-description: Preserves completed or closed-out ticket records during the Enshrine phase -- finalizes submission.md, moves specs to archive/, enforces two-pass dead-citation sweeps with automatic local log triage, updates CHANGELOG and living flow docs, promotes ADRs and intent insights, and prepares tracker sync
+description: Preserves completed or closed-out ticket records during the Enshrine phase -- finalizes submission.md, moves specs to archive/, dispositions dead-citation hits reported by /cadence-archive (with optional local log triage, cloud fallback when absent), updates CHANGELOG and living flow docs, promotes ADRs and intent insights, and prepares /cadence-archive tracker sync
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # High-breadth archival orchestration, citation sweep disposition, effort calculation, and insight/ADR promotion follow structured rules. Routed to the Fast-mechanical tier (at high effort for completeness) per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Capability tier: Fast-mechanical (Capable high-breadth model at high effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
@@ -55,36 +55,12 @@ Before moving `specs/{ticket-id}/`, verify `specs/{ticket-id}/submission.md` is 
 mv specs/{ticket-id}/ archive/{ticket-id}/
 ```
 
-### Step 2b: Sweep Inbound Citations of `{ticket-id}` (`PROD_CADENCE-009`) — Blocking When Classifier Is Installed
+### Step 2b: Disposition Pre-Relocation Dead-Citation Hits (Owned by `/cadence-archive`)
 
-Moving `specs/{ticket-id}/` to `archive/{ticket-id}/` turns every remaining reference to `specs/{ticket-id}/` outside `archive/` into a broken pointer.
-
-**First, verify the dead-citation classifier exists AND is non-empty:**
-```bash
-[ -s ci-templates/scripts/dead-citation-gate.sh ]
-```
-Never use `[ -f ]` alone because a 0-byte file exits `0` without scanning anything.
-
-- **Case A — Classifier is installed and non-empty:** Execute:
-  ```bash
-  bash ci-templates/scripts/dead-citation-gate.sh --id {ticket-id}
-  ```
-  *(If output exceeds 30 lines, automatically pass it through `offload_log_triage` on `:11434` while preserving `/tmp/agy-last-triage.log`.)*
-  Interpret the exit code strictly as three distinct outcomes (`0` clean; `1` violation hits; `2` setup failure):
-  - **Exit `0`:** Proceed to Step 3 (`G-1` state).
-  - **Exit `1`:** For **every** reported hit, apply **exactly one** disposition (never auto-rewrite without inspecting each line; `NOT-A-COMMENT` hits represent code such as filter globs or historical `git show <ref>:specs/<id>/...` references where repointing would break working code!):
-    - **`REPOINT`** (default for ordinary references): update `specs/{ticket-id}/` $\rightarrow$ `archive/{ticket-id}/` in place.
-    - **`EXEMPT`** (for Class C historical narrative or Class D path-as-subject): add an anchored row to `ci-templates/scripts/dead-citation-exemptions.txt` naming the class and reason. Never add newly archived IDs to `dead-citation-baseline.txt` (shrink-only legacy debt).
-    Record every hit and disposition in `summary.md`'s `## Citation Dispositions` table (`G-2` state). **Archival cannot complete while any hit remains undispositioned.**
-  - **Exit `2` (or any other non-zero code):** **HALT immediately** with:
-    ```
-    seam_type=BOUNDARY_FAULT event_name=archive.dead_citation.classifier_setup_failed subject=ci-templates/scripts/dead-citation-gate.sh
-    /cadence-archive step 2b cannot complete: the dead-citation classifier is installed but could not run
-    (exit <n> -- its documented setup-failure status).
-    ```
-    Echo the script's cause verbatim and the baseline initialization command (`bash ci-templates/scripts/dead-citation-gate.sh --emit-baseline > ci-templates/scripts/dead-citation-baseline.txt`). State clearly that although files moved to `archive/{ticket-id}/`, **the ticket is NOT archived**, and provide the recovery steps (`mv archive/{ticket-id}/ specs/{ticket-id}/` before re-running `/cadence-archive {ticket-id}`).
-
-- **Case B — Classifier is absent or 0 bytes:** Do **not** halt, do **not** silently skip, and do **not** invoke the empty script. Emit the mandatory `DELTA_AUDIT_GAP` warning notice (`event_name=archive.dead_citation.sweep_skipped`) listing the three required scripts (`dead-citation-gate.sh`, `dead-citation-ledgers.sh`, `dead-citation-exemptions.txt` — never a `dead-citation-*` wildcard that would copy core's `dead-citation-baseline.txt`), offer (but never auto-run) the manual fallback `git grep -n "specs/<id>/" -- ':!archive/'`, and record either `DEAD-CITATION-SWEEP: SKIPPED` (`U-1`) or `DEAD-CITATION-SWEEP: MANUAL` (`U-2`) in `summary.md`.
+Moving `specs/{ticket-id}/` to `archive/{ticket-id}/` turns references to `specs/{ticket-id}/` outside `archive/` into broken pointers. `/cadence-archive` executes the canonical pre-relocation and post-promotion `dead-citation-gate.sh` sweeps (`ci-templates/scripts/` with `processes/ci-templates/scripts/` fallback). Whenever `/cadence-archive` reports any exit-`1` citation hits for `{ticket-id}` (or complement hits after Steps 6/6.5), inspect every hit carefully — `NOT-A-COMMENT` hits represent executable code or `git show <ref>:specs/<id>/...` history where blind rewriting would break code — and apply **exclusively one** disposition per hit:
+- **`REPOINT`** (default for ordinary references): update `specs/{ticket-id}/` $\rightarrow$ `archive/{ticket-id}/` in place.
+- **`EXEMPT`** (for Class C historical narrative or Class D path-as-subject): add an anchored row to `dead-citation-exemptions.txt` naming the class and reason. Never add newly archived IDs to `dead-citation-baseline.txt` (shrink-only legacy debt).
+Record every hit and disposition in `archive/{ticket-id}/summary.md`'s `## Citation Dispositions` table (using `G-1` `None -- no inbound citations.` only when both pre- and post-promotion sweeps exited `0`, or `U-1`/`U-2` when `/cadence-archive` reports the classifier is absent). **Archival cannot complete while any hit remains undispositioned.**
 
 ### Step 3: Author `archive/{ticket-id}/summary.md`
 
@@ -113,9 +89,9 @@ On the merged path, add a Keep a Changelog entry under `[Unreleased]` (`Added`, 
 ### Step 5: Update `archive/{ticket-id}/metadata.yaml` & Accumulate Archive Stage Effort
 
 Update `archive/{ticket-id}/metadata.yaml`:
-- Set `status: archived` (on **both** merged and cancelled close-out paths; on the close-out path preserve `resolution:` and its prose reason verbatim and leave `merged_at` empty).
+- Set `status: archived` (on **both** merged and cancelled close-out paths; on the close-out path preserve `resolution:` and its prose reason verbatim and leave `merged_at` empty). On the merged path, if `merged_at` is empty, backfill `merged_at` from the merge commit / forge PR timestamp so the archived record stays complete.
 - Set `archived_at` to the **exact** current UTC wall-clock timestamp via `date -u +%Y-%m-%dT%H:%M:%SZ` (second precision).
-- **Compute and append the `archive` stage effort (`CADENCE_ORG.md` §12 *Actual Effort Accumulation*):** run:
+- **Compute and append the `archive` stage effort (`CADENCE_ORG.md#actual-effort-accumulation`):** run:
   ```bash
   ([ -x ci-templates/scripts/stage-effort.sh ] && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage archive --observed <minutes>
   ```
@@ -138,32 +114,22 @@ Re-scan `archive/{ticket-id}/decisions.md` for decisions not promoted to an ADR 
 - **Idempotency check:** `grep` `docs/agentic-sdlc/intent-insights.md` for an existing `II-{NNN}` matching both `Source Ticket` and `Source DEC`; if present, skip without reserving an ID.
 - **Collision-safe ID reservation:** For each new entry actually appended, run `.agents/skills/cadence-mint/mint-id.sh --reserve II` (halt on non-zero exit; never scan-fall-back). Copy `metadata.yaml`'s `domain_entities` verbatim into `Domain Tag` and append the standard `### II-{NNN}: {Title}` table + narrative block.
 
-### Step 6.6: Post-Promotion Two-Call Dead-Citation Sweep (`PROD_CADENCE-015`) — Blocking
+### Step 6.6: Disposition Post-Promotion Dead-Citation Hits (`PROD_CADENCE-015`)
 
-Because Steps 6 and 6.5 may have just written new ADRs or intent insights citing either **other** already-archived tickets (`specs/<other-id>/`) or **this** ticket's own old path (`specs/{ticket-id}/`), execute the post-promotion two-call sweep whenever `[ -s ci-templates/scripts/dead-citation-gate.sh ]` succeeds:
+After Steps 6 and 6.5 finish writing any new ADRs or `II-{NNN}` entries, `/cadence-archive` Step 2c executes the two-call post-promotion sweep (`dead-citation-gate.sh --except-id {ticket-id}` followed by `dead-citation-gate.sh --id {ticket-id}`). For every hit `/cadence-archive` passes back, apply **`REPOINT`** (repointing `specs/<other-id>/` $\rightarrow$ `archive/<other-id>/` or `specs/{ticket-id}/` $\rightarrow$ `archive/{ticket-id}/`) or **`EXEMPT`** (`dead-citation-exemptions.txt`), and update `archive/{ticket-id}/summary.md`'s `## Citation Dispositions` table (replacing `None -- no inbound citations.` if hits appeared). When `/cadence-archive` reports the classifier is absent, note in `## Citation Dispositions` that both the complement sweep and post-promotion own-id re-run were unguarded (`archive.dead_citation.complement_skipped`).
 
-1. **Call 1 — Complement Sweep (Other Archived IDs):**
-   ```bash
-   bash ci-templates/scripts/dead-citation-gate.sh --except-id {ticket-id}
-   ```
-   - On exit `1`, disposition every hit (`REPOINT` rewrites `specs/<other-id>/` $\rightarrow$ `archive/<other-id>/` — the **other** ticket's archive folder, never `{ticket-id}`! — or `EXEMPT` in `dead-citation-exemptions.txt`). Never run `--emit-baseline` to hide a hit.
-   - On exit `2`, **HALT** under `archive.dead_citation.classifier_setup_failed`.
-2. **Call 2 — Own-ID Post-Promotion Re-Run:**
-   ```bash
-   bash ci-templates/scripts/dead-citation-gate.sh --id {ticket-id}
-   ```
-   - Catches any `specs/{ticket-id}/` reference newly written during Steps 6 / 6.5 (`REPOINT` rewrites `specs/{ticket-id}/` $\rightarrow$ `archive/{ticket-id}/`).
-3. **Amend `archive/{ticket-id}/summary.md`'s `## Citation Dispositions` section** (if Step 3 wrote `None -- no inbound citations.` and Step 6.6 found hits, **replace** that line with the table rather than appending below it). If any hit remains undispositioned, **HALT** with `seam_type=DELTA_AUDIT_GAP event_name=archive.citation_sweep.complement_undispositioned subject=<file>:<line>`.
-4. If the classifier is absent or 0 bytes, emit the mandatory `archive.dead_citation.complement_skipped` notice for `/cadence-archive` step 2c and record in `## Citation Dispositions` that both the complement sweep and post-promotion own-id re-run were unguarded.
+### Step 6.7: Close Out Matching `PROD-NNN` Insights (`docs/agentic-sdlc/production-insights.md`)
 
-### Step 7: External Tracker Sync Preparation
+When `docs/agentic-sdlc/production-insights.md` exists and `metadata.yaml` specifies `production_insight_id:` (`PROD-NNN`) or `type: bug` matches a documented `PROD-NNN` entry for `{ticket-id}`, append `Closed by: {ticket-id}` to that entry's metadata table/block (read-verify without rewriting other entries).
 
-Verify `CADENCE_ORG.md#tracker-binding` resolves a bound tracker and sync skill (`/cadence-sync-youtrack` or `/cadence-sync-jira`); fail loud if unbound. Enforce **scoped projection (owned items only — `specs/<id>/` or `archive/<id>/` exists)**: write the per-item audit line `(item id, owned?, action)` **before** any board mutation, and silently skip foreign tracker items on the board while logging `(item id, owned?=false, action=skip)` in the audit trail.
+### Step 7: External Tracker Sync Handoff
+
+Return cleanly so `/cadence-archive` executes post-return tracker projection via `CADENCE_ORG.md#tracker-binding` (`/cadence-sync-jira` or `/cadence-sync-youtrack`). Never invoke external tracker sync skills or APIs directly from inside this subagent.
 
 ### Step 8: Propose Living Flow Documentation Updates (`docs/flows/` & `docs/SYSTEM_OVERVIEW.md`)
 
-**Automatically run `local_semantic_embed`** (`embedding` on `:11434`) to match the archived spec's endpoints, events, queues, and bounded contexts against `docs/flows/*.md` and `docs/SYSTEM_OVERVIEW.md`:
-- Draft updates to modified `docs/flows/{flow-name}.md` files (or instantiate from `docs/flows/TEMPLATE.md` for new flows), append `- archive/{ticket-id}/ — {brief description}` under `Related Specs`, update `docs/SYSTEM_OVERVIEW.md` if topology changed, and commit for human review:
+When local offload (`:11434`) is reachable, invoke `local_semantic_embed` (`embedding` on `:11434`, falling back to `Grep`/`Glob` if unavailable) to match the archived spec's endpoints, events, queues, and bounded contexts against `docs/flows/*.md` and `docs/SYSTEM_OVERVIEW.md`:
+- Draft updates to modified `docs/flows/{flow-name}.md` files (or instantiate from `docs/flows/TEMPLATE.md` for new flows), append `- archive/{ticket-id}/ — {brief description}` under `Related Specs`, update `docs/SYSTEM_OVERVIEW.md` if topology changed, and commit for human review (`docs/policies/doc-maintenance-policy.md`):
   ```bash
   git add docs/flows/ docs/SYSTEM_OVERVIEW.md
   git commit -m "{ticket}: docs(flows): proposed flow doc update [requires human review]"
@@ -171,11 +137,11 @@ Verify `CADENCE_ORG.md#tracker-binding` resolves a bound tracker and sync skill 
 
 ### Step 9: Branch Cleanup & Final Verification
 
-Delete the merged local feature branch (`git branch -d {branch-name}`) and verify all Archive Quality Criteria hold (`summary.md` present with valid 4-state `Citation Dispositions`, `CHANGELOG.md` updated, `metadata.yaml` at `status: archived` with `stage_effort` incremented, ADRs/IIs promoted, and both Step 2b and Step 6.6 sweeps clean).
+Delete any merged local feature branch (`git branch -d {branch-name}`) and verify all Archive Quality Criteria hold (`summary.md` present with valid 4-state `Citation Dispositions`, `CHANGELOG.md` updated, `metadata.yaml` at `status: archived` with `stage_effort` incremented, ADRs/IIs/`Closed by:` insights updated, and both pre-relocation and post-promotion citation sweeps clean).
 
 ## Constraints
 
 - Never alter archived specification files (`problem.md`, `spec.md`, `test-plan.md`, `decisions.md`) after archival; `summary.md` is the only newly authored file inside `archive/{ticket-id}/`.
 - Never auto-rewrite a `NOT-A-COMMENT` citation without inspecting whether it references a historical git ref.
 - Never recompute `actual_effort` from git commit history.
-- Local coprocessors (`local_semantic_embed`, `offload_log_triage`) are strictly read-only (`enable_write_tools: false`).
+- Local coprocessors (`local_semantic_embed`, `offload_log_triage` on `:11434`) are optional read-only accelerators (`enable_write_tools: false`, cloud-only fallback when absent).

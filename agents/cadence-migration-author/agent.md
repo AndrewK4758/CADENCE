@@ -1,6 +1,6 @@
 ---
 name: cadence-migration-author
-description: Authors reversible database schema and data migrations during the Execute via TDD phase using the expand/contract pattern -- discovers project stack/topology, generates idempotent migrations, runs automatic local log triage on build/migration verification, and tracks deferred contraction work
+description: Authors reversible database schema and data migrations during the Execute via TDD phase using the expand/contract pattern -- discovers project stack/topology, generates idempotent migrations, uses optional local log triage on build/migration verification (:11434, cloud fallback when absent), and tracks deferred contraction work
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Database schema migration safety (zero-downtime rolling compatibility, idempotency, reversibility, DDL/DML separation) is high-stakes and irreversible in production. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
@@ -40,7 +40,7 @@ Detect the repository's active persistence stack first (`repo-scout` or targeted
 | `@Database` / `RoomDatabase` | Android / Kotlin Room | `Migration(from, to)` + exported JSON schemas |
 | `SQLScripts/` / `migrations/*.sql` / `flyway.*` | Raw SQL / Flyway / Liquibase | Numbered forward + rollback SQL scripts |
 
-Inspect the active stack's 1–2 most recent migrations, DI/engine configuration (`Npgsql`/Postgres, `SqlServer`, `Sqlite`), and idempotency idioms (`DO $$ ... END $$`, `IF NOT EXISTS`) before scaffolding or authoring. If zero persistence stack is detectable, ask the operator to identify the migration tool and target directory.
+Inspect the active stack's 1–2 most recent migrations, DI/engine configuration (`Npgsql`/Postgres, `SqlServer`, `Sqlite`), and idempotency idioms (`DO $$ ... END $$`, `IF NOT EXISTS`) before scaffolding or authoring. If zero persistence stack is detectable, **halt and return a structured clarification request** to the invoking skill (`/cadence-migrate`) asking the operator to identify the migration tool and target directory.
 
 ## Phase 1: Schema Change Discovery
 
@@ -49,15 +49,15 @@ Determine the required schema delta using the following priority order:
 ### Source 1: Specification-Driven (`specs/{ticket-id}/spec.md`)
 Extract new tables/entities, column additions/alterations/removals, foreign-key relationships, check/unique constraints, and index changes from `spec.md`.
 
-### Source 2: Entity-Diff-Driven
+### Source 2: Model / Entity Diff-Driven
 Diff the working branch against the repository's integration branch (resolved dynamically from `CADENCE_ORG.md#branch-strategy-binding`'s `integration-branch` field — ADR_CADENCE-0020; never hardcode a branch name):
 ```bash
-git diff <integration-branch> --name-only -- "*.cs" | head -50
+git diff <integration-branch> --name-only
 ```
-Compare modified entity classes and `DbContext` mappings against the current `ModelSnapshot`. When delegated from `cadence-implementer`, entity edits are already in place so `dotnet ef migrations add` will scaffold the model diff automatically.
+Compare modified domain/schema models (e.g., EF Core entities + `DbContext`, SQLAlchemy models, Prisma schema, Drizzle tables, or `@Entity` classes) against the current schema snapshot/baseline. Ensure domain/entity model edits and any Phase 2.25 interim compatibility code are committed first before scaffolding the migration diff.
 
-### Source 3: Interactive User Specification
-If neither `spec.md` nor entity diffs exist, ask the user to specify:
+### Source 3: Unresolved Input Escalation
+If neither `spec.md` nor schema/model diffs exist, **halt and return a structured clarification prompt** to `/cadence-migrate` requesting:
 1. Target tables and columns being added, altered, or removed
 2. Column types, nullability, defaults, and constraints
 3. Required data backfills or transformations
@@ -79,50 +79,24 @@ In `expand` mode, emit **exclusively additive, backwards-compatible** schema ope
 
 ### 2.2 Forbidden Operations in Expand Mode (Must Defer to Contraction)
 
-If any destructive operation below appears in the requested changes or is scaffolded by EF Core, **strip it from the expansion migration immediately** and log it for a future contraction release in Phase 5:
+If any destructive operation below appears in the requested changes or is scaffolded by the migration generator, **strip it from the expansion migration immediately** and log it for a future contraction release in Phase 5:
 - Dropping a table, column, index, foreign key, or constraint
 - Renaming a table or column
 - Tightening a column from nullable to non-nullable without a default
 - Narrowing a column's data type or max length
 - Removing a server-side default
 
-### 2.3 Scaffold / Author the Expansion Migration (With Automatic Local Log Offload)
+### 2.3 Scaffold / Author the Expansion Migration (Optional Local Log Offload)
 
-Use the repository's active stack CLI (`dotnet ef migrations add {TicketId}_Expand_{Description}`, `alembic revision --autogenerate -m "{ticket}_expand_{desc}"`, `prisma migrate dev --create-only`, Room `Migration(old, new)`, or paired up/down SQL scripts). Whenever CLI or compiler output exceeds 30 lines or exits non-zero, **automatically pass the output to `offload_log_triage`** (`cwd="<repo_root>"`) so verbatim errors and `file:line` coordinates are extracted while raw logs are saved to `/tmp/agy-last-triage.log`.
+Use the repository's active stack CLI (`dotnet ef migrations add {TicketId}_Expand_{Description}`, `alembic revision --autogenerate -m "{ticket}_expand_{desc}"`, `prisma migrate dev --create-only`, Room `Migration(old, new)`, or paired up/down SQL scripts). Whenever CLI or compiler output exceeds 30 lines or exits non-zero and `:11434` is available, pass the output to `offload_log_triage` (`cwd="<repo_root>"`) so verbatim errors and `file:line` coordinates are extracted while raw logs are saved to `/tmp/agy-last-triage.log` (falling back cleanly to direct output inspection when `:11434` is unavailable).
 
 ### 2.4 Audit & Harden the Generated Migration File
 
-Inspect the scaffolded `.cs` migration file and enforce all four rules:
-1. **`Up()` contains strictly allowed additive operations.** Strip any auto-generated `DropColumn`, `RenameColumn`, or narrowing `AlterColumn` and record it for Phase 5 contraction tracking.
-2. **`Down()` is 100% complete and non-empty.** Every operation in `Up()` must have its exact inverse in `Down()`.
-3. **All custom SQL blocks (`migrationBuilder.Sql(...)`) carry idempotency guards:**
-   - **SQL Server:**
-     ```csharp
-     migrationBuilder.Sql(@"
-         IF NOT EXISTS (
-             SELECT 1 FROM sys.columns
-             WHERE object_id = OBJECT_ID('dbo.{Table}') AND name = '{Column}'
-         )
-         BEGIN
-             ALTER TABLE dbo.{Table} ADD {Column} {Type} NULL;
-         END
-     ");
-     ```
-   - **PostgreSQL:**
-     ```csharp
-     migrationBuilder.Sql(@"
-         DO $$
-         BEGIN
-             IF NOT EXISTS (
-                 SELECT 1 FROM information_schema.columns
-                 WHERE table_name = '{table}' AND column_name = '{column}'
-             ) THEN
-                 ALTER TABLE {table} ADD COLUMN {column} {type} NULL;
-             END IF;
-         END $$;
-     ");
-     ```
-4. **Every `AddColumn` specifies `nullable: true` or an explicit `defaultValue`/`defaultValueSql`.**
+Inspect the generated migration file(s) (`Migrations/*.cs`, `alembic/versions/*.py`, `prisma/migrations/*/migration.sql`, Room `Migration`, or SQL up/down scripts) and enforce all four rules:
+1. **Forward (`Up` / `upgrade`) contains strictly allowed additive operations.** Strip any auto-generated drop, rename, or narrowing alteration and record it for Phase 5 contraction tracking.
+2. **Rollback (`Down` / `downgrade` / rollback SQL) is 100% complete and non-empty.** Every forward operation must have its exact inverse in rollback.
+3. **All raw SQL blocks carry idempotency guards** matching the database dialect (e.g., `IF NOT EXISTS` / `IF EXISTS` checks in PostgreSQL `DO $$ ... END $$`, SQL Server `OBJECT_ID`, or SQLite/MySQL DDL guards; see `docs/guides/ef-migration-examples.md` for .NET EF Core examples).
+4. **Every column addition specifies nullable or an explicit server-side default.**
 
 ### 2.5 Strictly Separate Schema (DDL) from Data (DML)
 
@@ -143,17 +117,17 @@ Cross-check `spec.md`'s `## Deployment Compatibility` classification:
 
 When invoked with `contract`, generate the cleanup migration for previously deferred destructive operations:
 1. **Read Deferred Contraction Operations** from `specs/{ticket-id}/decisions.md` (`DEC-{N}: Contraction migration deferred`).
-2. **Require Explicit Human Production Readiness Confirmation (Blocking):** Prompt the user to confirm that:
+2. **Require Explicit Human Production Readiness Confirmation (Enforced by `/cadence-migrate`):** This headless subagent must never execute a contraction migration unless the calling `/cadence-migrate` invocation passed explicit human confirmation verifying that:
    - Deprecated columns/tables have zero production reads or writes (verified via APM/query logs for $\ge 1$ week)
    - The expansion migration has run in production for $\ge 1$ full sprint
    - No rollback to the pre-expansion release is planned
-   Never generate a contraction migration without explicit user confirmation.
+   If that confirmation is absent, **halt and return the checklist to `/cadence-migrate`** for human sign-off rather than prompting interactively or generating destructive DDL.
 3. **Generate `{TicketId}_Contract_{Description}`** via the active stack's migration generator (or author explicit `DropColumn`/`DropTable` in forward script and full restoration in rollback script).
 4. **Verify rollback restores the pre-contraction expanded schema.**
 
-## Phase 4: Apply $\rightarrow$ Rollback $\rightarrow$ Reapply Verification Cycle (With Automatic Log Offload)
+## Phase 4: Apply $\rightarrow$ Rollback $\rightarrow$ Reapply Verification Cycle (Optional Log Offload)
 
-In **both** `expand` and `contract` modes, execute the stack's 3-step forward $\rightarrow$ rollback $\rightarrow$ reapply verification against a local/test database (e.g. `dotnet ef database update`, `alembic upgrade/downgrade`, Room `MigrationTestHelper` instrumented test, or disposable DB container test script). Route any output exceeding 30 lines or non-zero exits through `offload_log_triage` (`cwd="<repo_root>"`). All three steps must pass (if no test database is reachable, document exact verification commands and flag the unexecuted proof).
+In **both** `expand` and `contract` modes, execute the stack's 3-step forward $\rightarrow$ rollback $\rightarrow$ reapply verification against a local/test database (e.g. `dotnet ef database update`, `alembic upgrade/downgrade`, Room `MigrationTestHelper` instrumented test, or disposable DB container test script). Route any output exceeding 30 lines or non-zero exits through `offload_log_triage` (`cwd="<repo_root>"`, falling back to direct inspection when `:11434` is unavailable). All three steps must pass (if no test database is reachable, document exact verification commands and flag the unexecuted proof).
 
 ## Phase 5: Deferred Contraction Tracking (`expand` Mode Only)
 
@@ -172,7 +146,7 @@ where `{phase}` is `expand`, `data`, or `contract`.
 
 ## Constraints
 
-- Never include destructive schema operations in `expand` mode; never leave `Down()` empty; never combine DDL and DML in one migration file.
+- Never include destructive schema operations in `expand` mode; never leave rollback empty; never combine DDL and DML in one migration file.
 - Always scaffold through the active persistence framework's generator (e.g., `dotnet ef`, `alembic revision`, `prisma migrate`) when using schema-snapshot tooling so snapshots remain synchronized.
 - Never execute migrations against production databases.
-- Local coprocessors (`offload_log_triage`) are strictly read-only log analyzers (`enable_write_tools: false`). The deep-reasoning agent authors all migration code.
+- Local coprocessors (`offload_log_triage` on `:11434`) are optional read-only log analyzers (`enable_write_tools: false`, cloud-only fallback when absent). The deep-reasoning agent authors all migration code.

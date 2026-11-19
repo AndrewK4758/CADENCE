@@ -148,12 +148,14 @@ def _parse_files_affected(spec_path: pathlib.Path, ticket: str) -> list[str]:
 def _is_pillar_dormant(spec_path: pathlib.Path, heading_re: str) -> bool:
     in_sec = False
     for raw in spec_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if re.match(rf"^###\s+(?:Pillar|Facet)\s+\d+:\s*{heading_re}", raw, re.I):
+        if re.match(rf"^(?:[-*]\s*)?(?:\*\*)?{heading_re}(?:\*\*)?:\s*(?:dormant|not triggered)\b", raw, re.I):
+            return True
+        if re.match(rf"^#{{3,4}}\s+(?:(?:Pillar|Facet)\s+\d+:\s*)?{heading_re}", raw, re.I):
             in_sec = True
             continue
-        if in_sec and re.match(r"^#{1,3}\s+", raw):
-            break
-        if in_sec and re.search(r"\b(?:dormant|not triggered)\b", raw, re.I):
+        if in_sec and re.match(r"^#{1,4}\s+", raw):
+            in_sec = False
+        elif in_sec and re.search(r"\b(?:dormant|not triggered)\b", raw, re.I):
             return True
     return False
 
@@ -200,8 +202,8 @@ def _run_layer1(
     unk_count = 0
     if opts_path.is_file():
         for raw in opts_path.read_text(encoding="utf-8", errors="replace").splitlines():
-            m = re.match(r"^\s*-\s*Failure modes \(UNKNOWN\):\s*(.*)$", raw)
-            if m and m.group(1).strip().lower() not in {"", "none", "n/a", "-"}:
+            m = re.match(r"^\s*-\s*(?:\*\*)?Failure modes \(UNKNOWN\)(?::\*\*|\*\*:\s*|:\s*)(.*)$", raw)
+            if m and m.group(1).strip().strip("*` ").strip().lower() not in {"", "none", "n/a", "-"}:
                 unk_count += 1
     draft_count = 0
     for md in ticket_dir.glob("*.md"):
@@ -254,7 +256,7 @@ def _run_layer1(
             if m_files and m_files.group(1) != "diff":
                 sensitive_files.update(m_files.group(1).split(","))
             if stage in {"implement", "review"} and spec_path.is_file() and "decision=TRIGGER" in sr.stdout:
-                if (sigs & {"auth", "secrets_crypto", "untrusted_exec"}) and _is_pillar_dormant(spec_path, r"Security Boundary Posture"):
+                if (sigs & {"auth", "secrets_crypto", "untrusted_exec"}) and _is_pillar_dormant(spec_path, r"Security(?: Boundary)? Posture"):
                     halts.append(("dormant_security_contradicted", "spec.md", f"Security Boundary Posture marked dormant while diff matched {sorted(sigs)}"))
                 if ("data_sql" in sigs) and _is_pillar_dormant(spec_path, r"Data\s*(?:&|and)\s*Audit|Data Integrity"):
                     halts.append(("dormant_data_contradicted", "spec.md", "Data & Audit Fidelity marked dormant while diff matched data_sql"))
