@@ -8,7 +8,7 @@
 #                       unloads when any other local GPU app uses the 3050 Ti, queues embedding requests, and
 #                       reloads after 60s of GPU idle.
 #   - Laptop / Office Machine RTX 5080 eGPU + RTX 5070 Ti over Wired Switch (`192.168.50.155:11434`, 0.11ms):
-#       3-home-gpus     Proxies the 4 inference setups transparently to 192.168.50.155:11434.
+#       3-home-gpus     Proxies the 3 local inference setups transparently to 192.168.50.155:11434.
 
 healthCheckTimeout: 600
 logLevel: info
@@ -43,7 +43,6 @@ models:
   # ----------------------------------------------------------------------------
   3-home-gpus:
     aliases:
-      - work-gpu
       - laptop-gpu
       - laptop-egpu
       - laptop-egpu-text

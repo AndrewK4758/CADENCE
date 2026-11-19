@@ -11,9 +11,10 @@ This directory contains the complete local AI coprocessor infrastructure that po
 | `llama-swap/llamaswap-server` | `~/.local/bin/llamaswap-server` | Global CLI entrypoint for `llama-swap` |
 | `llama-swap/llamaswap-server.plugin.zsh` | `~/.config/llama-swap/llamaswap-server.plugin.zsh` | ZSH function & completions; auto-detects Dual-GPU (RTX 5080 eGPU + RTX 5070 Ti) vs. Single-GPU by NVIDIA UUID |
 | `llama-swap/local-ai-offload-serve` | `~/.local/bin/local-ai-offload-serve` | Systemd `ExecStart` wrapper; waits for NVIDIA/eGPU initialization at boot and execs `llamaswap-server` |
-| `llama-swap/llama-lan-proxy` | `~/.local/bin/llama-lan-proxy` | Zero-dependency HTTP/SSE reverse proxy with fast LAN probe & upstream/local fallback |
+| `llama-swap/llama-lan-proxy` | `~/.local/bin/llama-lan-proxy` | Zero-dependency HTTP/SSE reverse proxy with fast LAN/VPN probe (`150ms`), `--primary-read-timeout` (`15s`), fail-fast fallback on HTTP `502`/`503`/`504` or timeout (`30s` cooldown), and WireGuard VPN compatibility (`mtu 1280`) |
+| `llama-swap/llama-3050-embed-gate` | `~/.local/bin/llama-3050-embed-gate` | RTX 3050 Ti embedding yield/reload + thermal-pacing gate returning fast HTTP `503` (`gpu_yielded`) when yielded so LAN/VPN callers fall back locally |
 | `llama-swap/llama-server-dropcache` | `~/.local/bin/llama-server-dropcache` | Wrapper that evicts GGUF weights from Linux page cache once VRAM-resident via `posix_fadvise` |
-| `llama-swap/llama-swap.egpu.yaml` | `~/.config/llama-swap/llama-swap.egpu.yaml` | Dual-GPU / 4-setup config (`embeddinggemma-2` + `work-gpu` / `3-home-gpus` / `laptop-gpu` / `laptop-egpu` / `31b`) |
+| `llama-swap/llama-swap.egpu.yaml` | `~/.config/llama-swap/llama-swap.egpu.yaml` | Dual-GPU / 3-setup config (`embeddinggemma-2` + `3-home-gpus` / `laptop-gpu` / `laptop-egpu` / `31b`) |
 | `llama-swap/llama-swap.single.yaml` | `~/.config/llama-swap/llama-swap.single.yaml` | Single-GPU laptop fallback config (`embeddinggemma-2` + `laptop-gpu` 128K `q4_0` KV) |
 | `llama-swap/llama-swap.livingroom.yaml` | `~/.config/llama-swap/llama-swap.livingroom.yaml` | Living-Room headless server config (RTX 3050 Ti `embeddinggemma-2` + LAN `5080` proxy) |
 | `systemd/local-ai-offload.service` | `~/.config/systemd/user/local-ai-offload.service` | Systemd user unit managing `local-ai-offload-serve` on `127.0.0.1:11434` |
@@ -59,7 +60,7 @@ The MCP server runs via `uv run --script ~/.local/bin/antigravity-local-offload-
 1. **`local_semantic_embed(texts, query, top_k=6)`**:
    - Accepts file paths, directory paths (including `.agents/`, `.gemini/`, `.github/`), glob patterns, or inline text snippets.
    - Splits source files on AST/symbol boundaries (`def`, `class`, C# `public/private/...`, Kotlin `fun`/`data class`, `fn`, `func (recv) Name`, `type Name`, `interface`, `struct`, `enum`, markdown headings) into ~36-line numbered slices with File Maps (`sym@L<line>`), CHORD seam tags, and an explicit truncation warning whenever more than `max_files=80` files match.
-   - Embeds all chunks via `embedding` (`POST /v1/embeddings`), applies CamelCase/identifier symbol-matching boost (`+0.10` / `+0.08`) and test-file demotion (`-0.08` vs. `+0.04`), and returns up to `min(top_k, 8)` inline-bounded Pinned Context Slices.
+   - Embeds all chunks via `embedding` (`POST /v1/embeddings`, using `15s` `LIVING_ROOM_READ_TIMEOUT` and automatic fallback to local GPU `embeddinggemma-2` on HTTP `502`/`503`/`504` or timeout with a `30s` cooldown), applies CamelCase/identifier symbol-matching boost (`+0.10` / `+0.08`) and test-file demotion (`-0.08` vs. `+0.04`), and returns up to `min(top_k, 8)` inline-bounded Pinned Context Slices.
 2. **`offload_log_triage(log_text_or_command, model="inference", cwd=None)`**:
    - Accepts `"cmd:<shell command>"` (executed inside `cwd` when supplied), a log file path, or raw log text.
    - Captures the child OS `PID` and repository name (`detect_repo_name`) and writes the complete, unedited 1-indexed log to `/tmp/agy-triage/<repo_name>/<pid>.log` (`0600`), updating `/tmp/agy-triage/<repo_name>/latest.log` and atomically mirroring `/tmp/agy-last-triage.log` so concurrent parent and subagent runs never collide.
