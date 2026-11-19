@@ -34,11 +34,12 @@ Every modern agentic CLI tool supports or can project from `.agents/`. To elimin
 │   │   └── cadence-*/agent.md
 │   ├── skills/                            # Canonical cadence-* skill workflows & scripts
 │   │   └── cadence-*/SKILL.md
-│   ├── hooks/                             # Canonical hook scripts (local-offload, tracker sync)
+│   ├── hooks/                             # Canonical hook scripts (local-offload, tracker sync, turn logging)
 │   │   ├── hooks.json
 │   │   ├── local-offload-enforcer.sh
 │   │   ├── tms-sync-reminder.sh
-│   │   └── tms-doc-sync-stop.sh
+│   │   ├── tms-doc-sync-stop.sh
+│   │   └── cadence-turn-logger.sh
 │   ├── agents.json                        # Declarative agent registry
 │   └── skills.json                        # Declarative skill registry
 ├── .gemini/                               # REFERENCE IMPLEMENTATION (Google Antigravity / agy)
@@ -65,7 +66,7 @@ The `.gemini/` adapter (`ci-templates/scripts/adapters/gemini-agy.sh` and `impor
    - System prompt bodies begin immediately with an `# H1` heading after the closing `---` YAML frontmatter delimiter.
 2. **Hook Projection (`hooks.json`)**:
    - Links `.gemini/hooks.json` (or global `~/.gemini/config/hooks.json`) to `.agents/hooks/hooks.json`.
-   - Executes `local-offload-enforcer.sh` (`PostToolUse` on command execution), `tms-sync-reminder.sh` (`PostToolUse` on file edits), and `tms-doc-sync-stop.sh` (`Stop` at turn completion).
+   - Executes `local-offload-enforcer.sh` (`PostToolUse` on command execution), `tms-sync-reminder.sh` (`PostToolUse` on file edits), `tms-doc-sync-stop.sh` (`Stop` at turn completion), and `cadence-turn-logger.sh` (`Stop` external turn capture for `/cadence-trainlog`).
 3. **Instruction Inheritance (`GEMINI.md`)**:
    - Contains a thin managed header importing `AGENTS.md` and `CADENCE_DIRECTIVES.md` so project-specific rules live in one place (`AGENTS.md`).
 

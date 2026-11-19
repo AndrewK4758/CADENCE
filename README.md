@@ -41,7 +41,7 @@ Every letter of **CADENCE** maps directly to a governed phase of the software en
 ```mermaid
 flowchart TB
     subgraph Source["1. Universal Governance Source (.agents/ + AGENTS.md)"]
-        AG[".agents/ (10 CADENCE Agents, 29 Skills, Hooks & Manifests)"]
+        AG[".agents/ (12 Agents, 31 Skills, Hooks & Manifests)"]
         AD["Runtime Projections (import/link-sdlc.sh & adapters/)"]
         AG --> AD
     end
@@ -125,11 +125,12 @@ CADENCE/
 │   ├── cadence-triage-agent/
 │   ├── log-triage/
 │   └── repo-scout/
-├── skills/                          # 29 governed /cadence-* workflow skills
+├── skills/                          # 31 governed /cadence-* workflow skills
 │   ├── cadence-adopt/
 │   ├── cadence-archive/
 │   ├── cadence-build/
 │   ├── cadence-bump-model/
+│   ├── cadence-certainty/
 │   ├── cadence-close/
 │   ├── cadence-define/
 │   ├── cadence-doctor/
@@ -152,11 +153,15 @@ CADENCE/
 │   ├── cadence-spec/
 │   ├── cadence-sync-jira/
 │   ├── cadence-sync-youtrack/
+│   ├── cadence-trainlog/
 │   ├── cadence-triage/
 │   ├── cadence-upgrade/
 │   └── cadence-watch/
 ├── hooks/                           # Custom PreInvocation, PostToolUse & Stop lifecycle hooks
 │   ├── antigravity-local-offload-hook
+│   ├── cadence-turn-logger.sh
+│   ├── cadence_turn_logger.py
+│   ├── cadence_turn_parsers.py
 │   ├── local-offload-enforcer.sh
 │   ├── tms-sync-reminder.sh
 │   ├── tms-doc-sync-stop.sh
@@ -200,12 +205,14 @@ CADENCE/
 │   ├── ci-templates/
 │   ├── docs/
 │   └── specs/
-└── tests/                           # Offline CADENCE regression suite & 29-skill eval runner
+└── tests/                           # Offline CADENCE regression suite & 31-skill eval runner
     ├── eval_runner.py
     ├── run-cadence-tests.sh
     ├── run-evals.sh
+    ├── test-certainty-gate.sh
     ├── test-pr-watch.sh
     ├── test-security-trigger.sh
+    └── test-turn-logger.sh
     └── test-trace-gates.sh
 ```
 
@@ -305,7 +312,7 @@ In your target repository's `docs/agentic-sdlc/CADENCE_ORG.md`, bind your chosen
 ### Core CADENCE Verification (All Modes — Cloud-Only, Hybrid, or Local)
 
 ```bash
-# Run the offline regression suite, 29-skill eval runner, and adoption doctor
+# Run the offline regression suite, 30-skill eval runner, and adoption doctor
 bash tests/run-cadence-tests.sh
 bash tests/run-evals.sh --verbose        # Add --with-offload for optional :11434 rubric grading
 bash skills/cadence-doctor/doctor.sh --root .

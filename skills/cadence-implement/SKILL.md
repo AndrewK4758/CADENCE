@@ -169,6 +169,7 @@ At Low tier, `cadence-implementer` constructs its TDD scenario sequence directly
    - Full sanctioned test suite passes (unit, integration, and journey+chaos suites where applicable), with any output >30 lines verified via `offload_log_triage` (`/tmp/agy-last-triage.log`)
    - Every acceptance criterion maps to >=1 passing test scenario
    - **Mechanical Spec/AC Traceability Gate (`verify-facts.sh --trace`):** Run `(.agents/skills/cadence-spec/verify-facts.sh --trace $ticket_id || skills/cadence-spec/verify-facts.sh --trace $ticket_id)` (piping `>30`-line failure output through `offload_log_triage`) and verify `exit 0` across `C5` test tags (`S-*`, `OS-*`, or `AC-*` at Low tier), declared CHORD `Observability Seams`, and `Files Affected` targets before transitioning to `in-review`
+   - **Empirical Certainty Gate (`certainty-gate.sh`):** When `specs/$ticket_id/evidence.yaml` is present, update its `receipts[]` with the current `HEAD` SHA, exit code, and `/tmp/agy-triage/...` SHA-256 hash; then run `(.agents/skills/cadence-certainty/certainty-gate.sh --stage implement $ticket_id || skills/cadence-certainty/certainty-gate.sh --stage implement $ticket_id)` (`exit 1` -> fix mechanical/receipt failures before Step 5; `exit 2` -> escalate triggers for human ruling in `decisions.md`)
    - Git history shows one atomic commit per red-green scenario cycle
    - Cross-service and domain boundary documentation is in place
    - `specs/$ticket_id/submission.md` is populated and `branch` is recorded in `metadata.yaml`

@@ -1,0 +1,68 @@
+{
+  "skill_name": "cadence-trainlog",
+  "notes": "Evaluates CADENCE turn capture, secret redaction, external storage, SFT/DPO/RLVR export, and client-isolation guarantees.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "hook-capture-redact-idempotent",
+      "prompt": "Trigger cadence-turn-logger.sh Stop hook on an Antigravity transcript containing secrets and verify redacted external logging and cursor idempotency.",
+      "expected_output": "Captures turn outside git repo with 0600 permissions, redacts secrets, and second invocation writes zero duplicate rows.",
+      "assertions": [
+        "Writes turn log outside repo into CADENCE_TURN_LOG_DIR with 0600 mode",
+        "Redacts API tokens before writing to disk",
+        "Skips duplicate capture when Stop fires again on identical step_index"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "mkdir -p ext_logs agy_conv && cat > agy_conv/transcript_full.jsonl <<'JSONL'\n{\"step_index\":0,\"source\":\"USER_EXPLICIT\",\"type\":\"USER_INPUT\",\"created_at\":\"2026-11-19T10:00:00Z\",\"content\":\"Check secret ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456\"}\n{\"step_index\":1,\"source\":\"MODEL\",\"type\":\"PLANNER_RESPONSE\",\"created_at\":\"2026-11-19T10:00:02Z\",\"model\":\"m1\",\"input_tokens\":10,\"output_tokens\":5,\"thinking\":\"ok\",\"content\":\"Using token safe\"}\nJSONL",
+        "cmd": "export CADENCE_TURN_LOG_DIR=\"$FIX/ext_logs\"; inp=$(python3 -B -c 'import json,sys; print(json.dumps({\"conversationId\":\"conv-eval\",\"workspacePaths\":[sys.argv[1]],\"transcriptPath\":sys.argv[2],\"terminationReason\":\"NO_TOOL_CALL\"}))' \"$FIX\" \"$FIX/agy_conv/transcript_full.jsonl\"); out1=$(printf '%s' \"$inp\" | bash \"$ROOT/hooks/cadence-turn-logger.sh\"); printf '%s' \"$inp\" | bash \"$ROOT/hooks/cadence-turn-logger.sh\" >/dev/null; echo \"$out1\"; cnt=$(cat \"$FIX\"/ext_logs/repos/*/*/*.turns.jsonl | wc -l); echo \"rows=$cnt\"; ! grep -q 'ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ' \"$FIX\"/ext_logs/repos/*/*/*.turns.jsonl",
+        "stdout_regex": [
+          "\"decision\":\"allow\"",
+          "rows=1"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "export-sft-dpo-rlvr-and-verify",
+      "prompt": "Capture failed then verified-pass turns, export sft/dpo/rlvr datasets, and validate each with trainlog.sh verify.",
+      "expected_output": "Produces valid SFT, DPO, and RLVR JSONL files passing verify with zero secrets.",
+      "assertions": [
+        "Pairs gate_failed turn followed by verified_pass turn into a DPO chosen/rejected sample",
+        "Passes trainlog.sh verify for sft, dpo, and rlvr exports"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "mkdir -p ext_logs tr && cat > tr/t1.jsonl <<'JSONL'\n{\"step_index\":0,\"source\":\"USER_EXPLICIT\",\"type\":\"USER_INPUT\",\"created_at\":\"2026-11-19T10:00:00Z\",\"content\":\"Fix ACME-201\"}\n{\"step_index\":1,\"source\":\"MODEL\",\"type\":\"PLANNER_RESPONSE\",\"created_at\":\"2026-11-19T10:00:01Z\",\"model\":\"m1\",\"thinking\":\"try1\",\"tool_calls\":[{\"name\":\"run_command\",\"args\":{\"CommandLine\":\"certainty-gate.sh ACME-201\"}}]}\n{\"step_index\":2,\"source\":\"MODEL\",\"type\":\"GENERIC\",\"created_at\":\"2026-11-19T10:00:02Z\",\"content\":\"Command exited with code 1\\ndecision=HALT\"}\n{\"step_index\":3,\"source\":\"MODEL\",\"type\":\"PLANNER_RESPONSE\",\"created_at\":\"2026-11-19T10:00:03Z\",\"model\":\"m1\",\"content\":\"Failed\"}\n{\"step_index\":4,\"source\":\"USER_EXPLICIT\",\"type\":\"USER_INPUT\",\"created_at\":\"2026-11-19T10:05:00Z\",\"content\":\"Fix ACME-201\"}\n{\"step_index\":5,\"source\":\"MODEL\",\"type\":\"PLANNER_RESPONSE\",\"created_at\":\"2026-11-19T10:05:01Z\",\"model\":\"m1\",\"thinking\":\"try2\",\"tool_calls\":[{\"name\":\"run_command\",\"args\":{\"CommandLine\":\"certainty-gate.sh ACME-201\"}}]}\n{\"step_index\":6,\"source\":\"MODEL\",\"type\":\"GENERIC\",\"created_at\":\"2026-11-19T10:05:02Z\",\"content\":\"Command exited with code 0\\ndecision=PROCEED\"}\n{\"step_index\":7,\"source\":\"MODEL\",\"type\":\"PLANNER_RESPONSE\",\"created_at\":\"2026-11-19T10:05:03Z\",\"model\":\"m1\",\"content\":\"Fixed\"}\nJSONL",
+        "cmd": "export CADENCE_TURN_LOG_DIR=\"$FIX/ext_logs\"; python3 -B - \"$ROOT\" \"$FIX\" <<'PY'\nimport json, pathlib, sys\nsys.path.insert(0, str(pathlib.Path(sys.argv[1]) / \"hooks\"))\nimport cadence_turn_logger as ctl\nimport cadence_turn_parsers as ctp\nfix = pathlib.Path(sys.argv[2])\nsteps = [json.loads(l) for l in (fix / \"tr/t1.jsonl\").read_text().splitlines()]\nfor seq, sl in enumerate((steps[:4], steps[4:]), start=1):\n    msgs, mdls, usg = ctp.parse_antigravity_steps(sl, 16000)\n    ctl.build_and_append_turn(fix / \"ext_logs\", fix, \"antigravity\", \"s1\", seq, [sl[0][\"step_index\"], sl[-1][\"step_index\"]], msgs, mdls, usg, sl[0][\"created_at\"])\nPY\nrepo=$(basename \"$(ls -d \"$FIX\"/ext_logs/repos/* | head -n1)\"); for f in sft dpo rlvr; do bash \"$ROOT/skills/cadence-trainlog/trainlog.sh\" export --log-dir \"$FIX/ext_logs\" --format \"$f\" --repo \"$repo\" --out \"$FIX/out-$f.jsonl\" && bash \"$ROOT/skills/cadence-trainlog/trainlog.sh\" verify --input \"$FIX/out-$f.jsonl\"; done",
+        "stdout_regex": [
+          "exported=1 format=dpo",
+          "PASS: verify records=1 format=dpo avg_chars=\\d+ secrets=0",
+          "PASS: verify records=2 format=sft avg_chars=\\d+ secrets=0",
+          "PASS: verify records=2 format=rlvr avg_chars=\\d+ secrets=0"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "chinese-wall-blocks-cross-client-mix",
+      "prompt": "Attempt to export a single dataset combining two differently tagged client-restricted repositories.",
+      "expected_output": "Exits 2 with CHINESE_WALL_VIOLATION without creating an output file.",
+      "assertions": [
+        "Fails closed before creating output file when client-restricted repos differ in client_tag"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "empty_git",
+        "setup_sh": "mkdir -p ext/repos/cook-and-james ext/repos/grec && printf '{\"repo_slug\":\"cook-and-james\",\"confidentiality\":\"client-restricted\",\"client_tag\":\"cook-and-james\"}\n' > ext/repos/cook-and-james/repo.meta.json && printf '{\"repo_slug\":\"grec\",\"confidentiality\":\"client-restricted\",\"client_tag\":\"grec\"}\n' > ext/repos/grec/repo.meta.json",
+        "cmd": "rc=0; bash \"$ROOT/skills/cadence-trainlog/trainlog.sh\" export --log-dir \"$FIX/ext\" --format sft --allow-multi-repo --repos cook-and-james,grec --out \"$FIX/blocked.jsonl\" || rc=$?; echo \"rc=$rc\"; test \"$rc\" -eq 2 && test ! -e \"$FIX/blocked.jsonl\"",
+        "output_regex": [
+          "CHINESE_WALL_VIOLATION",
+          "rc=2"
+        ]
+      }
+    }
+  ]
+}

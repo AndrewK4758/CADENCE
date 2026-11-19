@@ -71,6 +71,16 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
 
    This script validates `Files Affected` entries, every backticked `path:N` / markdown `#LN` citation across `spec.md`, `problem.md`, `design-options.md`, and `decisions.md`, plus identifier-proximity near cited lines. Whenever `verify-facts.sh` exits non-zero, route through `offload_log_triage` and return `FAIL` lines to `cadence-spec-author` until clean.
 
+   **Run the hybrid certainty gate (`certainty-gate.sh`) after `verify-facts.sh`:**
+
+   ```bash
+   ( .agents/skills/cadence-certainty/certainty-gate.sh --stage spec $ticket_id \
+     || skills/cadence-certainty/certainty-gate.sh --stage spec $ticket_id )
+   ```
+
+   - **Exit `1` (`decision=HALT`):** Return falsified `proof.ref` / `anchor_substring` / `absence` / DAG findings directly to `cadence-spec-author` until fixed.
+   - **Exit `2` (`decision=ESCALATE_HUMAN`):** Surface all `ESCALATE` triggers (`unanswered_probes`, `unmapped_unknowns`, `inference_depth_exceeded`, `unruled_unknown`) explicitly in Step 7 and `## Open Questions` for Gate 1 human ruling.
+
 4.5. **Adversarial Spec Challenge (Pre-Gate-1 Red-Team, Medium/High).** Once mechanical checks exit `0`, dispatch a read-only challenger (`cadence-reviewer` or `cadence-architect` on `Deep-reasoning` tier, `xhigh` effort) supplied ONLY with `problem.md`, `design-options.md`, `spec.md`, `test-plan.md`, and repository source access (zero authoring-session reasoning) to:
    - Attempt to construct a concrete counterexample violating each CHORD `Condition`, `Rule`, or `Delta` that lacks a negative/concurrency/timeout scenario in `test-plan.md`;
    - Verify any `# STATUS: Verified` boundary claims or `Files Affected` signatures against real callee implementations and callers;

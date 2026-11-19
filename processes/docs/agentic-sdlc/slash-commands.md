@@ -240,7 +240,15 @@ Mechanize Workflow Step 07 (Merge): checks tier-conditional Gate 2 / Gate 3 appr
 
 ## `/cadence-doctor [--ticket <id>] [--check-offload] [--full]`
 
-Run a strictly read-only repository audit via `.agents/skills/cadence-doctor/doctor.sh`: verifies linkage, `#*-binding` markers, `<400`-line file ceilings, eject footprint freshness, `mint-id.sh --peek`, installed governance gates (never silently passing 0-byte scripts), optional ticket checks (`verify-spec.sh`, `verify-facts.sh --rulings/--trace`, `ac-classify.sh`), and optional `:11434` offload reachability.
+Run a strictly read-only repository audit via `.agents/skills/cadence-doctor/doctor.sh`: verifies linkage, `#*-binding` markers, `<400`-line file ceilings, eject footprint freshness, `mint-id.sh --peek`, installed governance gates (never silently passing 0-byte scripts), optional ticket checks (`verify-spec.sh`, `verify-facts.sh --rulings/--trace`, `ac-classify.sh`, `certainty-gate.sh`), and optional `:11434` offload reachability.
+
+## `/cadence-certainty <ticket-id> [--stage auto|spec|implement|review] [--base <ref>] [--require-evidence]`
+
+Run the deterministic hybrid empirical certainty gate (`.agents/skills/cadence-certainty/certainty-gate.sh`) across Layer 1 zero-schema checks (unanswered probes, unmapped `UNKNOWN`s/draft contracts, undeclared diff blast radius, dormant Security/Data pillar contradictions via `security-trigger.sh`, `verify-facts.sh` `UNVERIFIABLE` ratio, and review cycle oscillation) and Layer 2 `specs/<id>/evidence.yaml` proof checks (`observed` refs/symbols/substrings, pure-Python `absence` regexes, acyclic `inferred` DAG depth `<=2`, and `HEAD`-SHA + SHA-256 test receipts). Exits `0` (`PROCEED`), `1` (`HALT` for mechanical/proof fixes), or `2` (`ESCALATE_HUMAN` pausing for targeted rulings in `decisions.md`).
+
+## `/cadence-trainlog <status|ingest|export|tag|verify> [options]`
+
+Inspect, backfill, confidentiality-tag, verify, and export captured CADENCE turn logs (recorded on every CADENCE repo `Stop` event by `.agents/hooks/cadence-turn-logger.sh` into external `${CADENCE_TURN_LOG_DIR:-~/.local/share/cadence-turn-logs}`, `0600` perms, opt-out `CADENCE_TURN_LOG=0`) into secret-scrubbed Open-Weight `sft`, `dpo` (`gate_failed` -> `verified_pass` pairs), or `rlvr` JSONL datasets while failing closed (`CHINESE_WALL_VIOLATION`, exit `2`) on cross-client mixing.
 
 ## `/cadence-eject <source-repo-root> <destination-dir> | --check-footprint`
 

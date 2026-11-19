@@ -205,6 +205,17 @@ else
   skip "chaos-citation-gate (no ticket test-plan.md files)"
 fi
 
+TURN_HOOK="$HOOKS_DIR/cadence-turn-logger.sh"
+TURN_PY="$HOOKS_DIR/cadence_turn_logger.py"
+if [[ -e "$TURN_HOOK" && ! -s "$TURN_HOOK" ]] || [[ -e "$TURN_PY" && ! -s "$TURN_PY" ]]; then
+  fail "cadence-turn-logger hook artifact exists but is 0 bytes"
+elif [[ -x "$TURN_HOOK" && -s "$TURN_PY" ]]; then
+  tl_en="yes"; [[ "${CADENCE_TURN_LOG:-1}" == "0" ]] && tl_en="no"
+  pass "cadence-turn-logger hook installed (enabled=$tl_en, dir=${CADENCE_TURN_LOG_DIR:-~/.local/share/cadence-turn-logs})"
+else
+  skip "cadence-turn-logger hook (not installed)"
+fi
+
 # 7. Optional ticket audit (--ticket <id>)
 if [[ -n "$TICKET" ]]; then
   SELF_SKILLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -214,6 +225,8 @@ if [[ -n "$TICKET" ]]; then
   [[ -e "$T_VERIFY_FACTS" ]] || T_VERIFY_FACTS="$SELF_SKILLS_DIR/cadence-spec/verify-facts.sh"
   T_AC_CLASSIFY="$SKILLS_DIR/cadence-implement/ac-classify.sh"
   [[ -e "$T_AC_CLASSIFY" ]] || T_AC_CLASSIFY="$SELF_SKILLS_DIR/cadence-implement/ac-classify.sh"
+  T_CERTAINTY="$SKILLS_DIR/cadence-certainty/certainty-gate.sh"
+  [[ -e "$T_CERTAINTY" ]] || T_CERTAINTY="$SELF_SKILLS_DIR/cadence-certainty/certainty-gate.sh"
 
   TDIR=""
   [[ -d "$ROOT/specs/$TICKET" ]] && TDIR="$ROOT/specs/$TICKET"
@@ -255,6 +268,22 @@ if [[ -n "$TICKET" ]]; then
       pass "ticket $TICKET tier=trivial (spec/AC gates exempt)"
     else
       warn "ticket $TICKET tier unset or unrecognized ('${tier:-empty}')"
+    fi
+    if [[ "$tier" == "medium" || "$tier" == "high" || "$tier" == "low" ]]; then
+      if [[ -x "$T_CERTAINTY" ]]; then
+        cert_rc=0
+        cert_out="$(cd "$ROOT" && bash "$T_CERTAINTY" --root "$ROOT" "$TICKET" 2>&1)" || cert_rc=$?
+        cert_line="$(printf '%s\n' "$cert_out" | tail -n 1)"
+        if [[ "$cert_rc" -eq 0 ]]; then
+          pass "certainty-gate ($TICKET): $cert_line"
+        elif [[ "$cert_rc" -eq 2 ]]; then
+          warn "certainty-gate ($TICKET) ESCALATE_HUMAN: $cert_line"
+        else
+          fail "certainty-gate ($TICKET) HALT: $cert_line"
+        fi
+      else
+        skip "certainty-gate ($TICKET) (not installed)"
+      fi
     fi
   fi
 fi

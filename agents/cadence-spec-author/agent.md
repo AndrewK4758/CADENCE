@@ -188,15 +188,17 @@ At `Medium` and `High` tiers, inspect:
 3. **`specs/{ticket-id}/decisions.md`** — append new `DEC-{N+1}` entries after Triage's `DEC-001` (never overwrite or renumber existing entries).
 4. **Update `specs/{ticket-id}/metadata.yaml`** — set `status: spec-in-review` and refine (or explicitly confirm) `estimated_effort` using the canonical **Estimation Scale** in `docs/agentic-sdlc/team-rituals.md` (never leave `estimated_effort` blank).
 5. **Update public surface registries** (`docs/policies/surface-registry.md` for project surfaces; `docs/policies/cadence-surfaces.md` for framework surfaces).
+6. **`specs/{ticket-id}/evidence.yaml`** (from `specs/TEMPLATE/evidence.yaml`) — record falsifiable `observed`, `inferred`, `unknown`, and `absence` claims with codebase proofs (`proof.ref`, `symbols`, `anchor_substring`, or `search_pattern`/`scope`/`expected_files`) and **zero** numeric self-confidence scores.
 
 ## Mandatory Pre-Return Verification (With Automatic Log Offload)
 
-Before returning, execute both structural verifiers:
+Before returning, execute the structural, factual, and empirical certainty verifiers:
 ```bash
 .agents/skills/cadence-spec/verify-spec.sh {ticket-id}
 .agents/skills/cadence-spec/verify-facts.sh {ticket-id}
+.agents/skills/cadence-certainty/certainty-gate.sh --stage spec {ticket-id}
 ```
-If either script exits non-zero or produces output exceeding 30 lines, **automatically route the output through `offload_log_triage`** (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`) and fix every reported `FAIL` before returning.
+If any script exits `1` (`FAIL` / `HALT`) or produces output exceeding 30 lines, **automatically route the output through `offload_log_triage`** (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`) and fix every mechanical or proof failure before returning (surface `exit 2` `ESCALATE_HUMAN` triggers into `## Open Questions` for Gate 1).
 
 ## Constraints
 
