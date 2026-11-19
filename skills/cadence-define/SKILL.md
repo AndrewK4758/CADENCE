@@ -82,14 +82,15 @@ Check `git ls-tree origin/<integration-branch> specs/<TICKET-ID>/`:
 Never assume an empty `spec_mr` means no MR exists (opening a second blind MR yields an empty-diff PR).
 1. **When `spec_mr` is non-empty:** query `gh pr view "$SPEC_MR" --json state,isDraft,url`:
    - `OPEN` + `isDraft: true` → jump to *Finishing the Spec MR*.
-   - `OPEN` + `isDraft: false` or `MERGED` → clean exit (`nothing to do`).
+   - `OPEN` + `isDraft: false` → run the *Optional Watch Handoff Prompt* below and exit cleanly (`nothing to do`).
+   - `MERGED` → clean exit (`nothing to do`).
    - `CLOSED` (unmerged) → **halt** (human rejected MR).
    - Forge explicitly denies PR exists → **halt** (metadata contradiction).
    - Forge unreachable → **do not halt on read**; fall back to `git ls-tree origin/<integration-branch> specs/<TICKET-ID>/` and disclose unverified forge state.
 2. **When `spec_mr` is empty:** query `gh pr list --head <spec-branch> --state all --json number,url,state,isDraft,mergedAt`, then check `git ls-tree origin/<integration-branch> specs/<TICKET-ID>/` & `git log --oneline -- specs/<TICKET-ID>/spec.md | head`:
    - Discovered `MERGED` (or landed with recoverable PR URL) → record URL in `spec_mr` (using a tiny reconciliation PR if `<integration-branch>` is protected), push → done.
    - Discovered `OPEN` + `isDraft: true` → record URL in `spec_mr`, commit/push, run *Finishing the Spec MR*.
-   - Discovered `OPEN` + `isDraft: false` → record URL in `spec_mr`, commit/push → done.
+   - Discovered `OPEN` + `isDraft: false` → record URL in `spec_mr`, commit/push → run the *Optional Watch Handoff Prompt* below → done.
    - Discovered `CLOSED` (unmerged) → **halt**.
    - Neither MR nor landed `spec.md` exists → run *Opening the Spec MR*.
    - Landed with no recoverable PR reference → **halt** (never fabricate a URL).
@@ -106,12 +107,17 @@ Never assume an empty `spec_mr` means no MR exists (opening a second blind MR yi
    bash .agents/skills/cadence-define/scripts/ready_mr.sh <pr-url-or-number> \
      || bash skills/cadence-define/scripts/ready_mr.sh <pr-url-or-number>
    ```
-   - Exit `0`: quote the verbatim `ready_mr:` stdout line in the summary, verify `spec_mr` equals `url=` (unless Low/Trivial capture MR), and **stop immediately** (never self-merge, never monitor merge, never start implementation). Name `/cadence-build <TICKET-ID>` as the next step after human merge (or `/cadence-watch <TICKET-ID>` to listen for PR comments and merge readiness).
+   - Exit `0`: quote the verbatim `ready_mr:` stdout line in the summary, verify `spec_mr` equals `url=` (unless Low/Trivial capture MR), present the Run-End Checklist, run the *Optional Watch Handoff Prompt* below, and **stop immediately** unless explicitly confirmed (never self-merge, never auto-monitor merge, never start implementation). Name `/cadence-build <TICKET-ID>` as the next step after human merge.
    - Exit `2`: **halt** citing MR URL and cause.
+
+### Optional Watch Handoff Prompt
+`/cadence-define` owns the single watch prompt for this run (inner `/cadence-spec` skips its standalone watch prompt when called from `/cadence-define`). After presenting the Run-End Checklist whenever a spec or triage-capture MR is open and ready on the forge and an interactive operator is present, ask:
+> `Invoke /cadence-watch <TICKET-ID> now to monitor this MR and bound tracker comments? (watch = --watch live poll / once = --once single check / no = stop here; or use /schedule for recurring --once checks)`
+Invoke `/cadence-watch <TICKET-ID> --watch` or `/cadence-watch <TICKET-ID> --once` **only** on explicit confirmation (`watch` / `once`); if declined or non-interactive/unattended, stop immediately with zero polling.
 
 ## Run-End Checklist (Every Exit Path)
 
 1. **Terminal outcome classification:** `spec MR open and ready` | `capture MR open and ready` | `handed off for implementation` | `nothing to do` | `halt` (with exact state & cause).
 2. **Verbatim `ready_mr:` line** (when published) + confirmation that `spec_mr` matches `url=`.
 3. **Session topology & worktree status** (`session_topology=...`, `worktree_state=...`, left-standing worktree path & branch).
-4. **Stopping reason & next actor** (human spec reviewer, `/cadence-watch <TICKET-ID>`, or unblocking step on halt).
+4. **Stopping reason & next actor** (human spec reviewer, opt-in `/cadence-watch <TICKET-ID>` handoff, or unblocking step on halt).

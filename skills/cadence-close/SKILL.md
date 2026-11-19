@@ -33,9 +33,9 @@ Inspect `tier`, `status`, `merge_request`, `maintainer_approved_at`, and `ledger
 ### 2. Gate 3 Maintainer Acceptance (`Medium` / `High` only)
 
 When normalized `tier` is `Medium` or `High` and `maintainer_approved_at` is empty:
-1. Run `/cadence-maintain <MR-ref-or-TICKET-ID>` (evaluates all 8 acceptance dimensions via `cadence-maintainer` and presents the interactive decision prompt).
+1. Run `/cadence-maintain <MR-ref-or-TICKET-ID>` (evaluates all 8 acceptance dimensions via `cadence-maintainer` and presents the interactive decision prompt; `/cadence-close` owns any follow-up watch prompt rather than letting inner `/cadence-maintain` prompt independently).
 2. Require explicit human acceptance recording `maintainer_approved_at` and updating `submission.md` before continuing.
-3. On `Postpone` or `Reject` (or missing human confirmation), **stop immediately** with zero merge writes.
+3. On `Postpone` or `Reject` (or missing human confirmation), **stop immediately** with zero merge writes. If `merge_request` remains open and an interactive operator is present, ask whether to invoke `/cadence-watch <TICKET-ID>` (`watch` = `--watch` live poll / `once` = `--once` single check / `no` = stop here) to watch for follow-up updates on the open PR (never prompt after a successful merge/archive; never auto-poll silently).
 
 When `Low` or `Trivial`, log `gate3=SKIPPED (tier exempt)` and continue.
 

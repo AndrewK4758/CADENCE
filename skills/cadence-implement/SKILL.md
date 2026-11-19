@@ -3,7 +3,7 @@ name: cadence-implement
 description: Implement a ticket's tier contract via strict BDD red-green-refactor TDD -- the approved spec at Medium/High, problem.md's acceptance criteria at Low -- one Gherkin scenario per commit cycle, expand/contract migrations, and journey tests with chaos profiles
 argument-hint: "[ticket-id]"
 arguments: [ticket_id]
-allowed-tools: Read Write Edit Glob Grep Bash
+allowed-tools: Read Write Edit Glob Grep Bash Skill
 ---
 
 ## Task
@@ -188,6 +188,7 @@ At Low tier, `cadence-implementer` constructs its TDD scenario sequence directly
    - Any implementation-time deviations recorded in `specs/$ticket_id/decisions.md`
    - Any informational Gate 1 ruling labels (`diverged` / `examined` / `accepted-as-presented`) surfaced in Prerequisites Step 5
    - Recommendation to open or update the implementation MR and invoke `/cadence-review`
+   - **Standalone Watch Handoff Prompt:** Only when `/cadence-implement` was invoked directly (skip when invoked inside `/cadence-build` or `/cadence-parallel`, or when non-interactive) and `merge_request` is populated (or once the implementation MR is opened), ask whether to invoke `/cadence-watch $ticket_id` (`watch` = `--watch` live poll / `once` = `--once` single check / `no` = stop here), invoking `/cadence-watch` only on explicit confirmation and never auto-polling silently.
 
 ## Example
 
