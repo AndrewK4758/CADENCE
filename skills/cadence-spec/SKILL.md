@@ -3,7 +3,7 @@ name: cadence-spec
 description: Author a complete architectural specification and test plan from a triaged ticket using the Contextual Grounding Matrix (6W×4L) and CHORD decomposition
 argument-hint: "[ticket-id]"
 arguments: [ticket_id]
-allowed-tools: Read Write Edit Glob Grep Bash
+allowed-tools: Read Write Edit Glob Grep Bash Skill
 ---
 
 ## Task
@@ -90,6 +90,7 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
    - Open questions requiring human Gate 1 rulings
    - Any non-blocking `WARN` or `UNVERIFIABLE` lines emitted by `verify-spec.sh` or `verify-facts.sh`
    - Recommendation to review the specification artifacts and open the spec-approval MR
+   - **Standalone Watch Handoff Prompt:** Only when `/cadence-spec` was invoked directly (skip when invoked inside `/cadence-define` or `/cadence-parallel`, or when non-interactive) and `spec_mr` is populated (or once the spec-approval MR is opened), ask whether to invoke `/cadence-watch $ticket_id` (`watch` = `--watch` live poll / `once` = `--once` single check / `no` = stop here), invoking `/cadence-watch` only on explicit confirmation and never auto-polling silently.
 
 ## Example
 
