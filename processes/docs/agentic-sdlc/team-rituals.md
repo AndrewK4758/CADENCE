@@ -110,7 +110,7 @@ Core diagnostic questions:
 
 Inspect `decisions.md` and `Gate 1 Design Exploration outcome` logs across recently archived tickets (`archive/*/`) to evaluate whether our trade-offs held up.
 
-The primary output of Process Retro is **system tuning**: refining role definitions under `artifacts/roles/`, updating `AGENTS.md` directives, tightening Engineering Pillar measures in `CADENCE_ORG.md`, or adjusting gate checklists. Cap human-behavior action items at one per retro — encoding improvements into the framework scales permanently.
+The primary output of Process Retro is **system tuning**: refining role definitions under `.agents/agents/`, updating `AGENTS.md` directives, tightening Engineering Pillar measures in `CADENCE_ORG.md`, or adjusting gate checklists. Cap human-behavior action items at one per retro — encoding improvements into the framework scales permanently.
 
 ### Cross-Project Surface Check
 
@@ -144,7 +144,7 @@ Review aggregate CADENCE telemetry across the trailing month:
 - `production-insights.md` and `intent-insights.md` trend lines
 - Gate throughput and cycle-time bands (`estimated_effort` vs accumulated `actual_effort`)
 
-Use these findings to sharpen `artifacts/roles/`, `CADENCE_ORG.md` pillar measures, `AGENTS.md` rules, and local coprocessor pre-review checks.
+Use these findings to sharpen `.agents/agents/`, `CADENCE_ORG.md` pillar measures, `AGENTS.md` rules, and local coprocessor pre-review checks.
 
 ### Incident Review
 

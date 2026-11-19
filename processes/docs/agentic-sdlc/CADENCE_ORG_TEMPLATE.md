@@ -4,7 +4,7 @@
 
 **Vocabulary:** *CADENCE* (*Contextual Architecture, Decomposition, Execution, Navigation, Consolidation & Enshrinement*) is the umbrella specification and lifecycle framework. *CHORD* (**C**onditions, **H**andling / Triggers, **O**utcomes, **R**ules, **D**eltas) is the behavioral decomposition engine CADENCE runs in Phase 3. This document tailors CADENCE for a single organization; the CHORD decomposition engine itself remains identical to the portable framework definition.
 
-**How this relates to CADENCE:** The portable CADENCE manual defines 9 standard Engineering Pillars and selects 4–6 per project. This configuration pre-selects 3 always-on mandatory pillars with organization-level measures baked in, plus 2 triggered mandatory pillars (Data & Audit Fidelity and Surface Compatibility) that activate automatically whenever their trigger condition holds — Data & Audit Fidelity whenever the system captures, mutates, or persists owned data, and Surface Compatibility whenever the change touches registered public surfaces — leaving 2 open slots for repository-specific pillars. It also pre-populates the Contextual Grounding Matrix (Phase 1) columns that remain constant across the organization — infrastructure, secrets, CI/CD, and identity.
+**How this relates to CADENCE:** The portable CADENCE manual defines 9 standard Engineering Pillars and selects 4–6 per project. This configuration pre-selects 3 always-on mandatory pillars with organization-level measures baked in, plus 3 triggered mandatory pillars (Data & Audit Fidelity, Surface Compatibility, and Security Boundary Posture) that activate automatically whenever their trigger condition holds — Data & Audit Fidelity whenever the system captures, mutates, or persists owned data, Surface Compatibility whenever the change touches registered public surfaces, and Security Boundary Posture whenever the change touches auth, authorization, PII, user input handling, or new client-side code — leaving 2 open slots for repository-specific pillars. It also pre-populates the Contextual Grounding Matrix (Phase 1) columns that remain constant across the organization — infrastructure, secrets, CI/CD, and identity.
 
 > **How to use this file:** This document is a template. Replace `<placeholder>` markers with your organization's concrete choices, remove rows that do not apply, and add rows that do. Keep the section headings, mandatory-pillar count, and precedence structure intact — customize the *values*, not the *structural schema*. See [`specs/EXAMPLES/`](../../specs/EXAMPLES/) for completed examples across different team scales (solo developer, startup SaaS, regulated enterprise). Once populated, **rename this file to `CADENCE_ORG.md`** (`mv CADENCE_ORG_TEMPLATE.md CADENCE_ORG.md`) — that is the canonical filename read by CADENCE agents and resolver scripts. Leave the `_TEMPLATE` file framework-owned: future `/cadence-upgrade` runs refresh it, and diffing it against your `CADENCE_ORG.md` highlights newly introduced governance measures.
 
@@ -110,7 +110,7 @@ source of truth. Agents and skills MUST NOT restate, copy, or embed any numeric 
 constitute the sole permitted occurrence of those numbers.
 Specifically, this rule closes three potential leak surfaces:
 
-- **Agent / skill definitions** — `artifacts/roles/`, `artifacts/commands/`, and the compiled `.agents/` runtime trees
+- **Agent / skill definitions** — `.agents/agents/`, `.agents/skills/`, and projected runtime trees (`.gemini/`, `.claude/`)
   refer to the multiplier only by name ("the per-stage review multiplier", linking to this section), never
   by numeric value.
 - **`metadata.yaml` `stage_effort` entries** — record only the finished `effort` duration and,
@@ -245,11 +245,11 @@ If only one condition holds, the ticket is **not** an epic: a ticket that ships 
 
 ---
 
-## Mandatory Pillars (3 always-on + 2 triggered)
+## Mandatory Pillars (3 always-on + 3 triggered)
 
 These 3 always-on Engineering Pillars are pre-selected and pre-customized for every repository in this organization. The LLM must include all three in every `PILLAR_LIBRARY.md` and `spec.md` it generates. Projects may tighten the measures or add repository-specific anti-patterns, but may never remove or weaken them.
 
-Two additional pillars — **Data & Audit Fidelity** and **Surface Compatibility** — are triggered mandatory. Data & Audit Fidelity activates whenever the system captures, mutates, or persists data it owns; Surface Compatibility activates whenever a change touches a **registered surface** -- resolved across every registry present (`docs/policies/surface-registry.md`, adopter-owned; `docs/policies/cadence-surfaces.md`, CADENCE's core-owned registry) -- or introduces a new public surface. Both are fail-closed: when in doubt, include them. See [Triggered Mandatory Pillars](#triggered-mandatory-pillars) below.
+Three additional pillars — **Data & Audit Fidelity**, **Surface Compatibility**, and **Security Boundary Posture** — are triggered mandatory. Data & Audit Fidelity activates whenever the system captures, mutates, or persists data it owns; Surface Compatibility activates whenever a change touches a **registered surface** -- resolved across every registry present (`docs/policies/surface-registry.md`, adopter-owned; `docs/policies/cadence-surfaces.md`, CADENCE's core-owned registry) -- or introduces a new public surface; Security Boundary Posture activates whenever a change touches authentication, authorization, PII, user input handling, or new client-side code. All three are fail-closed: when in doubt, include them. See [Triggered Mandatory Pillars](#triggered-mandatory-pillars) below.
 
 ### Pillar 1: Structural Simplicity (Mandatory)
 
@@ -395,6 +395,28 @@ Two additional pillars — **Data & Audit Fidelity** and **Surface Compatibility
 
 ---
 
+### Pillar 6: Security Boundary Posture (Triggered Mandatory)
+
+**Activation rule:** Mandatory whenever a change touches authentication, authorization, PII, secrets/credentials, user input handling, SQL/migrations, concurrency/locks, or new client-side code. Fail-closed: when in doubt, include it. Only when a change touches zero trust or security boundaries may you record `"Not triggered — no auth, authorization, PII, input, or client trust boundaries touched"` and omit the table.
+
+**Definition:** The identity and trust chain must never weaken across runtime boundaries.
+
+**Contextual Grounding alignment:** Who (People), Where (Network), How (Process)
+
+**Org-specific measures:**
+- Server-side principal enforcement: caller authority is established from the authenticated server context, never trusted from client parameters.
+- Default-deny gates & per-record authorization: every endpoint, command, and record access enforces explicit authorization checks.
+- Input & secret/PII hygiene: untrusted inputs are validated fail-closed; secrets, tokens, and PII never appear in logs, URLs, or unentitled responses.
+
+**Org-specific anti-patterns:**
+- Trusting client-supplied actor IDs, roles, or pre-validated authorization flags.
+- Leaving endpoints or mutations without explicit authorization guards.
+- Logging secrets, tokens, or PII or exposing silent fail-open fallbacks.
+
+**Decision rule:** Never trade away an authentication, authorization, or secret-handling boundary for convenience or fewer files.
+
+---
+
 ## Production Feedback Loop
 
 CADENCE closes the loop between production operations and specification authoring through the living register `docs/agentic-sdlc/production-insights.md`.
@@ -479,7 +501,7 @@ Use `/cadence-bump-model` to bump a concrete model version within a single tier;
 
 ## Runtime Binding
 
-The single mandatory home for **runtime coupling** (ADR_CADENCE-0008 clause 4) — the runtime-axis counterpart to the Model Tier Mapping above. Populate your runtime(s) below while preserving the `RC-*` rows. Register this section in `docs/policies/surface-registry.md` as a Stable Configuration Contract (`CADENCE_ORG.md#runtime-binding`). All framework roles and skills are authored against the abstract Runtime Capability Contract (`RC-1`…`RC-6`) in `artifacts/` and compiled into `.agents/` (and projected to `.gemini/` or `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`); concrete runtime primitives are confined to this section.
+The single mandatory home for **runtime coupling** (ADR_CADENCE-0008 clause 4) — the runtime-axis counterpart to the Model Tier Mapping above. Populate your runtime(s) below while preserving the `RC-*` rows. Registered in `docs/policies/cadence-surfaces.md` as a Stable Configuration Contract (`CADENCE_ORG.md#runtime-binding`; never duplicated in adopter-owned `docs/policies/surface-registry.md`). All framework roles and skills are authored canonically in `.agents/` and projected to `.gemini/` or `.claude/` per `docs/policies/cli-runtime-adoption-policy.md`; concrete runtime primitives are confined to this section.
 
 **Bound runtime(s):** `<your runtime(s) — e.g. Google Antigravity / Gemini CLI (.gemini/ + .agents/); or Claude Code (.claude/ projected from .agents/)>`
 
@@ -496,8 +518,8 @@ The single mandatory home for **runtime coupling** (ADR_CADENCE-0008 clause 4) �
 
 ### Install paths & config
 
-- `<where compiled roles land — e.g. .agents/agents/>`, `<where compiled commands land — e.g. .agents/skills/>`, `<runtime config file — e.g. AGENTS.md>`.
-- `<the adapter/compile command that emits them from the neutral source — e.g. ci-templates/scripts/cadence-compile.sh>`.
+- `<canonical role directory — e.g. .agents/agents/>`, `<canonical skill directory — e.g. .agents/skills/>`, `<runtime config file — e.g. AGENTS.md>`.
+- `<the runtime projection / linking command — e.g. import/link-sdlc.sh or ci-templates/scripts/adapters/>`.
 
 ### Role → (runtime, capability-tier) assignment (clause 6)
 
@@ -513,7 +535,7 @@ Assign each role group to a `(runtime, tier)` pair. A repository may execute aut
 
 ## Tracker Binding
 
-The single mandatory home for external work-item **tracker coupling** (ADR_CADENCE-0010 clause 2) — the tracker-axis counterpart to the Runtime Binding above. Populate your tracker row(s) below and keep the resolution rules intact. Register this section in `docs/policies/surface-registry.md` as a Stable Configuration Contract (`CADENCE_ORG.md#tracker-binding`). Framework prose refers to "the repo's bound tracker" vendor-neutrally; the concrete tracker choice lives exclusively in this section.
+The single mandatory home for external work-item **tracker coupling** (ADR_CADENCE-0010 clause 2) — the tracker-axis counterpart to the Runtime Binding above. Populate your tracker row(s) below and keep the resolution rules intact. Registered in `docs/policies/cadence-surfaces.md` as a Stable Configuration Contract (`CADENCE_ORG.md#tracker-binding`; never duplicated in adopter-owned `docs/policies/surface-registry.md`). Framework prose refers to "the repo's bound tracker" vendor-neutrally; the concrete tracker choice lives exclusively in this section.
 
 Declare your tracker(s) as **rows of the *Per-prefix tracker bindings* table below** — that table is this section's sole legal declaration form. The legacy repo-wide `**Bound tracker(s):**` line was REMOVED (BTG-242); any file still containing that line HALTs with `tracker.binding.form_removed`. See [`docs/migrations/scalar-binding-removal.md`](../migrations/scalar-binding-removal.md).
 
@@ -558,7 +580,7 @@ This subsection defines the tracker-vendor-neutral "when to sync" contract obeye
 
 - **Trigger classes:** **IMMEDIATE** — any modification to any field of `specs/<id>/metadata.yaml` (or `archive/<id>/metadata.yaml`) requires a tracker sync within the same session; **END-OF-OPERATION** — edits to `problem.md`, `spec.md`, or `test-plan.md` require one tracker sync at the completion of that skill operation.
 - **Status-lifecycle subset:** every canonical `status` transition (`triaged` → `spec-in-review` → `spec-approved` → `in-progress` → `in-review` → `merged` → `archived`, plus `cancelled` from any prior state) triggers an IMMEDIATE sync via the bound `/sync-*` skill.
-- **Orchestration boundary:** subagents author files and update `status` in `metadata.yaml` but execute **no** external tracker sync; the main-turn orchestrating skill executes the sync once the subagent returns.
+- **Orchestration boundary:** subagents author files (leaving `metadata.yaml` `status` transitions to the orchestrating skill unless explicitly documented otherwise) and execute **no** external tracker sync; the main-turn orchestrating skill owns `status` transitions and executes the tracker sync once the subagent returns.
 - **Enforcement:** skill execution discipline is primary, backed by the two `tms-*` hooks in `.agents/hooks/` which detect any missed sync and resolve active-vs-inert per prefix from *Per-prefix tracker bindings* above.
 - **"What synced means":** the bound `/sync-*` skill ran and reported success for the ticket during the current session; any sync failure is surfaced loudly, never ignored.
 - **A prefix resolving to `None — inner-source` (including via the `*` wildcard row) ⇒ every sync trigger is an explicit SKIP** for that prefix (no external network call; backstop hooks remain inert).
@@ -567,7 +589,7 @@ This subsection defines the tracker-vendor-neutral "when to sync" contract obeye
 
 ## Id Allocation Binding
 
-The single mandatory home for ticket **identity and ID-allocation coupling** (ADR_CADENCE-0011 clause 4; ADR_CADENCE-0010 clause 2) — the identity-axis counterpart to the Tracker Binding above. Populate your allocator rows below or retain the closed local-mint default. Register this section in `docs/policies/surface-registry.md` as a Stable Configuration Contract (`CADENCE_ORG.md#id-allocation-binding`). When a tracker-originated seed-read runs, the concrete tracker is resolved vendor-neutrally from `#tracker-binding`.
+The single mandatory home for ticket **identity and ID-allocation coupling** (ADR_CADENCE-0011 clause 4; ADR_CADENCE-0010 clause 2) — the identity-axis counterpart to the Tracker Binding above. Populate your allocator rows below or retain the closed local-mint default. Registered in `docs/policies/cadence-surfaces.md` as a Stable Configuration Contract (`CADENCE_ORG.md#id-allocation-binding`; never duplicated in adopter-owned `docs/policies/surface-registry.md`). When a tracker-originated seed-read runs, the concrete tracker is resolved vendor-neutrally from `#tracker-binding`.
 
 Declare your allocator(s) as **rows of the *Per-prefix allocator bindings* table below** — that table is this section's sole declaration form. The legacy repo-wide `**Bound allocator(s):**` scalar line was REMOVED (BTG-242); any file still carrying it HALTs with `idalloc.binding.form_removed`. By contrast, the repo-wide `id_scheme:` field below is a SEPARATE contract, is **retained**, and must remain present. See [`docs/migrations/scalar-binding-removal.md`](../migrations/scalar-binding-removal.md).
 
@@ -612,7 +634,7 @@ Declare your allocator(s) as **rows of the *Per-prefix allocator bindings* table
 
 ## Sprint-Enforcement Binding
 
-The single mandatory home for the **`/cadence-implement` sprint-enforcement contract** (BTG-004; homed here by BTG-024) — a per-repository configuration binding parallel to the Tracker and Id Allocation bindings above. The `/cadence-implement` pre-flight guard consults this section before TDD implementation begins. Register it in `docs/policies/surface-registry.md` as a Stable Configuration Contract (`CADENCE_ORG.md#sprint-enforcement-binding`).
+The single mandatory home for the **`/cadence-implement` sprint-enforcement contract** (BTG-004; homed here by BTG-024) — a per-repository configuration binding parallel to the Tracker and Id Allocation bindings above. The `/cadence-implement` pre-flight guard consults this section before TDD implementation begins. Registered in `docs/policies/cadence-surfaces.md` as a Stable Configuration Contract (`CADENCE_ORG.md#sprint-enforcement-binding`; never duplicated in adopter-owned `docs/policies/surface-registry.md`).
 
 Declare sprint enforcement as **rows of the *Per-prefix sprint-enforcement bindings* table below** — that table is this section's sole legal declaration form. The three legacy repo-level HTML comment markers (`sprint-enforcement-enabled`, `sprint-check-skill`, `sprint-check-fallback`) were REMOVED (BTG-242); any file still containing any of those markers HALTs with `sprint.binding.form_removed`. Removing them is safe because an unmatched prefix resolves to **DISABLED** by rule (`fallback=Confirm`), matching what `no` or an absent marker previously produced. See [`docs/migrations/scalar-binding-removal.md`](../migrations/scalar-binding-removal.md).
 
@@ -651,7 +673,7 @@ Every query of this section resolves through these exact rules:
 
 ## Integration-Branch Enforcement Binding
 
-The single mandatory home for the **`/cadence-implement` integration-branch enforcement contract** (BTG-028) — a per-repository configuration binding parallel to the Sprint-Enforcement Binding above. The `/cadence-implement` integration-branch preconditions (BTG-001's P1/P2 — and the `cadence-implementer` role's Phase 0 check on direct delegation) read this binding for **Medium and High** tier tickets **prior** to evaluating P1/P2. Register it in `docs/policies/surface-registry.md` as a Stable Configuration Contract (`CADENCE_ORG.md#integration-branch-enforcement-binding`).
+The single mandatory home for the **`/cadence-implement` integration-branch enforcement contract** (BTG-028) — a per-repository configuration binding parallel to the Sprint-Enforcement Binding above. The `/cadence-implement` integration-branch preconditions (BTG-001's P1/P2 — and the `cadence-implementer` role's Phase 0 check on direct delegation) read this binding for **Medium and High** tier tickets **prior** to evaluating P1/P2. Registered in `docs/policies/cadence-surfaces.md` as a Stable Configuration Contract (`CADENCE_ORG.md#integration-branch-enforcement-binding`; never duplicated in adopter-owned `docs/policies/surface-registry.md`).
 
 <!-- integration-branch-enforcement-enabled: yes -->
 <!-- ^ The integration-branch enforcement contract the /cadence-implement P1/P2 gate (and the
@@ -674,7 +696,7 @@ The single mandatory home for the **`/cadence-implement` integration-branch enfo
 
 ## Branch-Strategy Binding
 
-The single mandatory home for the repository's **branch-strategy selection and its configurable parameters** — a per-repository configuration binding parallel to the bindings above. Every CADENCE skill, agent, and script that needs the integration-branch name, its protection state, or the branch-naming pattern resolves them from this section (ADR_CADENCE-0020, superseding ADR_CADENCE-0016's earlier resolution order). Register it in `docs/policies/surface-registry.md` as a Stable Configuration Contract (`CADENCE_ORG.md#branch-strategy-binding`). The bound strategy document under `docs/policies/branch-strategy/` supplies the role narrative only; it hardcodes no branch names.
+The single mandatory home for the repository's **branch-strategy selection and its configurable parameters** — a per-repository configuration binding parallel to the bindings above. Every CADENCE skill, agent, and script that needs the integration-branch name, its protection state, or the branch-naming pattern resolves them from this section (ADR_CADENCE-0020, superseding ADR_CADENCE-0016's earlier resolution order). Registered in `docs/policies/cadence-surfaces.md` as a Stable Configuration Contract (`CADENCE_ORG.md#branch-strategy-binding`; never duplicated in adopter-owned `docs/policies/surface-registry.md`). The bound strategy document under `docs/policies/branch-strategy/` supplies the role narrative only; it hardcodes no branch names.
 
 <!-- bound-strategy: long-lived-feature-release -->
 <!-- integration-branch: develop -->
@@ -704,7 +726,7 @@ The single mandatory home for the repository's **branch-strategy selection and i
 
 ## Test-Scope Binding
 
-The single mandatory home for the **test-scope enforcement contract** (BTG-203) — a per-repository configuration binding parallel to the bindings above. The three roles governed by `docs/policies/test-scope.md` — `cadence-implementer`, `cadence-reviewer`, and `cadence-spec-author` — consult this binding **before** enforcing that policy to determine whether the rule applies to your repository. Register it in `docs/policies/surface-registry.md` as a Stable Configuration Contract (`CADENCE_ORG.md#test-scope-binding`).
+The single mandatory home for the **test-scope enforcement contract** (BTG-203) — a per-repository configuration binding parallel to the bindings above. The three roles governed by `docs/policies/test-scope.md` — `cadence-implementer`, `cadence-reviewer`, and `cadence-spec-author` — consult this binding **before** enforcing that policy to determine whether the rule applies to your repository. Registered in `docs/policies/cadence-surfaces.md` as a Stable Configuration Contract (`CADENCE_ORG.md#test-scope-binding`; never duplicated in adopter-owned `docs/policies/surface-registry.md`).
 
 This binding makes the policy's scoping question machine-readable: *are your governance documents a description of how your software product is built, or are those documents themselves the shipped product?* For almost every adopting software repository the answer is the former, which is why the shipped default is `yes` (ENFORCED).
 
@@ -731,7 +753,7 @@ This binding makes the policy's scoping question machine-readable: *are your gov
 
 ## Version-Scheme Binding
 
-The single mandatory home for the repository's **version-scheme selection and its derived properties**, a per-repository configuration binding parallel to the sections above. Every release skill, deprecation check, and version comparator resolves how your repository numbers releases, what version string regex is legal, and which cuts count toward a "release cycle" guarantee window from this section. Register it in `docs/policies/surface-registry.md` as a Stable Configuration Contract (`CADENCE_ORG.md#version-scheme-binding`). The bound scheme document (`docs/policies/version-scheme/<bound-version-scheme>.md`) defines the bump rules and vocabulary only.
+The single mandatory home for the repository's **version-scheme selection and its derived properties**, a per-repository configuration binding parallel to the sections above. Every release skill, deprecation check, and version comparator resolves how your repository numbers releases, what version string regex is legal, and which cuts count toward a "release cycle" guarantee window from this section. Registered in `docs/policies/cadence-surfaces.md` as a Stable Configuration Contract (`CADENCE_ORG.md#version-scheme-binding`; never duplicated in adopter-owned `docs/policies/surface-registry.md`). The bound scheme document (`docs/policies/version-scheme/<bound-version-scheme>.md`) defines the bump rules and vocabulary only.
 
 <!-- bound-version-scheme: calver-yyyy-ww -->
 <!-- version-pattern: ^[0-9]{4}\.(0[1-9]|[1-4][0-9]|5[0-3])\.(0|[1-9][0-9]*)$ -->
@@ -802,18 +824,18 @@ This table governs **tracker worklog projection only**: it controls how a single
 
 ## Open Pillar Slots (2 of 6)
 
-During Phase 2, the LLM selects 0–2 additional repository-specific pillars from the standard CADENCE catalog based on the problem statement and Contextual Grounding facts. Note that the triggered mandatory pillars (Data & Audit Fidelity, Surface Compatibility, and Security Boundary Posture when ratified as triggered-mandatory) do **not** consume an open slot — they activate automatically whenever their trigger condition fires and sit alongside the 3 always-on mandatory pillars.
+During Phase 2, the LLM selects 0–2 additional repository-specific pillars from the standard CADENCE catalog based on the problem statement and Contextual Grounding facts. The three triggered mandatory pillars (Pillar 4: Data & Audit Fidelity, Pillar 5: Surface Compatibility, and Pillar 6: Security Boundary Posture) do **not** consume an open slot — they activate automatically whenever their trigger conditions fire and sit alongside the 3 always-on mandatory pillars.
 
 ### Selection guidance
 
 | If the problem statement involves... | Add this pillar |
-|---------------------------------------|---------------|
-| Auth changes, user input handling, PII, new client-side code | **Security Boundary Posture** |
+|---|---|
 | Latency complaints, large datasets, scale concerns | **Execution Performance** |
 | Existing test suite to preserve, reliability requirements | **Automated Verifiability** |
 | Technology migration, library swap, long-lived system | **Modular Replaceability** |
+| Client-delimited knowledge / tenant isolation | **Origin Confidentiality** |
 
-When none of the rows above apply, use only the 3 always-on mandatory pillars (plus any triggered mandatory pillars that activate). A focused, high-signal pillar library is always preferable to padding a specification with pillars that do not shape the design.
+When none of the rows above apply, use only the 3 always-on mandatory pillars plus any triggered mandatory pillars (Data & Audit Fidelity, Surface Compatibility, Security Boundary Posture) that activate. A focused, high-signal pillar library is always preferable to padding a specification with pillars that do not shape the design.
 
 Customize every selected open-slot pillar using concrete numbers and file references from `CONTEXT_FACTS.md` (following Phase 2 Customization Instructions in `specs/CADENCE.md`) rather than leaving generic boilerplate measures.
 

@@ -153,7 +153,7 @@ Because CADENCE agents (`cadence-triage-agent`, `cadence-spec-author`, `cadence-
 | Performance concern | Human only | Requires production intuition agents don't have |
 | Domain correctness | Human only | Business rules in reviewer's head, not in spec |
 
-**The pattern to watch:** If human reviewers repeatedly catch mechanical defects that `cadence-reviewer` or `offload_deep_review` should have flagged (such as layer-boundary violations or Pillar 3 file-size ceiling breaches per `CADENCE_ORG.md`), refine the reviewer role instructions in `artifacts/roles/cadence-reviewer.md`. Conversely, if the agent raises recurring false positives on an accepted idiom, document that idiom in `AGENTS.md`.
+**The pattern to watch:** If human reviewers repeatedly catch mechanical defects that `cadence-reviewer` or `offload_deep_review` should have flagged (such as layer-boundary violations or Pillar 3 file-size ceiling breaches per `CADENCE_ORG.md`), refine the reviewer role instructions in `.agents/agents/cadence-reviewer/agent.md`. Conversely, if the agent raises recurring false positives on an accepted idiom, document that idiom in `AGENTS.md`.
 
 ### 6b. Code Review Rejection Rate (Gate 2 — Human)
 
@@ -250,7 +250,7 @@ Because CADENCE agents (`cadence-triage-agent`, `cadence-spec-author`, `cadence-
 | Contextual Grounding Matrix System/Technology rows | Architecture assumptions wrong | AGENTS.md Architecture section stale |
 | CHORD Conditions | Entity states not documented | AGENTS.md Domain model incomplete |
 | CHORD Outcomes | External integrations not documented | AGENTS.md External integrations stale |
-| Proposed Design - file paths | Project structure changed since AGENTS.md written | Run AGENTS.md validation (getting-started.md §3) |
+| Proposed Design - file paths | Project structure changed since AGENTS.md written | Run `/cadence-doctor` and verify `AGENTS.md` (contributor_experience_guide.md) |
 | Test plan - scenarios | Acceptance criteria ambiguous | problem.md needs sharper AC definitions |
 | Journey invariants | Business rules not explicit | AGENTS.md Domain model missing invariants |
 
@@ -270,8 +270,8 @@ Because CADENCE agents (`cadence-triage-agent`, `cadence-spec-author`, `cadence-
 | Code-reviewer flagging false positives on a pattern | 3 `[BLOCKING]` comments overridden by human reviewer | Code-reviewer agent instructions too strict for this pattern |
 
 **Resolution:** Repetitive agent drift is always a context/documentation defect:
-1. Pinpoint which grounding file is stale or incomplete (`AGENTS.md`, `CADENCE_ORG.md`, `docs/SYSTEM_OVERVIEW.md`, `docs/flows/`, or the role definition in `artifacts/roles/`).
-2. Reconcile the document (and recompile `.agents/` / `.gemini/` via `cadence-compile.sh` if an agent role changed).
+1. Pinpoint which grounding file is stale or incomplete (`AGENTS.md`, `CADENCE_ORG.md`, `docs/SYSTEM_OVERVIEW.md`, `docs/flows/`, or the role definition in `.agents/agents/`).
+2. Reconcile the document (and verify runtime symlink projections under `.gemini/` / `.claude/` via `import/link-sdlc.sh` if an agent role changed).
 3. Verify on the next ticket that the recurring error disappears.
 
 ---

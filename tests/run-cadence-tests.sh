@@ -39,6 +39,7 @@ import json, pathlib, re, sys, yaml
 
 root = pathlib.Path(sys.argv[1])
 forbidden = re.compile(r"\b(?:" + chr(99) + r"laire|" + "spect" + r"[ru]{2}m)\b", re.I)
+retired_hw = re.compile(r"Zero-VRAM|0\s*MB\s*(?:GPU|VRAM)|Tier\s*1\s*CPU|hybrid-MoE", re.I)
 errs = []
 
 for p in root.rglob("*"):
@@ -51,6 +52,8 @@ for p in root.rglob("*"):
     if m := forbidden.search(text):
         errs.append(f"forbidden token {m.group(0)!r} in {p.relative_to(root)}")
     rel = p.relative_to(root).as_posix()
+    if rel.startswith(("agents/", "skills/", "processes/")) and (m := retired_hw.search(text)):
+        errs.append(f"retired offload claim {m.group(0)!r} in {rel}")
     if (
         rel.startswith(("agents/", "hooks/", "local-offload/mcp/", "tests/"))
         or re.match(r"skills/.*/SKILL\.md$", rel)
@@ -89,6 +92,8 @@ for am in sorted((root / "agents").glob("*/agent.md")):
     aname = am.parent.name
     if data.get("effort") != expected_effort.get(aname):
         errs.append(f"unexpected effort {data.get('effort')!r} in {am.relative_to(root)} (expected {expected_effort.get(aname)!r})")
+    if aname == "cadence-maintainer" and (set(data.get("tools", [])) & {"write_file", "edit_file"}):
+        errs.append(f"cadence-maintainer must stay read-only in {am.relative_to(root)}")
     if m := provider_leak.search(txt):
         errs.append(f"provider-specific routing {m.group(0)!r} in {am.relative_to(root)}")
     if m := retired_coprocessor.search(txt):
@@ -102,6 +107,8 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
     for bad in ("/cadence-run", "/cadence-finish", "/cadence-prep", "/cadence-cycle"):
         if bad in txt:
             errs.append(f"dangling command {bad} in {sm.relative_to(root)}")
+    if aname == "cadence-maintainer" and (set(data.get("tools", [])) & {"write_file", "edit_file"}):
+        errs.append(f"cadence-maintainer must stay read-only in {am.relative_to(root)}")
     if m := provider_leak.search(txt):
         errs.append(f"provider-specific routing {m.group(0)!r} in {sm.relative_to(root)}")
     if m := retired_coprocessor.search(txt):
@@ -262,6 +269,17 @@ fi
 SH
   chmod +x "$fix/bin/gh"
   PATH="$fix/bin:$PATH" bash "$ROOT/skills/cadence-define/scripts/ready_mr.sh" 99 | grep -q "result=READY was_draft=yes"
+  echo "true" > "$fix/gl_state"
+  cat > "$fix/bin/glab" <<SH
+#!/usr/bin/env bash
+if [[ "\$1 \$2" == "mr view" ]]; then
+  printf '{"state":"opened","draft":%s,"web_url":"https://gitlab.example.com/acme/repo/-/merge_requests/42"}\n' "\$(cat "$fix/gl_state")"
+elif [[ "\$1 \$2" == "mr update" ]]; then
+  printf 'false' > "$fix/gl_state"
+fi
+SH
+  chmod +x "$fix/bin/glab"
+  PATH="$fix/bin:$PATH" bash "$ROOT/skills/cadence-define/scripts/ready_mr.sh" 42 --forge gitlab | grep -q "result=READY was_draft=yes"
 }
 
 t5_adopt_and_eject() {

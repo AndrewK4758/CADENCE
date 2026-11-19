@@ -17,9 +17,9 @@ Execute a cross-ticket engineering retrospective across archived CADENCE work (`
      ```bash
      python3 .agents/skills/cadence-retro/retro_scan.py $options
      ```
-     (falling back to `skills/cadence-retro/retro_scan.py` in framework-dev checkouts; piping output `>30` lines or failures via `offload_log_triage` on `:11434`).
+     (falling back to `skills/cadence-retro/retro_scan.py` in framework-dev checkouts; piping output `>30` lines or failures via `offload_log_triage` on `:11434` when reachable, else inspecting directly).
    - Fail loudly (`exit 1`) on invalid `--since` or unreadable repository paths. When `status=empty_archive` and `--include-active` is absent, report cleanly (`0 archived tickets; nothing to synthesize`) and exit without writing any file.
-   - When archived records exist, automatically invoke `local_semantic_embed` (`embedding` on `:11434`, `top_k=6`) across `archive/*/summary.md`, `archive/*/decisions.md`, `docs/agentic-sdlc/intent-insights.md`, and `docs/agentic-sdlc/production-insights.md` to surface multi-ticket clusters (rework themes, recurring CHORD seams, spec-to-implementation gaps).
+   - When archived records exist and `:11434` is reachable, optionally invoke `local_semantic_embed` (`embedding` on `:11434`, `top_k=6`) across `archive/*/summary.md`, `archive/*/decisions.md`, `docs/agentic-sdlc/intent-insights.md`, and `docs/agentic-sdlc/production-insights.md` to surface multi-ticket clusters (rework themes, recurring CHORD seams, spec-to-implementation gaps; cloud-only `Grep`/`Glob` fallback when offline).
 
 1. **Synthesize the Cross-Ticket Retrospective Report (Strictly Read-Only Default):**
    - Present a structured synthesis covering:
@@ -55,6 +55,6 @@ Execute a cross-ticket engineering retrospective across archived CADENCE work (`
 /cadence-retro --promote
 ```
 
-## Local Model Offload Integration (:11434)
-- Step 0 uses `local_semantic_embed` (`embedding` on `:11434`) to cluster recurring multi-ticket patterns across `archive/` and existing insight ledgers, and routes verbose scanner output (`>30` lines) via `offload_log_triage`.
+## Local Model Offload Integration (:11434, Optional Cloud-Only Fallback)
+- When `:11434` is reachable, Step 0 uses `local_semantic_embed` (`embedding` on `:11434`) to cluster recurring multi-ticket patterns across `archive/` and existing insight ledgers, and routes verbose scanner output (`>30` lines) via `offload_log_triage` (degrading cleanly to direct inspection / `Grep` when offline).
 - Local coprocessors act strictly read-only (`enable_write_tools: false`).

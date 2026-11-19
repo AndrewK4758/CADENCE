@@ -25,7 +25,7 @@ Prior to presenting any prompt to the requester, verify all four preconditions i
 
 ### 0. Automatic Local Discovery Pre-Pass (`local_semantic_embed` / `inference`)
 
-Before drafting candidate probe answers in step 3a or evaluating decomposition boundaries in step 4c, automatically invoke `local_semantic_embed` (`embedding` on `:11434`) and/or `offload_deep_review` (`inference` on `:11434`) / `repo-scout` once to retrieve relevant codebase symbols, adjacent system contracts, and prior insights from `docs/agentic-sdlc/intent-insights.md` and `specs/`/`archive/` without performing broad manual file reads in the primary context window. When grounding a candidate answer as `Observed` in step 3a, explicitly read the specific file coordinate surfaced during discovery in this turn.
+Before drafting candidate probe answers in step 3a or evaluating decomposition boundaries in step 4c, when `:11434` is reachable, invoke `local_semantic_embed` (`embedding` on `:11434`) and/or `offload_deep_review` (`inference` on `:11434`) / `repo-scout` once to retrieve relevant codebase symbols, adjacent system contracts, and prior insights from `docs/agentic-sdlc/intent-insights.md` and `specs/`/`archive/` without performing broad manual file reads in the primary context window (cloud-only `Grep`/`Glob` fallback when offline). When grounding a candidate answer as `Observed` in step 3a, explicitly read the specific file coordinate surfaced during discovery in this turn.
 
 ### 1. Tier gate
 
@@ -213,7 +213,7 @@ Execute this step only when step 4c produced a valid split proposal that has nei
    - `sequencing_rationale` — populated only when the size/sequencing carve-out was used
    Capture each child return object (`child_ticket_id`, `status: created | duplicate | refused`, `scope_check_result`, `idempotency_echo` — verifying `idempotency_echo == {key}`). Treat any missing or malformed return object as a failure for that child (triggering sub-step 5).
 5. **All-or-nothing rollback.** If any child invocation returns `refused`, throws an error, or returns a malformed payload: **HALT** — do not invoke triage for any remaining children. **Roll back:** remove `specs/<child>/` for every child whose return status in this run was `created` (never delete pre-existing `duplicate`-status children). Leave the parent ticket's `metadata.yaml` unmodified. Report the structured failure summary `{successful, rolled_back, failed: [{child, reason}], rollback_failed?}`; if removing a `created` child directory fails, list that orphan id under `rollback_failed` and exit non-zero (DEC-002).
-6. **On complete success (all children returned `created` or `duplicate`):** write `decomposed_into: [{ids}]` into the parent's `specs/$ticket_id/metadata.yaml` in a single atomic Edit.
+6. **On complete success (all children returned `created` or `duplicate`):** write `type: epic` and `decomposed_into: [{ids}]` into the parent's `specs/$ticket_id/metadata.yaml` in a single atomic Edit.
 7. Proceed to step 5 so the parent ticket also receives its complete `## Elicited Intent` section.
 
 ### 5. Compose and append the Elicited Intent section
@@ -286,7 +286,7 @@ Execute this step **only when this run modified repository files** — writing `
 
 **Log elicitation effort.** Update `specs/$ticket_id/metadata.yaml` in accordance with `docs/agentic-sdlc/CADENCE_ORG.md` "Actual Effort Accumulation": append a `stage_effort` item tagged **`stage: triage`** (`at` = exact UTC completion time from `date -u +%Y-%m-%dT%H:%M:%SZ`, never rounded, midnight, or date-only) with `effort` computed via `([ -x ci-templates/scripts/stage-effort.sh ] && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage triage --observed <minutes>` — the script resolves the configured stage multiplier (including per-operator overrides), multiplies, and rounds up to a 15-minute increment (minimum `15m` for non-zero work; `0m` when the multiplier is `0`). **Verify before writing:** the rounded `effort` string MUST be `0m` or an exact multiple of 15 minutes; if not, emit a diagnostic naming the bad value, recompute, and continue without halting. Add the increment to `actual_effort`. Because requirement elicitation is part of intake elaboration under the `cadence-triage` lifecycle stage, its effort entry uses `stage: triage`; `/cadence-triage` logs its classification entry in step 3 *prior* to offering `/cadence-elicit`, so this elicitation entry is *additive* and `stage: triage` legitimately holds multiple entries. Log this effort strictly on the **parent** `$ticket_id` — decomposition children receive no separate elicitation effort entry.
 
-**Project to the bound tracker.** Invoke the repository's **designated tracker sync skill** (resolved from `CADENCE_ORG.md` §9, Tracker Binding) once for `$ticket_id` at the conclusion of the operation to project the updated `problem.md`/`metadata.yaml` and post the new `stage_effort` worklog (`CADENCE_ORG.md` §9, Projection triggers & sync discipline).
+**Project to the bound tracker.** Invoke the repository's **designated tracker sync skill** (resolved from `CADENCE_ORG.md#tracker-binding`) once for `$ticket_id` at the conclusion of the operation to project the updated `problem.md`/`metadata.yaml` and post the new `stage_effort` worklog (`CADENCE_ORG.md#tracker-binding`).
 
 Whenever a decomposition transaction committed in step 4d (all children `created` or `duplicate`), invoke that same tracker sync skill once for each committed `{child_ticket_id}`, projecting the newly created children now that the atomic transaction has succeeded.
 
@@ -323,5 +323,5 @@ When `PI-006` is Trivial or Low tier, halts immediately citing the tier and `doc
 When `specs/PI-007/problem.md` already contains `## Elicited Intent`, displays a 1–2 line summary of the existing section and prompts for confirmation before overwriting.
 
 ## Local Model Offload Integration (:11434)
-- Step 0 automatically calls `local_semantic_embed` (`embedding` on `:11434`) and/or `repo-scout` (`inference` on `:11434`) to gather codebase context and prior insights before candidate composition (step 3a) and plurality split analysis (step 4c).
+- When local offload (`:11434`) is reachable, Step 0 optionally calls `local_semantic_embed` (`embedding` on `:11434`) and/or `repo-scout` (`inference` on `:11434`), degrading cleanly to cloud-only `Grep`/`Glob` if offline to gather codebase context and prior insights before candidate composition (step 3a) and plurality split analysis (step 4c).
 - Candidate rubric filtering, interactive elicitation, and verbatim capture remain 100% owned by the primary orchestrating tier.

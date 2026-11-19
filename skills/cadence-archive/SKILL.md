@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Glob Grep Bash Skill
 
 ## Task
 
-Archive the completed (or cancelled) ticket `$ticket_id`. Delegate core archival file moves, summary generation, and promotions to the `cadence-archivist` subagent, and enforce the inbound dead-citation sweeps, insight-register gates, and follow-up backstop dispositions.
+Archive the completed (or cancelled) ticket `$ticket_id`. Delegate file relocation, summary authoring, insight/ADR promotions, and dispositioning dead-citation hits to `cadence-archivist`, while `/cadence-archive` itself executes the two-pass `dead-citation-gate.sh` sweeps, insight-register gates, follow-up backstop dispositions, and bound tracker sync (`CADENCE_ORG.md#tracker-binding`).
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
 
 **The close-out path (entry state (b)).** Because a cancelled ticket has no merge commit, never fabricate merge data:
 - **HALT when no cancellation reason is recorded.** Whenever `merged_at` is empty **and** `resolution:` is missing, empty, or whitespace-only, **halt immediately**. Emit `archive.close_out_reason_absent` citing `$ticket_id` and the unpopulated `resolution:` attribute. Perform no file moves, create no `summary.md`, add no `CHANGELOG.md` entry, and run no tracker sync — halting cleanly leaves zero partial state behind. Instruct the operator to populate `resolution:` in `specs/$ticket_id/metadata.yaml` (following the normative schema comment in `specs/TEMPLATE/metadata.yaml`) and re-invoke `/cadence-archive $ticket_id`.
-- **This halt applies EXCLUSIVELY to entry state (b) and never triggers on entry state (a).** Because nothing in the standard merge flow populates `merged_at`, genuinely merged tickets routinely arrive at `/cadence-archive` with both `merged_at` and `resolution:` empty (e.g., `archive/BTG-113` and `archive/PI-003`). Tickets entering via branch (a) bypass this check completely.
+- **This halt applies EXCLUSIVELY to entry state (b) and never triggers on entry state (a).** Because protected `<integration-branch>` merges avoid direct post-merge `metadata.yaml` commits on `<integration-branch>`, genuinely merged tickets routinely arrive at `/cadence-archive` with both `merged_at` and `resolution:` empty (e.g., `archive/BTG-113` and `archive/PI-003`). Tickets entering via branch (a) bypass this check and backfill `merged_at` from the merge commit / forge PR timestamp inside the `archive/{type}/{id}` PR branch if unset.
 - **CARVE-OUT -- terminal disposition already RATIFIED and already ASSERTED by a live test. Evaluate this before any other check on the close-out path.** Whenever `$ticket_id`'s terminal disposition is already documented inside a **ratified decision record** belonging to another ticket **and** is actively guarded by a **live automated assertion** inspecting `$ticket_id`'s files, the close-out **may proceed under three strict conditions**. Emit `archive.closeout.disposition_already_asserted`, citing the ratifying decision entry, every asserting test script discovered, and the exact repointing applied to each. All three conditions below are mandatory:
 
   1. **Carry the ratified disposition forward verbatim without re-adjudicating it.** Archival relocates the directory and sets terminal `status: archived`; it never re-evaluates or rewords a disposition already ratified by another ticket's gate. Set `resolution:` to the exact disposition token used by that ratified decision.
@@ -46,7 +46,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
 1. **Read the ticket's archival inputs and match affected flow docs via `local_semantic_embed`:**
    - Read `specs/$ticket_id/metadata.yaml` (lifecycle status, URLs, timestamps, effort ledger)
    - Read `specs/$ticket_id/submission.md` (resolution summary and review/maintainer discussion record, if present)
-   - **Automatic Semantic Flow Matching (`local_semantic_embed`).** Automatically invoke `local_semantic_embed` (`embedding` on `:11434`) to compare the ticket's specification/summary against `docs/flows/*.md`, `docs/ADR/*.md`, and `docs/agentic-sdlc/intent-insights.md`. Pass the matched flow documents and related ADRs to `cadence-archivist` in Step 2 so flow-documentation update proposals and ADR cross-references are grounded without brute-force reading of unrelated docs.
+   - **Optional Semantic Flow Matching (`local_semantic_embed`, Cloud-Only Fallback).** When local offload (`:11434`) is reachable, invoke `local_semantic_embed` (`embedding` on `:11434`) to compare the ticket's specification/summary against `docs/flows/*.md`, `docs/ADR/*.md`, and `docs/agentic-sdlc/intent-insights.md` (degrading cleanly to `Grep`/`Glob` when `:11434` is unavailable). Pass any matched flow documents and related ADRs to `cadence-archivist` in Step 2.
 
 1b. **Disposition recorded `adr-owed` findings** prior to delegating to `cadence-archivist` (`PROD_CADENCE-015`). First, enforce `docs/policies/finding-classes.md` Routing step 1's unlabelled-entry check across all undispositioned Non-Blocking items in `submission.md`'s `## Discussion`, ensuring any human-supplied class label (including `adr-owed`) is written as a Routing step 1 note before `adr-owed` items are gathered. Next, extract every `[adr-owed]` item from `## Discussion` (live path) — including items tagged `adr-owed` via a Routing step 1 note ("read it exactly as if" rule) — and display each item alongside its recorded trigger precondition and current evidence (`docs/policies/finding-classes.md`, *adr-owed at archive*). The human operator selects either **promote** (author the ADR now) or **defer-with-reason** (never re-litigating whether the ADR was owed in the first place). Write each ruling as a single line in `## Discussion` prior to Step 2:
    - Items chosen for **promotion** are passed directly to `cadence-archivist` (Step 2) as mandatory ADR inputs (never re-evaluated or duplicated from `decisions.md`).
@@ -55,16 +55,15 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
    - When zero `[adr-owed]` items exist, proceed directly to Step 2.
    Any `[adr-owed]` item that reaches Step 3's exit check neither promoted into a concrete `docs/ADR/` file nor dispositioned under `Follow-ups created` fails archival verification with `archive.adr_owed.undispositioned`.
 
-2. **Delegate to `cadence-archivist` (`Fast-mechanical` tier, `high` effort).** Supply the ticket artifacts, Step 1's `local_semantic_embed` flow matches, and Step 1b's promoted `adr-owed` rulings so the subagent will:
+2. **Delegate to `cadence-archivist` (`Fast-mechanical` tier, `high` effort).** Supply the ticket artifacts, Step 1's flow matches, and Step 1b's promoted `adr-owed` rulings so the subagent will:
    - Finalize `submission.md` (recording final status, discussion, and merge commit resolution on entry path (a))
    - Relocate `specs/$ticket_id/` to `archive/$ticket_id/`
+   - Backfill `merged_at` in `archive/$ticket_id/metadata.yaml` from the merge commit / forge PR timestamp if unset on entry path (a), and set `status: archived` + `archived_at`
    - Author `archive/$ticket_id/summary.md` incorporating git history metrics
-   - **Record the archive stage effort** — following `docs/agentic-sdlc/CADENCE_ORG.md` "Actual Effort Accumulation", append an `archive` entry to `stage_effort` (`at` = exact UTC completion timestamp from `date -u +%Y-%m-%dT%H:%M:%SZ`, never rounded, midnight, or date-only) with `effort` computed via `([ -x ci-templates/scripts/stage-effort.sh ] && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage archive --observed <minutes>` (applying the configured stage multiplier to observed archival minutes and rounding up to a 15-minute multiple), and add that increment to `actual_effort` inside `archive/$ticket_id/metadata.yaml` (never recomputing `actual_effort` from git log timestamps). The tracker sync below projects this entry as the archive stage worklog.
+   - **Record the archive stage effort** — following `CADENCE_ORG.md#actual-effort-accumulation`, append an `archive` entry to `stage_effort` (`at` = exact UTC completion timestamp from `date -u +%Y-%m-%dT%H:%M:%SZ`, never rounded, midnight, or date-only) with `effort` computed via `([ -x ci-templates/scripts/stage-effort.sh ] && ci-templates/scripts/stage-effort.sh || processes/ci-templates/scripts/stage-effort.sh) --stage archive --observed <minutes>` (applying the configured stage multiplier to observed archival minutes and rounding up to a 15-minute multiple), and add that increment to `actual_effort` inside `archive/$ticket_id/metadata.yaml` (never recomputing `actual_effort` from git log timestamps)
    - Update `CHANGELOG.md` (following Keep a Changelog structure)
-   - Promote qualifying architectural decisions to `docs/ADR/` and reusable intent insights to `docs/agentic-sdlc/intent-insights.md`
-   - Project the archival state to the repository's bound tracker (resolved from `CADENCE_ORG.md#tracker-binding`; halt loudly if unbound when a tracker sync is required) using **owned-items-only scoped projection** (touching only items owned by this repository)
-   - Draft proposed updates for any matched `docs/flows/*.md` files surfaced in Step 1 (flagged for human review)
-   - Delete or clean up the merged feature branch
+   - Promote qualifying architectural decisions to `docs/ADR/`, reusable intent insights to `docs/agentic-sdlc/intent-insights.md`, and `Closed by: $ticket_id` closure notes onto matching `PROD-NNN` records in `docs/agentic-sdlc/production-insights.md`
+   - Draft proposed updates for any matched `docs/flows/*.md` files surfaced in Step 1 (flagged for human review) and return all outputs for Step 2b–2f completion (subagents never execute tracker sync skills)
 
 2b. **Sweep inbound citations to `$ticket_id` (`PROD_CADENCE-009`) — blocking whenever the classifier script is installed.**
 
@@ -87,9 +86,9 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
     bash "$DEAD_GATE" --id $ticket_id
     ```
 
-    **Automatic Output Triage (`offload_log_triage`).** Whenever `dead-citation-gate.sh` exits non-zero or emits violation hits exceeding 30 lines, automatically pass its output through `offload_log_triage` (`inference` on `:11434`, saving the complete numbered raw output to `/tmp/agy-last-triage.log`) to extract every verbatim hit, classification tag (`NOT-A-COMMENT`, etc.), and exact `file:line` coordinate.
+    **Optional Output Triage (`offload_log_triage`).** Whenever `dead-citation-gate.sh` exits non-zero or emits violation hits exceeding 30 lines and local offload (`:11434`) is reachable, pass its output through `offload_log_triage` (`inference` on `:11434`, saving the complete numbered raw output to `/tmp/agy-last-triage.log`; otherwise inspect directly) to extract every verbatim hit, classification tag (`NOT-A-COMMENT`, etc.), and exact `file:line` coordinate. Route exit-`1` hits back to `cadence-archivist` (or disposition inline) via `REPOINT`/`EXEMPT`.
 
-    This invokes the **exact same script** used by the `dead-citation` CI gate row and by Step 2c below — one shared classifier across all three call sites. (In adopter repositories that have not copied the optional Beta `run-gates.sh` harness, Step 2b and Step 2c are the sole callers.) The classifier **detects, classifies, and blocks; it never auto-edits files.**
+    This invokes the **exact same script** used by the `dead-citation` CI gate row and by Step 2c below — one shared classifier across all three call sites. (In adopter repositories without a CI wrapper harness, Step 2b and Step 2c are the sole callers.) The classifier **detects, classifies, and blocks; it never auto-edits files.**
 
     Interpret the script's exit code across **three distinct branches** (`0 clean ; 1 on a violation ; 2 on setup failure`):
     - **Exit 0:** clean sweep; proceed to Step 2c.
@@ -174,7 +173,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
     [ -s "$DEAD_GATE" ] && bash "$DEAD_GATE" --except-id $ticket_id
     ```
 
-    Whenever the output exceeds 30 lines, automatically pass it through `offload_log_triage` (`inference` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`).
+    Whenever output exceeds 30 lines and `:11434` is reachable, pass it through `offload_log_triage` (`inference` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`; else inspect directly).
 
     `--except-id $ticket_id` scans every archived ticket ID in the repository **except** `$ticket_id`. Together, Step 2b (`--id $ticket_id`) and Step 2c (`--except-id $ticket_id`) partition the entire `archive/` set with zero overlap and complete coverage — subject to one documented carve-out: files carrying a **blanket file-level exemption** in `dead-citation-exemptions.txt` (such as the append-only ledger `docs/agentic-sdlc/intent-insights.md`, per BTG-133 DEC-033) are excluded from both passes by design.
 
@@ -221,7 +220,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
     bash "$AUTH_GATE" --path docs/agentic-sdlc/production-insights.md
     ```
 
-    (If output exceeds 30 lines, automatically compact via `offload_log_triage` on `:11434`.) This runs the **same classifier** invoked by the `authored-doc` CI gate, `/cadence-release` step 4b, and triage's `PROD`-entry append:
+    (If output exceeds 30 lines and `:11434` is reachable, compact via `offload_log_triage` on `:11434`; else inspect directly.) This runs the **same classifier** invoked by the `authored-doc` CI gate, `/cadence-release` step 4b, and triage's `PROD`-entry append:
     - **Exit 0:** proceed to Step 2e.
     - **Exit 1:** remediate each hit by either generalizing the org-specific phrase in the newly written prose or adding a sentence-anchored exemption row in `ci-templates/scripts/authored-doc-ledgers.sh` (anchored strictly to the offending **sentence**, never blanket-exempting the entire file). **Never edit historical archived `PROD-NNN` entries in place**; use a sentence-anchored ledger row for immutable historical records. Record every hit and disposition in `archive/$ticket_id/summary.md`.
     - **Exit 2:** **HALT** immediately on setup failure.
@@ -231,9 +230,12 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
     Execute **Steps a–e** of [followup-disposition.md](../cadence-review/references/followup-disposition.md) with `<gate>` = `/cadence-archive`:
     - **(a) Enumerate & gather candidates:** halt unlabelled items with `finding.class.unlabelled` (any newly labelled `adr-owed` entry here is recorded `Deferred` and added to candidates alongside Step 1b's deferred `adr-owed` and un-dispositioned `out-of-scope-defect` items; zero candidates -> `none owed` + tally).
     - **(b) Capability floor:** take degraded deferral (`followup.filing.composition_unavailable` / `followup.filing.confirmation_channel_unavailable`) if composition or confirmation is absent.
-    - **(c) Semantic dedupe & confirm:** search `specs/` and `archive/` via `local_semantic_embed` / `repo-scout` (`local-coprocessor` tier; halt with `followup.dedupe.check_unavailable` on unreadable root; archived-only matches stay `new`).
+    - **(c) Semantic dedupe & confirm:** when `:11434` is reachable, search `specs/` and `archive/` via `local_semantic_embed` / `repo-scout` (falling back to `Grep`/`Glob` if offline; halt with `followup.dedupe.check_unavailable` on unreadable root; archived-only matches stay `new`).
     - **(d) File/fold confirmed candidates:** invoke `/cadence-triage --file-only <draft-path>` (`followup.filing.draft_cleanup_failed` on cleanup miss; note new live `specs/<new-id>/` tickets are not dead citations); verify `<id>` is `draft` or `triaged` before folding into `problem.md` `## Notes`.
     - **(e) Record dispositions:** write canonical `Follow-ups created` forms (`filed`, `duplicate`, `folded`, `none owed`, `declined`, `deferred`) + per-class tally.
+
+2f. **Project archival state & stage effort to bound tracker (Skill-Owned Sync):**
+    After Steps 2b–2e complete cleanly, `/cadence-archive` resolves `CADENCE_ORG.md#tracker-binding` and executes the repository's bound `/cadence-sync-*` skill once for `$ticket_id` using **owned-items-only scoped projection** to sync `status: archived` and the `archive` stage worklog (logging `"no external tracker bound; skipped"` when `None`). Then clean up any remaining merged local feature branch once archival PR changes are committed cleanly (`archive/{type}/{id}`).
 
 3. **Verify archival exit criteria:**
    - All ticket artifacts reside under `archive/$ticket_id/` and `archive/$ticket_id/summary.md` exists
@@ -262,7 +264,7 @@ When the ticket satisfies **neither** (a) nor (b), stop and inform the operator 
 /cadence-archive TT-6547
 ```
 
-## Local Model Offload Integration (:11434)
-- Step 1 and Step 2e.c automatically invoke `local_semantic_embed` (`embedding` on `:11434`) to match archived ticket changes against `docs/flows/*.md` and deduplicate follow-up candidates against `specs/` and `archive/`.
-- Steps 2b, 2c, and 2d automatically pipe `dead-citation-gate.sh` and `authored-doc-gate.sh` output exceeding 30 lines through `offload_log_triage` (`inference` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`).
-- Archival summary authoring, ADR/insight promotion, and citation disposition decisions remain 100% owned by `cadence-archivist` (`Fast-mechanical` tier at `high` effort, routed by `CADENCE_ORG.md#model-tier-mapping`).
+## Local Model Offload Integration (:11434, Optional Cloud-Only Fallback)
+- When `:11434` is reachable, Step 1 and Step 2e.c invoke `local_semantic_embed` (`embedding` on `:11434`) to match archived ticket changes against `docs/flows/*.md` and deduplicate follow-up candidates against `specs/` and `archive/` (degrading cleanly to cloud-only `Grep`/`Glob` when offline).
+- When `:11434` is reachable, Steps 2b, 2c, and 2d pipe `dead-citation-gate.sh` and `authored-doc-gate.sh` output exceeding 30 lines through `offload_log_triage` (`inference` on `:11434`, saving raw numbered output to `/tmp/agy-last-triage.log`; else direct inspection).
+- Archival summary authoring, ADR/insight promotion, and citation disposition decisions remain owned by `cadence-archivist` (`Fast-mechanical` tier at `high` effort, routed by `CADENCE_ORG.md#model-tier-mapping`), while `/cadence-archive` owns both gate sweeps and Step 2f tracker sync.

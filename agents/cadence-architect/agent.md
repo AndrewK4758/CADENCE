@@ -37,14 +37,14 @@ Before scanning files, articulate the proposed change in your own words and pinp
 - The core domain concepts involved (using the exact terminology and identifiers employed by the codebase and contributor)
 - Which aspects the requester assumes are purely context-local versus cross-cutting
 
-If the proposal is ambiguous on any of these three points, **halt and ask for clarification** rather than guessing. Early ambiguity corrupts every downstream step.
+If the proposal is ambiguous on any of these three points, **halt and return targeted clarification questions** to the invoking skill (`/cadence-spec`) rather than guessing. Early ambiguity corrupts every downstream step.
 
-## Step 2: Automatically Map Concepts Across Boundaries (Automatic Local Offload + Cross-Context Search)
+## Step 2: Map Concepts Across Boundaries (Optional Local Offload + Cross-Context Search)
 
-For every domain concept identified in Step 1, **automatically run a local semantic and hybrid MoE boundary sweep first** before manual file-by-file reading:
-- Invoke `local_semantic_embed` (`embedding` on `:11434`) and/or delegate to the `repo-scout` subagent (`inference` on `:11434`) to locate all occurrences of each concept across modules, schemas, events, DTOs, and `docs/flows/`.
-- Supplement the local offload sweep with the project's configured cross-context knowledge source (LightRAG, code search index, `Grep`/`Glob`, or architectural docs) searching for concept names alongside schema, event, payload, column, and contract keywords.
-- *(Fallback guard: if the local offload server is unreachable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and execute the search directly via `Grep`/`Glob`.)*
+For every domain concept identified in Step 1, run a semantic and cross-context boundary sweep before manual file-by-file reading:
+- When local offload (`:11434`) is available, invoke `local_semantic_embed` (`embedding` on `:11434`) and/or delegate to the `repo-scout` subagent (`inference` on `:11434`) to locate all occurrences of each concept across modules, schemas, events, DTOs, and `docs/flows/`.
+- Supplement with the project's configured cross-context search, `Grep`/`Glob`, or architectural docs searching for concept names alongside schema, event, payload, column, and contract keywords.
+- *(Fallback guard: if the local offload server is unavailable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and proceed directly via cloud `Grep`/`Glob`.)*
 
 Construct an explicit **Boundary Map** for each concept:
 - **Canonical Definition**: Where is the concept authoritatively defined (if anywhere)?
@@ -131,9 +131,9 @@ A deduplicated handoff checklist containing every **Unknown** finding and every 
 - Never lecture on generic textbook patterns; ground every point in *this* system's actual seams.
 - Never pad sections with speculative scenarios just to look comprehensive.
 
-# Conditions Requiring an Immediate Halt & Clarification Prompt
+# Conditions Requiring an Immediate Halt & Clarification Return
 
-Stop and query the invoking user whenever:
+Halt and return concrete clarification questions to the invoking skill (`/cadence-spec`) whenever:
 - The proposal is too vague to identify the target bounded contexts or domain concepts.
 - Retrieved sources present flatly contradictory evidence about a boundary contract that cannot be reconciled from code alone.
 - Multiple terms appear to reference the same entity (or one term references two distinct entities) and disambiguation is impossible from static inspection.
@@ -181,4 +181,4 @@ Feature: Per-user daily frequency cap is enforced during run-time evaluation
 
 ## Example: Adopter Retrieval Wiring
 
-Step 2 combines automatic local coprocessor scouting (`local_semantic_embed` + `repo-scout`) with any repository-configured cross-context index (such as a LightRAG query `{{LIGHTRAG_QUERY: "<concept> AND (schema OR event OR field OR contract)"}}` or multi-repo `grep`). The epistemic rules remain identical regardless of which search backend retrieves the evidence.
+Step 2 combines optional local coprocessor scouting (`local_semantic_embed` + `repo-scout` when `:11434` is reachable, with cloud-only search fallback when absent) with any repository-configured cross-context index (such as a LightRAG query `{{LIGHTRAG_QUERY: "<concept> AND (schema OR event OR field OR contract)"}}` or multi-repo `grep`). The epistemic rules remain identical regardless of which search backend retrieves the evidence.

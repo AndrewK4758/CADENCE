@@ -21,12 +21,12 @@ python3 .agents/skills/cadence-build/scripts/read_state.py <TICKET-ID> \
   || python3 skills/cadence-build/scripts/read_state.py <TICKET-ID>
 ```
 
-Never parse `metadata.yaml` or cycle counts manually. `read_state.py` validates `CADENCE_ORG.md` and `§15 Branch-Strategy Binding` markers (`integration-branch` and `branch-naming-convention`) and halts on ticket-ID case mismatches or absent `read_state.py` (`read_state_unavailable`).
+Never parse `metadata.yaml` or cycle counts manually. `read_state.py` validates `CADENCE_ORG.md` and `#branch-strategy-binding` markers (`integration-branch` and `branch-naming-convention`) and halts on ticket-ID case mismatches or absent `read_state.py` (`read_state_unavailable`).
 
-## Step 0 — Mandatory Automatic Local Offload
+## Step 0 — Optional Local Offload (:11434, Cloud-Only Fallback)
 
-1. **Test/Build Log Compaction (`offload_log_triage`):** Pipe every test, build, linter, or gate output exceeding 30 lines through `offload_log_triage` (`:11434`, raw log saved to `/tmp/agy-last-triage.log`).
-2. **Pre-Review Mechanical Diff Scan (`offload_deep_review`):** Before creating/updating the implementation MR and at Step 0 of each `/cadence-review` cycle, invoke `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd`) to pre-check the `<400`-line file ceiling, comment discipline, and CHORD seams.
+1. **Test/Build Log Compaction (`offload_log_triage`):** When `:11434` is reachable, pipe test, build, linter, or gate output exceeding 30 lines through `offload_log_triage` (`:11434`, raw log saved to `/tmp/agy-last-triage.log`; else inspect directly).
+2. **Pre-Review Mechanical Diff Scan (`offload_deep_review`):** When `:11434` is reachable, before creating/updating the implementation MR and at Step 0 of each `/cadence-review` cycle, invoke `offload_deep_review` (`diff_range="<integration-branch>...HEAD"`, `cwd`) to pre-check the `<400`-line file ceiling, comment discipline, and CHORD seams (degrading cleanly to direct review if unavailable).
 
 ## Step 1 — Resolve the Argument
 
@@ -50,7 +50,7 @@ Run `read_state.py` and evaluate `status` jointly with `tier`:
 | unreadable, empty, or unknown | **halt**, quoting raw `status` / `tier` verbatim (never default unknown tier to `Low`) |
 
 - **Gate at `spec-approved` (Medium/High):** Run `git ls-tree origin/<integration-branch> specs/<TICKET-ID>/` (corroborating `SPEC_MR` when online). Because `/cadence-define` writes `status: spec-approved` into the spec branch commit before merging, `spec.md` absent from `origin/<integration-branch>` means **not yet** admitted — direct operator to merge the spec MR via `/cadence-define` first, never cut an implementation branch against an unmerged spec.
-- **Gate at `in-review`:** If `merge_request` is populated, check `gh pr view "$MERGE_REQUEST" --json state,isDraft,url`: `OPEN` + `isDraft: false` -> run the *Optional Watch Handoff Prompt* below and exit cleanly directing to `/cadence-close` (or `/cadence-maintain`); `MERGED` -> clean exit noting stale `status` ready for `/cadence-archive`; `CLOSED` -> **halt**; offline -> inspect local `ledger_cycles_completed` & `submission.md` and avoid redundant cycles if latest blocking count is `0`.
+- **Gate at `in-review`:** If `merge_request` is populated, check `gh pr view "$MERGE_REQUEST" --json state,isDraft,url` (or `glab mr view "$MERGE_REQUEST" --output json` on GitLab): `OPEN` + `isDraft: false` -> run the *Optional Watch Handoff Prompt* below and exit cleanly directing to `/cadence-close` (or `/cadence-maintain`); `MERGED` -> clean exit noting stale `status` ready for `/cadence-archive`; `CLOSED` -> **halt**; offline -> inspect local `ledger_cycles_completed` & `submission.md` and avoid redundant cycles if latest blocking count is `0`.
 
 ## Step 3 — State Loop
 
@@ -58,18 +58,18 @@ Per `.agents/skills/cadence-build/references/worktree-and-ledger.md`, verify run
 
 ### The Trivial Path
 `/cadence-implement` refuses `tier: Trivial`. Execute directly in this run without handing back a to-do list:
-1. Cut branch per §15 from `origin/<integration-branch>`, apply the Trivial edit, and log the ad-hoc path in `specs/<TICKET-ID>/decisions.md`.
-2. Push, open draft MR targeting `<integration-branch>`, record `merge_request` and `status: in-review` in `metadata.yaml`, commit, and push.
+1. Cut branch per `#branch-strategy-binding` from `origin/<integration-branch>`, apply the Trivial edit, and log the ad-hoc path in `specs/<TICKET-ID>/decisions.md`.
+2. Push, open draft PR/MR targeting `<integration-branch>` (`gh pr create --draft` or `glab mr create --draft`), record `merge_request` and `status: in-review` in `metadata.yaml`, commit, and push.
 3. Publish via *Finishing the Implementation MR* (run zero `/cadence-review` cycles and zero `cadence-run:cycle` ledger entries).
 
 ### Once-Per-Run Sprint Confirmation (Low / Medium / High)
-Resolve §13 once before Cycle 1 so the operator is never prompted repeatedly across cycles:
+Resolve `#sprint-enforcement-binding` once before Cycle 1 (keeping `#integration-branch-enforcement` synchronized with `/cadence-implement`) so the operator is never prompted repeatedly across cycles:
 ```bash
 ( [ -x ci-templates/scripts/org-binding-resolve.sh ] \
   && bash ci-templates/scripts/org-binding-resolve.sh --sprint <PREFIX> \
   || bash processes/ci-templates/scripts/org-binding-resolve.sh --sprint <PREFIX> )
 ```
-Halt verbatim on any non-zero exit (including `sprint.binding.form_removed` / `sprint.binding.enabled_without_tracker`).
+Halt fail-closed on missing/unreadable `org-binding-resolve.sh` or any non-zero exit (including `sprint.binding.form_removed` / `sprint.binding.enabled_without_tracker`).
 - `enabled=no` → prompt operator once (`Confirm`).
 - `enabled=yes` → run resolved `<skill> sprint-check <TICKET-ID>` once (`in-sprint` → `Proceed`; `not-in-sprint` → **halt**; `inconclusive` → `Block` **halt** or `Confirm` prompt once).
 - On `Confirm`: explicit `yes` required (no/empty/unattended -> **halt**); write dated confirmation + resolved git/OS operator identity to `specs/<TICKET-ID>/decisions.md` **before Cycle 1**, then relay `yes` citing that entry during each cycle unless verdict shifts to `Block` (`not-in-sprint`).
@@ -77,9 +77,9 @@ Halt verbatim on any non-zero exit (including `sprint.binding.form_removed` / `s
 ### Implement / Review Cycle Loop (Cap = 4)
 1. **Starting cycle count:** read `ledger_cycles_completed` from `read_state.py` (never count `stage_effort`; fall back to counting verdict blocks in `submission.md` only if legacy ticket has `0` markers). Check consistency between marker count and verdict block count — **halt** if they diverge.
 2. **Each iteration:**
-   - **Schema migration check (`spec.md` or `--with-migrations` on Cycle 1):** Before or immediately alongside entity changes in `/cadence-implement`, if `--with-migrations` is supplied or `specs/<TICKET-ID>/spec.md` declares database/schema migrations (`expand`/`contract`), invoke `/cadence-migrate <TICKET-ID>` (`cadence-migration-author`) first so reversible expand migrations and apply/rollback/reapply verification land in the branch before review.
    - Invoke `/cadence-implement <TICKET-ID>` (relaying the run-level sprint confirmation if `Confirm`).
-   - If `merge_request` is still empty, immediately push and open the implementation MR **as a draft** targeting `<integration-branch>`, record `merge_request` in `metadata.yaml`, commit, and push (keeps draft until blocking == 0).
+   - **Schema migration check (`spec.md` or `--with-migrations`):** Whenever `--with-migrations` is supplied or `specs/<TICKET-ID>/spec.md` declares database/schema migrations (`expand`/`contract`), invoke `/cadence-migrate <TICKET-ID>` (`cadence-migration-author`) immediately after `/cadence-implement` produces domain/entity changes so reversible expand migrations and apply/rollback/reapply verification land cleanly before code review.
+   - If `merge_request` is still empty, immediately push and open the implementation PR/MR **as a draft** targeting `<integration-branch>` (`gh pr create --draft` / `glab mr create --draft`), record `merge_request` in `metadata.yaml`, commit, and push (keeps draft until blocking == 0).
    - Invoke `/cadence-review <TICKET-ID>` (which runs `verify-facts.sh --trace`, evaluates `security-trigger.sh`, and dispatches `cadence-security-auditor` alongside `cadence-reviewer` whenever `decision=TRIGGER`), **holding** non-blocking follow-up candidates during the loop (see below).
    - Append `<!-- cadence-run:cycle n=<N> phase=code-review blocking=<B> nonblocking=<NB> at=<UTC> -->` to `submission.md` `## Discussion`, commit, push, and verify `read_state.py` `ledger_cycles_completed` incremented by `1`.
    - **If `blocking == 0`:** exit loop -> for **Low** tier, reconcile & decide held follow-ups first -> run *Finishing the Implementation MR*.

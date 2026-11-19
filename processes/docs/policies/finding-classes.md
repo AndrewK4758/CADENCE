@@ -1,7 +1,7 @@
 # Non-Blocking Finding Classes
 
-**Status:** Normative. Consumed by `cadence-reviewer`, `cadence-maintainer`, `/cadence-review` step 6,
-`/cadence-maintain` step 6b, `/cadence-archive` steps 1b and 2e, and `cadence-archivist` step 6.
+**Status:** Normative. Consumed by `cadence-reviewer`, `cadence-security-auditor`, `cadence-maintainer`,
+`/cadence-review` step 6, `/cadence-maintain` step 6b, `/cadence-archive` steps 1b and 2e, and `cadence-archivist` step 6.
 This policy is the single authoritative definition of the five non-blocking finding classes, the
 high-value bar, the bracketed entry grammar, classification ownership, and disposition routing.
 Every consuming skill and role **points** to this document; none restates it (`CADENCE_DIRECTIVES.md` Behavior 6).
@@ -93,7 +93,7 @@ entry; it never edits the original entry in place.
    ticket and records `Duplicate of <id> -- ...`. `fold into` -> re-verify the target ticket's fold
    eligibility (`draft` or `triaged` status per step 4) at write time, append a dated bullet to the
    target's `problem.md` under `## Notes`, record `Folded into <id> -- ...`, and execute the bound
-   `CADENCE_ORG.md` §9 tracker sync for `<id>` at the end of the operation -- reporting any failed
+   `CADENCE_ORG.md#tracker-binding` tracker sync for `<id>` at the end of the operation -- reporting any failed
    tracker projection loudly rather than skipping it silently (if no tracker is bound, state so
    explicitly). If the target ticket has advanced past `draft`/`triaged` by write time, re-present
    the candidate as `new` citing the target rather than folding into an in-flight spec. Never record

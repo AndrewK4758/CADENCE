@@ -18,13 +18,13 @@ Reviewers may also escalate a ticket at any human gate: "This exhibits High-tier
 
 When a change modifies a tier, gate, or policy contract in this file or any other `docs/policies/` governance document — **or, since [ADR_CADENCE-0100](../ADR/0100-the-policy-tooling-enumeration-obligation-extends-to-the-core-surface-registry-and-the-org-bindings.md), `docs/policies/cadence-surfaces.md` itself (including its table SHAPE: a new table, a new column, a renamed column — not only its rows) or any `CADENCE_ORG.md` binding, meaning any section that is a registered surface under the class predicate *a section is a registered surface iff it is a per-adopter-substituted contract that at least one CADENCE tool or role resolves as a value, **and** is declared as a contract rather than as a practice* (both limbs bind; the second excludes a section that declares itself not a binding, even where a tool does parse it)** — the spec author must **enumerate every skill, agent, and doc that operationalizes or describes the affected policy, and confirm each honors the new contract.** Any tool or doc that does not is fixed in the same change or filed as a named follow-on ticket in the same change -- never left as a dangling risk note. Record the enumeration, which locations resolved, and its outcome in the spec's Compatibility Impact section so the check is auditable at the Code Review and Maintainer gates, not performed silently.
 
-**Resolve the locations before you search; never assume them.** They are the runtime-neutral source of record where the repository has one -- `artifacts/commands/` (skills), `artifacts/roles/` (agents) -- and the installed definitions the host runtime actually loads, in the install tree of the runtime bound in `docs/agentic-sdlc/CADENCE_ORG.md#runtime-binding` (Runtime Binding), which names that tree so you never have to assume a runtime (e.g., `.agents/skills/` and `.agents/agents/`, or `.gemini/` on Antigravity). An adopting repository holds the installed definitions but NOT the runtime-neutral source, so a scope fixed to the neutral paths alone resolves to nothing there.
+**Resolve the locations before you search; never assume them.** Search the canonical agent/skill definitions in `.agents/skills/` and `.agents/agents/` (in this framework repo, symlinked to `skills/` and `agents/`), as well as any projected runtime install tree bound in `docs/agentic-sdlc/CADENCE_ORG.md#runtime-binding`. Never guess legacy unlinked directory paths.
 
 **Total non-resolution is a halt, never a finding.** If no searched location resolves any skill definition or any agent definition at all, the enumeration is broken, not empty -- halt and name every path searched. Never report "no tooling operationalizes this policy" on the strength of a path that does not exist in this repository (BTG-188).
 
-**Deliberately NOT in scope:** `docs/guides/`, `docs/flows/`, `docs/agentic-sdlc/` narrative documents and the two insight registers. No tool resolves their content as a value, so the same predicate that draws the boundary above keeps them out. This clause and `artifacts/roles/cadence-spec-author.md`'s step-8h scope note are the extension's **two carriers** and must always agree; an extension recorded in only one of them is a drifted representation, not a partial answer.
+**Deliberately NOT in scope:** `docs/guides/`, `docs/flows/`, `docs/agentic-sdlc/` narrative documents and the two insight registers. No tool resolves their content as a value, so the same predicate that draws the boundary above keeps them out. This clause and `.agents/agents/cadence-spec-author/agent.md`'s step-8h scope note are the extension's **two carriers** and must always agree; an extension recorded in only one of them is a drifted representation, not a partial answer.
 
-This is a workflow-embedded forcing function, not a reminder: it exists because a recorded-but-unembedded lesson (PROD_CADENCE-004's) demonstrably failed to prevent recurrence (PROD_CADENCE-005). See [ADR_CADENCE-0013](../ADR/0013-governance-doc-changes-enumerate-operationalizing-tooling.md) for the rationale and `artifacts/roles/cadence-spec-author.md` (step 8h, "Policy-tooling consistency check") -- in an adopting repository, the installed copy of that same agent definition -- for the spec-author's operational procedure.
+This is a workflow-embedded forcing function, not a reminder: it exists because a recorded-but-unembedded lesson (PROD_CADENCE-004's) demonstrably failed to prevent recurrence (PROD_CADENCE-005). See [ADR_CADENCE-0013](../ADR/0013-governance-doc-changes-enumerate-operationalizing-tooling.md) for the rationale and `.agents/agents/cadence-spec-author/agent.md` (step 8h, "Policy-tooling consistency check") -- in an adopting repository, the installed copy of that same agent definition -- for the spec-author's operational procedure.
 
 ### Resolving "registered surface"
 
@@ -66,7 +66,7 @@ Every trigger below that turns on registered surfaces resolves through this rule
 | CI checks (lint, build) | Yes | Yes | Yes |
 | Human reviewer | No — auto-merge if CI passes | Yes — one reviewer | Yes — release manager |
 | Spec (problem.md) | No | No | No |
-| `submission.md` | No | No | **Yes — at `specs/RELEASE-X.Y.Z/submission.md`** |
+| `submission.md` | No | No | **Yes — at `specs/RELEASE-<version>/submission.md`** |
 | Agents | No | No | No |
 | Tests | No (unless doc build/link check) | Yes — verify no breakage | No (release-cut commit is documentation-only) |
 
@@ -165,7 +165,7 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 
 **Examples:** Bug fix within a service, internal refactor (rename, extract method), adding validation to an existing endpoint, performance optimization that doesn't change behavior.
 
-> **`/cadence-implement` at Low tier.** The `/cadence-implement` skill and implementer agent read `metadata.yaml`'s `tier: Low` and accept `problem.md`'s acceptance criteria as the sole spec input -- no `spec.md`, `test-plan.md`, or `status: spec-approved` is required. The implementer derives its Implementation Order directly from the AC checklist using the standard TDD sequencing rule and applies the same strict red-green-accumulate-commit discipline. See `artifacts/commands/cadence-implement.md` (Prerequisites) and `artifacts/roles/cadence-implementer.md` (Inputs / Low tier).
+> **`/cadence-implement` at Low tier.** The `/cadence-implement` skill and implementer agent read `metadata.yaml`'s `tier: Low` and accept `problem.md`'s acceptance criteria as the sole spec input -- no `spec.md`, `test-plan.md`, or `status: spec-approved` is required. The implementer derives its Implementation Order directly from the AC checklist using the standard TDD sequencing rule and applies the same strict red-green-accumulate-commit discipline. See `.agents/skills/cadence-implement/SKILL.md` (Prerequisites) and `.agents/agents/cadence-implementer/agent.md` (Inputs / Low tier).
 
 > **Follow-up filing point, per tier.** A follow-up named at a gate is filed at a gate, via
 > `/cadence-triage --file-only`, on explicit human confirmation. Which gate that is depends on the tier:
@@ -182,7 +182,7 @@ The `submission.md` should ideally be authored on the release branch *before* `g
 > (`docs/policies/finding-classes.md`); `adr-owed` is disposed of at `/cadence-archive` only, at
 > every tier that reaches it.
 
-> **`/cadence-review` at Low tier.** The `/cadence-review` skill and `cadence-reviewer` agent read `metadata.yaml`'s `tier: Low` and review the change against `problem.md`'s Acceptance Criteria checklist (plus `decisions.md` if present) as the behavioral contract. `spec.md` and `test-plan.md` are not produced at Low tier, so their absence is compliant and is never flagged as a process violation; Test Coverage is verified against the AC checklist rather than a `test-plan.md`. Medium/High review is byte-preserved. If the tier is absent or unrecognized, the review falls back to the Medium/High (spec-driven) contract and notes the unresolved tier -- it never assumes Low. See `artifacts/commands/cadence-review.md` (step 2) and `artifacts/roles/cadence-reviewer.md` (Inputs / Low tier).
+> **`/cadence-review` at Low tier.** The `/cadence-review` skill and `cadence-reviewer` agent read `metadata.yaml`'s `tier: Low` and review the change against `problem.md`'s Acceptance Criteria checklist (plus `decisions.md` if present) as the behavioral contract. `spec.md` and `test-plan.md` are not produced at Low tier, so their absence is compliant and is never flagged as a process violation; Test Coverage is verified against the AC checklist rather than a `test-plan.md`. Medium/High review is byte-preserved. If the tier is absent or unrecognized, the review falls back to the Medium/High (spec-driven) contract and notes the unresolved tier -- it never assumes Low. See `.agents/skills/cadence-review/SKILL.md` (step 2) and `.agents/agents/cadence-reviewer/agent.md` (Inputs / Low tier).
 
 ---
 
@@ -272,7 +272,7 @@ not the prose "What's required" tables above — to decide, before implementatio
 artifacts a ticket of a given tier must have, whether the spec-approval human gate applies, and which
 pre-implementation `status` is valid. This table is the **sole authority** the `/cadence-implement` skill
 consults for that decision. Editing a cell here changes `/cadence-implement` behavior with **no** edit to the
-skill source (`artifacts/commands/cadence-implement.md`).
+skill source (`.agents/skills/cadence-implement/SKILL.md`).
 
 The prose tier definitions above remain the human-facing narrative. Where a reader needs the exact
 inputs the skill enforces, **this table is authoritative for the skill**; keep the two consistent, but

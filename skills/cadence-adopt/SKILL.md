@@ -73,7 +73,7 @@ Execute the script (appending `--gitignore-machinery` only when requested by the
 
 When the adopter omits the flag, invoke the script without it (preserving byte-identical default behavior with zero `.gitignore` I/O). When the flag is supplied, the script writes or replaces a single managed block and reports `.gitignore (machinery block written|replaced)` in its per-file output stream.
 
-Stream stdout and stderr directly to the adopter verbatim. Never alter, condense, or paraphrase the per-file status lines or final summary — they constitute the adoption audit trail. If the script exits non-zero or emits diagnostic/gate output exceeding 30 lines (for example during post-copy gate checks such as `authored-doc-gate.sh` or `dead-citation-gate.sh`), automatically route the noisy log output through `offload_log_triage` (`inference` on `:11434`) to extract verbatim error lines while preserving the complete raw output in `/tmp/agy-last-triage.log`.
+Stream stdout and stderr directly to the adopter verbatim. Never alter, condense, or paraphrase the per-file status lines or final summary — they constitute the adoption audit trail. If the script exits non-zero or emits diagnostic/gate output exceeding 30 lines (for example during post-copy gate checks such as `authored-doc-gate.sh` or `dead-citation-gate.sh`), route noisy log output exceeding 30 lines through `offload_log_triage` (`inference` on `:11434`, falling back to direct log inspection when `:11434` is unavailable) to extract verbatim error lines while preserving the complete raw output in `/tmp/agy-last-triage.log`.
 
 ### 5. Verify the file set landed in the target
 
@@ -89,11 +89,11 @@ If any assertion fails, do NOT report success. Halt with: "Adoption reported suc
 
 Note that `.agents/` is the primary neutral runtime surface (with `.gemini/` serving as the canonical Gemini/Antigravity runtime projection and `.claude/` or other CLI directories projected off `.agents/` per `docs/policies/cli-runtime-adoption-policy.md`).
 
-The script also **seeds the id-allocation ledger** (PI-039): it initializes the reserve ledger (under `git-common-dir`, or a working-tree `.cadence/` fallback), seeds `ADR` to high-water mark 0 unconditionally, and seeds the ticket prefix to 0 whenever §10 is unbound and a concrete prefix can be resolved (a brand-new template repository self-seeds its ticket prefix at `-001` upon the first `--reserve`). Ledger seeding is create-if-absent (re-running adoption never overwrites existing seeds) and fatal on failure; the script verifies ledger resolution (`--peek ADR`) prior to reporting success. The ledger belongs to adopter state and has **no** footprint descriptor row.
+The script also **seeds the id-allocation ledger** (PI-039): it initializes the reserve ledger (under `git-common-dir`, or a working-tree `.cadence/` fallback), seeds `ADR` to high-water mark 0 unconditionally, and seeds the ticket prefix to 0 whenever `CADENCE_ORG.md#id-allocation-binding` is unbound and a concrete prefix can be resolved (a brand-new template repository self-seeds its ticket prefix at `-001` upon the first `--reserve`). Ledger seeding is create-if-absent (re-running adoption never overwrites existing seeds) and fatal on failure; the script verifies ledger resolution (`--peek ADR`) prior to reporting success. The ledger belongs to adopter state and has **no** footprint descriptor row.
 
 ### 6. Report outcome
 
-- When the script exits 0 **and** Step 5 verification passes: output a single line — "Adoption complete. Next steps: see `docs/agentic-sdlc/getting-started.md` §2 (author PROJECT_INTENT.md) and §3 (customize AGENTS.md)."
+- When the script exits 0 **and** Step 5 verification passes: output a single line -- "Adoption complete. Next steps: run `/cadence-onboard` / `/cadence-interview` (or see `docs/guides/workflow/00-problem.md` and `docs/agentic-sdlc/CADENCE_ORG.md`) to author `PROJECT_INTENT.md`, configure bindings, and customize `AGENTS.md`."
 - When the script exits non-zero: output "Adoption script failed with exit code `<N>`. See stderr above." Terminate immediately without printing a success message.
 
 ## Constraints

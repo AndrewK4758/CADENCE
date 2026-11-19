@@ -1,6 +1,6 @@
 # Workflow Step 01 — Triage
 
-> Part of the per-step workflow guide series. This document details the **Triage** step. For the preceding step see [`00-problem.md`](00-problem.md); for the end-to-end workflow overview see [`../getting-started.md`](../getting-started.md) §2.3.
+> Part of the per-step workflow guide series. This document details the **Triage** step. For the preceding step see [`00-problem.md`](00-problem.md); for the per-tier lifecycle matrix see [`../../policies/change-tiers.md`](../../policies/change-tiers.md).
 
 | | |
 |---|---|
@@ -28,7 +28,7 @@ Invoke Triage from your agentic CLI runtime (`.agents/skills/cadence-triage/` or
 /cadence-triage --file-only <draft>    # non-interactive follow-up filing from a review gate
 ```
 
-The `/cadence-triage` skill orchestrates the workflow, resolves the repository's ID-allocation and tracker bindings (`CADENCE_ORG.md` §9 and §10), and delegates codebase exploration and artifact drafting to the **`cadence-triage-agent`** subagent. Because interactive user questioning cannot happen inside a background subagent, any follow-on probe interview (`/cadence-elicit`) runs in the main turn after the subagent returns — see [Probe interview (elicitation)](#probe-interview-elicitation).
+The `/cadence-triage` skill orchestrates the workflow, resolves the repository's ID-allocation and tracker bindings (`CADENCE_ORG.md#tracker-binding` and `#id-allocation-binding`), and delegates codebase exploration and artifact drafting to the **`cadence-triage-agent`** subagent. Because interactive user questioning cannot happen inside a background subagent, any follow-on probe interview (`/cadence-elicit`) runs in the main turn after the subagent returns — see [Probe interview (elicitation)](#probe-interview-elicitation).
 
 ## Entry modes
 
@@ -37,17 +37,17 @@ How `/cadence-triage` originates or loads the work item depends on the argument 
 | Input | Situation | What the skill does |
 |---|---|---|
 | **Ticket ID, local spec exists** (`specs/{id}/` present) | Re-triage of existing work | Reads the existing `specs/{id}/problem.md` as the primary problem statement; tracker refresh is optional. |
-| **Ticket ID, no local spec** | **Seed-read / Import** — issue filed first in the bound tracker | Resolves the bound tracker from `CADENCE_ORG.md` §9/§10, performs a governed one-time seed-read of the tracker issue's summary/description, and seeds `specs/{id}/problem.md` + provenance fields in `metadata.yaml`. |
-| **Free-text description** (or `--file-only <draft-path>`) | Brand-new problem originated from the CLI or a gate disposition | Allocates the next authoritative ticket ID per `CADENCE_ORG.md` §10 (reserving from the bound tracker or minting via `mint-id.sh` when unbound), then creates `specs/{id}/problem.md` and `metadata.yaml` in the same governed operation. |
+| **Ticket ID, no local spec** | **Seed-read / Import** — issue filed first in the bound tracker | Resolves the bound tracker from `CADENCE_ORG.md#tracker-binding` / `#id-allocation-binding`, performs a governed one-time seed-read of the tracker issue's summary/description (inbound `ac_items_file=` permitted as unverified seed bullets; outbound AC-field projection forbidden per `ADR_CADENCE-0011 cl.2`), and seeds `specs/{id}/problem.md` + provenance fields in `metadata.yaml`. |
+| **Free-text description** (or `--file-only <draft-path>`) | Brand-new problem originated from the CLI or a gate disposition | Allocates the next authoritative ticket ID per `CADENCE_ORG.md#id-allocation-binding` (reserving from the bound tracker or minting via `mint-id.sh` when unbound), then creates `specs/{id}/problem.md` and `metadata.yaml` in the same governed operation. |
 
-The resolved ticket ID is **authoritative** and is used verbatim for `specs/{ticket-id}/` and all branch names. When an external allocator is bound in `CADENCE_ORG.md` §10, `/cadence-triage` never fabricates a local fallback ID if the tracker is unreachable — it **halts loudly** (`CADENCE_DIRECTIVES.md` Behavior 5). Furthermore, every ticket-ID allocation is strictly paired in the same operation with `specs/<id>/problem.md` and `metadata.yaml` (`idalloc.reserve.unpaired_artifact_creation`).
+The resolved ticket ID is **authoritative** and is used verbatim for `specs/{ticket-id}/` and all branch names. When an external allocator is bound in `CADENCE_ORG.md#id-allocation-binding`, `/cadence-triage` never fabricates a local fallback ID if the tracker is unreachable — it **halts loudly** (`CADENCE_DIRECTIVES.md` Behavior 5). Furthermore, every ticket-ID allocation is strictly paired in the same operation with `specs/<id>/problem.md` and `metadata.yaml` (`idalloc.reserve.unpaired_artifact_creation`).
 
-## Automatic Local Offload during Triage (`repo-scout` & `local_semantic_embed`)
+## Optional Local Offload during Triage (`repo-scout` & `local_semantic_embed`, Cloud Fallback)
 
-Before scanning files manually, `cadence-triage-agent` automatically leverages CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`) on `:11434`:
+When local offload (`:11434`) is reachable, `cadence-triage-agent` uses CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`, degrading cleanly to cloud-only `Grep`/`Glob` when offline):
 
 1. **Semantic Duplicate & Prior-Art Search (`local_semantic_embed` via `embedding`):** Queries local vector search (port `11434`) across `specs/`, `archive/`, `docs/ADR/`, `docs/agentic-sdlc/production-insights.md`, and `docs/agentic-sdlc/intent-insights.md` to locate semantically related tickets, prior architectural rulings, and recurring failure patterns even when exact keywords differ.
-2. **Parallel Codebase & Boundary Mapping (`repo-scout` via `inference`):** Invokes the read-only `repo-scout` subagent (powered by `local_semantic_embed` + `inference` on `:11434`) to map implicated domain entities, bounded contexts, registered surfaces (`surface-registry.md` / `cadence-surfaces.md`), and cross-boundary contracts without polluting the primary reasoning model's context window.
+2. **Parallel Codebase & Boundary Mapping (`repo-scout` via `inference`):** Invokes the read-only `repo-scout` subagent (powered by `local_semantic_embed` + `inference` on `:11434`) to map implicated domain entities, bounded contexts, registered surfaces (`cadence-surfaces.md`, plus `surface-registry.md` when present), and cross-boundary contracts without polluting the primary reasoning model's context window.
 
 All findings returned by `repo-scout` and `local_semantic_embed` are verified by the primary model before being written into `problem.md` and `metadata.yaml`.
 
@@ -74,7 +74,7 @@ Every triaged ticket is also screened for security posture triggers (authenticat
 | [`specs/{ticket-id}/problem.md`](../../../specs/TEMPLATE/problem.md) | Instantiated from the template and populated with problem framing, affected users, desired outcome, acceptance criteria, constraints, and code pointers. |
 | [`specs/{ticket-id}/metadata.yaml`](../../../specs/TEMPLATE/metadata.yaml) | Populated with `type`, `priority`, `scope`, `tier`, `capitalization`, `status: triaged`, `domain_entities`, `affected_layers`, `affected_integrations`, seed-read provenance (when imported), and observability fields (for bugs). |
 | [`production-insights.md`](../../agentic-sdlc/production-insights.md) | (Bugs only) A new categorized `PROD-{NNN}` entry mapping the defect to its violated CHORD dimension and recommended seam (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, or `BOUNDARY_FAULT`). |
-| Tracker triage projection | Classification, intent-fit check, impacted code areas, duplicate check results, and recommended next step synced to the bound tracker (`CADENCE_ORG.md` §9). |
+| Tracker triage projection | Classification, intent-fit check, impacted code areas, duplicate check results, and drafted triage summary comment synced once by `/cadence-triage` to the bound tracker (`CADENCE_ORG.md#tracker-binding`). |
 | `stage_effort` + `actual_effort` | Triage stage effort appended to `metadata.yaml` and accumulated into `actual_effort` per [`CADENCE_ORG.md`](../../agentic-sdlc/CADENCE_ORG.md). |
 
 Once `cadence-triage-agent` finishes writing the repository artifacts, `/cadence-triage` invokes the **bound tracker-sync skill** (resolved from `CADENCE_ORG.md#tracker-binding`, e.g., `/cadence-sync-jira` or `/cadence-sync-youtrack`) to project the triaged metadata and `problem.md` to the external tracker.
@@ -105,22 +105,21 @@ Every triage run concludes with a single explicit recommendation:
 - [ ] Alignment verified against `PROJECT_INTENT.md` (with any mismatch flagged).
 - [ ] Related code symbols and prior work in `specs/` and `archive/` searched via `repo-scout` and `local_semantic_embed`.
 - [ ] (For bugs) Production signal categorized (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`) and appended to `production-insights.md`.
-- [ ] Triage `stage_effort` recorded and ticket projected to the bound tracker (`CADENCE_ORG.md` §9).
+- [ ] Triage `stage_effort` recorded and ticket projected to the bound tracker (`CADENCE_ORG.md#tracker-binding`).
 - [ ] One clear recommended next step reported.
 
 ## What this step is NOT
 
 - **Not a design specification.** Triage produces no Contextual Grounding Matrix (6W×4L), no CHORD behavioral decomposition, and no Gherkin `test-plan.md` — those belong to [`02-spec.md`](02-spec.md).
 - **Not a code-editing phase.** Triage is strictly read-only over production and test code; it writes only under `specs/{ticket-id}/` and (for bugs) `docs/agentic-sdlc/production-insights.md`.
-- **Not local ID guessing.** Whenever an external allocator is bound in `CADENCE_ORG.md` §10, ticket keys are reserved or seed-read from the tracker, never invented locally.
+- **Not local ID guessing.** Whenever an external allocator is bound in `CADENCE_ORG.md#id-allocation-binding`, ticket keys are reserved or seed-read from the tracker, never invented locally.
 - **Not the elicitation interview itself.** `/cadence-triage` detects unanswered probes and offers the handoff; `/cadence-elicit` conducts the probe interview.
 
 ## Related documents
 
 - [`00-problem.md`](00-problem.md) — the preceding step (filing the intent issue).
 - [`02-spec.md`](02-spec.md) — the next step for Medium- and High-tier tickets.
-- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier applicability matrix.
-- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — objective triggers governing tier assignment.
-- [`../../agentic-sdlc/CADENCE_ORG.md`](../../agentic-sdlc/CADENCE_ORG.md) — tracker binding (§9) and ID-allocation binding (§10).
+- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — objective triggers governing tier assignment and gate applicability matrix.
+- [`../../agentic-sdlc/CADENCE_ORG.md`](../../agentic-sdlc/CADENCE_ORG.md) — `#tracker-binding` and `#id-allocation-binding`.
 - [`../../../PROJECT_INTENT.md`](../../../PROJECT_INTENT.md) — the repository charter against which scope is checked.
 - [`../../../specs/TEMPLATE/problem.md`](../../../specs/TEMPLATE/problem.md) · [`metadata.yaml`](../../../specs/TEMPLATE/metadata.yaml) — the templates populated during Triage.

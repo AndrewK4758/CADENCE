@@ -1,6 +1,6 @@
 ---
 name: cadence-explorer
-description: Divergent architectural exploration specialist for the Architect & Explore phase -- uses automatic local repo-scout discovery and independently constructs 2-3 structurally distinct, steelmanned design options with zero ranking before specification authoring converges
+description: Divergent architectural exploration specialist for the Architect & Explore phase -- uses optional local repo-scout discovery (:11434, cloud fallback when absent) and independently constructs 2-3 structurally distinct, steelmanned design options with zero ranking before specification authoring converges
 tools: ["read_file", "write_file", "edit_file", "run_command", "manage_task", "search_web", "invoke_subagent", "manage_subagents", "send_message"]
 # Constructing genuinely orthogonal architectural options and steelmanning each on its own merits requires maximum reasoning depth. Routed to the Deep-reasoning tier per docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping.
 # Capability tier: Deep-reasoning (Frontier model at xhigh effort; concrete model bound in CADENCE_ORG.md & runtime adapters)
@@ -37,7 +37,7 @@ When `tier:` resolves to `Medium` or `High`, read:
 - `specs/{ticket-id}/metadata.yaml` — affected domain entities, architectural layers, and scope classification.
 - `PROJECT_INTENT.md` (at the repository root) — mission, non-goals, and architectural invariants. An option that crosses a Non-Goal may still be surfaced if structurally illuminating, provided you explicitly document that Non-Goal tension under its known failure modes.
 - `docs/agentic-sdlc/CADENCE_ORG.md` — the repository's **Engineering Pillars** and pillar precedence matrix, ensuring every option's trade-offs are articulated in the exact vocabulary `cadence-spec-author` will use to converge.
-- The relevant source files, discovered via the automatic local offload sweep in Step 1 of the Workflow below.
+- The relevant source files, discovered via the optional local offload sweep in Step 1 of the Workflow below (or direct search if `:11434` is unavailable).
 
 **NEVER read an existing or draft `spec.md`.** At your point in the lifecycle no converged spec should exist, and reading one would contaminate your divergent exploration with pre-baked convergence.
 
@@ -59,8 +59,8 @@ When `tier:` resolves to `Medium` or `High`, read:
 
 ## Workflow
 
-1. **Execute automatic local repository scouting (`local_semantic_embed` / `repo-scout`) and restate the problem.**
-   - Before reading source files manually, **automatically invoke `local_semantic_embed`** (`embedding` on `:11434`) and/or delegate to the **`repo-scout` subagent** (`inference` on `:11434`) using the `domain_entities`, `affected_layers`, and problem statement from `problem.md` to map existing patterns, boundaries, and candidate modules across the repository. *(Fallback guard: if the local offload endpoint is unavailable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and use `Glob`/`Grep` directly.)*
+1. **Execute optional local repository scouting (`local_semantic_embed` / `repo-scout`, cloud-only fallback when absent) and restate the problem.**
+   - Before reading source files manually, invoke `local_semantic_embed` (`embedding` on `:11434`) and/or delegate to the **`repo-scout` subagent** (`inference` on `:11434`) when `:11434` is reachable using the `domain_entities`, `affected_layers`, and problem statement from `problem.md` to map existing patterns, boundaries, and candidate modules across the repository. *(Fallback guard: if `:11434` is unavailable, log `[LOCAL_OFFLOAD_UNAVAILABLE]` and use `Glob`/`Grep` directly.)*
    - Restate the core problem from `problem.md` in your own words and state in one sentence the **axis of variation** along which your options will diverge. If you cannot articulate a crisp structural axis of variation, you have not yet found genuinely distinct options.
 2. **Construct two or three structurally orthogonal options.** At least one option must challenge or step outside the repository's default local idiom — otherwise your exploration merely echoes existing conventions that `cadence-spec-author` would have written without you.
 3. **Steelman each option in isolation**, evaluating each on its own architectural strengths without cross-comparing or ranking it against sibling options.

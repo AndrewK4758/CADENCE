@@ -226,10 +226,10 @@ Fails closed on invalid input without fallback masking.
 Focused module well under 150 lines.
 ### Pillar 4: Data & Audit Fidelity
 Active — emits `RULE_DIVERGENCE` on cache mismatch.
-### Pillar 5: Security Boundary Posture
-Dormant — internal pure helper.
-### Pillar 6: Surface Compatibility
+### Pillar 5: Surface Compatibility
 Dormant — internal module only.
+### Pillar 6: Security Boundary Posture
+Dormant — internal pure helper.
 
 ## Observability Seams
 - `RULE_DIVERGENCE`: emitted when cached count diverges from live count

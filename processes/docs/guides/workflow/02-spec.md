@@ -1,6 +1,6 @@
 # Workflow Step 02 — Spec
 
-> Part of the per-step workflow guide series. This guide details the **Spec** step. For the preceding step see [`01-triage.md`](01-triage.md); for the end-to-end workflow overview see [`../getting-started.md`](../getting-started.md) §2.3.
+> Part of the per-step workflow guide series. This guide details the **Spec** step. For the preceding step see [`01-triage.md`](01-triage.md); for the per-tier matrix see [`../../policies/change-tiers.md`](../../policies/change-tiers.md).
 
 | | |
 |---|---|
@@ -20,11 +20,11 @@ Engineering quality compounds from this step: every downstream phase (TDD implem
 
 ## Tier applicability
 
-Whether a ticket requires a full specification is governed by the change tier assigned at Triage (see the matrix in [`../getting-started.md`](../getting-started.md) §2.3 and the authoritative table in [`change-tiers.md`](../../policies/change-tiers.md)#per-tier-spec-requirements):
+Whether a ticket requires a full specification is governed by the change tier assigned at Triage (see the authoritative table in [`change-tiers.md`](../../policies/change-tiers.md)#per-tier-spec-requirements):
 
 | Tier | Spec depth |
 |---|---|
-| **Trivial** | No spec. A `submission.md` serves as the record on release cuts; docs/config value changes need only `metadata.yaml`. |
+| **Trivial** | No spec. Docs/config value changes need only `metadata.yaml`; `/cadence-release` includes `specs/RELEASE-<ver>/submission.md` in the release PR commit. |
 | **Low** | `problem.md` only — acceptance criteria suffice; no Contextual Grounding Matrix (6W×4L), no CHORD decomposition. **This step is skipped.** |
 | **Medium** | Full spec: `spec.md` + `test-plan.md` + `decisions.md` + `submission.md`; CHORD decomposition on every AC; **abbreviated** Contextual Grounding Matrix (System Model + Technology Model rows). |
 | **High** | Full spec with **complete** Contextual Grounding Matrix (all four rows: Scope, Business Model, System Model, Technology Model) and CHORD decomposition on all ACs. |
@@ -41,11 +41,11 @@ Invoke `/cadence-spec` from your agentic CLI runtime (`.agents/skills/cadence-sp
 
 **Prerequisite:** `specs/{ticket-id}/problem.md` and `metadata.yaml` must already exist (`status: triaged`). If either is missing, `/cadence-spec` halts and directs you to run `/cadence-triage` first.
 
-The `/cadence-spec` skill orchestrates the phase while delegating deep architectural synthesis to the **`cadence-spec-author`** subagent. At Medium tier (opt-in when touching a Stable registered surface or adding a new internal service integration) and High tier (mandatory), `cadence-spec-author` invokes the **`cadence-architect`** subagent for a cross-boundary compatibility pre-flight, incorporating its Observed/Inferred/Unknown findings and Draft Contracts directly into `spec.md`'s Compatibility Impact section. When divergent design options warrant exploration before committing to one architecture, the **`cadence-explorer`** subagent may produce `design-options.md` as an input to `cadence-spec-author`.
+The `/cadence-spec` skill orchestrates the phase in strict order: first dispatching **`cadence-explorer`** to produce divergent `design-options.md`, then dispatching **`cadence-architect`** for a cross-boundary pre-flight (**mandatory at `tier: High`, opt-in at `tier: Medium`** per `change-tiers.md`; returning findings and clarification questions to `/cadence-spec` headlessly), and finally delegating deep architectural synthesis to **`cadence-spec-author`**.
 
-## Automatic Local Offload during Spec Discovery (`repo-scout` & `local_semantic_embed`)
+## Optional Local Offload during Spec Discovery (`repo-scout` & `local_semantic_embed`, Cloud Fallback)
 
-During steps 2 and 3 of specification authoring, `cadence-spec-author` automatically offloads broad codebase and history exploration to CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`):
+When local offload (`:11434`) is reachable during specification discovery, `/cadence-spec` and `cadence-spec-author` leverage CADENCE's read-only local hardware coprocessors (`enable_write_tools: false`, degrading cleanly to cloud-only `Grep`/`Glob` when offline):
 
 1. **Semantic Insight & ADR Retrieval (`local_semantic_embed` via `embedding`):** Runs semantic vector queries (`embedding` on port `11434`) across [`production-insights.md`](../../agentic-sdlc/production-insights.md), [`intent-insights.md`](../../agentic-sdlc/intent-insights.md), `docs/ADR/`, and `archive/` to surface prior incidents, architectural constraints, and mandatory CHORD observability seams affecting the target domain entities.
 2. **Parallel Pattern & Seam Discovery (`repo-scout` via `inference`):** Dispatches `repo-scout` (`embedding` + `inference` on `:11434`) to map existing base classes, DTO mappers, repository patterns, registered surfaces (`surface-registry.md` and `cadence-surfaces.md`), and operationalizing skills/agents (for `change-tiers.md` policy-tooling consistency enumeration) — returning exact file/line references without bloating the primary reasoning model's context window.
@@ -56,7 +56,7 @@ Primary reasoning, CHORD decomposition, Engineering Pillar evaluation, and all f
 
 `cadence-spec-author` authors the specification package by executing an eleven-step sequence:
 
-1. **Load organizational & surface contracts.** Read `CADENCE_ORG.md` (Contextual Grounding Matrix constants, the 3 always-on + 3 triggered mandatory Engineering Pillars, and the pillar precedence matrix), [`surface-registry.md`](../../policies/surface-registry.md), [`cadence-surfaces.md`](../../policies/cadence-surfaces.md), and [`deprecation-policy.md`](../../policies/deprecation-policy.md). The three conditionally triggered pillars are **Data Integrity** (activates whenever owned data is captured or mutated), **Security Posture** (activates whenever authentication, authorization, PII, untrusted input, or client-side code is touched), and **Backwards Compatibility** (activates whenever a registered surface in `surface-registry.md` or `cadence-surfaces.md` is touched) — each triggered pillar is evaluated in full or explicitly marked not-triggered.
+1. **Load organizational & surface contracts.** Read `CADENCE_ORG.md` (Contextual Grounding Matrix constants, the 3 core + 3 triggered mandatory Engineering Pillars, and the pillar precedence matrix), [`cadence-surfaces.md`](../../policies/cadence-surfaces.md) (and [`surface-registry.md`](../../policies/surface-registry.md) when present in adopter repos), and [`deprecation-policy.md`](../../policies/deprecation-policy.md). The three triggered mandatory pillars are **Pillar 4: Data & Audit Fidelity** (activates whenever owned data is captured or mutated), **Pillar 5: Surface Compatibility** (activates whenever a registered surface is touched), and **Pillar 6: Security Boundary Posture** (activates whenever authentication, authorization, PII, untrusted input, or client-side code is touched) — each triggered pillar is evaluated in full or explicitly marked `Not triggered`.
 2. **Retrieve production & intent insights (via `local_semantic_embed`).** Filter [`production-insights.md`](../../agentic-sdlc/production-insights.md) and [`intent-insights.md`](../../agentic-sdlc/intent-insights.md) for matching domain entities and layers — matching insights mandate explicit CHORD observability seams and surface domain-specific open questions.
 3. **Inspect existing source patterns (via `repo-scout`).** Discover the repository's established conventions (domain entities, validation, error handling, persistence, test fixtures) so the proposed design honors house idioms rather than inventing competing patterns.
 4. **Populate the Contextual Grounding Matrix (6W×4L)** — inherit organizational constants from `CADENCE_ORG.md`, then fill ticket-specific facts across the six interrogatives (What, How, Where, Who, When, Why) at the required abstraction layers (System + Technology rows for Medium tier; all four rows — Scope, Business Model, System Model, Technology Model — for High tier).
@@ -80,7 +80,7 @@ If the analysis reveals that the requested change violates a Non-Goal or Archite
 | `metadata.yaml` | Updated to `status: spec-in-review`; specification `stage_effort` appended and summed into `actual_effort`. |
 | [`surface-registry.md`](../../policies/surface-registry.md) | Newly introduced adopter-owned public surfaces registered (if any). |
 
-Once `cadence-spec-author` returns, `/cadence-spec` runs the **mechanical specification linter** and projects the updated artifacts and `spec-in-review` status to the bound tracker (`CADENCE_ORG.md` §9).
+Once `cadence-spec-author` returns, `/cadence-spec` runs the **mechanical specification linter** and projects the updated artifacts and `spec-in-review` status to the bound tracker (`CADENCE_ORG.md#tracker-binding`).
 
 ## Verification gates
 
@@ -130,7 +130,7 @@ With `status: spec-in-review` and zero unresolved open questions, the specificat
 
 - [`01-triage.md`](01-triage.md) — the preceding step that produces `problem.md` and `metadata.yaml`.
 - [`03-spec-approval.md`](03-spec-approval.md) — the human gate that reviews and approves the output of this step.
-- [`../getting-started.md`](../getting-started.md) — whole-workflow overview and per-tier applicability matrix.
+- [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — per-tier requirements and gate applicability matrix.
 - [`../../policies/change-tiers.md`](../../policies/change-tiers.md) — objective triggers and `#per-tier-spec-requirements`.
 - [`../../policies/surface-registry.md`](../../policies/surface-registry.md) · [`../../policies/cadence-surfaces.md`](../../policies/cadence-surfaces.md) · [`../../policies/deprecation-policy.md`](../../policies/deprecation-policy.md) — surface compatibility inputs.
 - [`../../agentic-sdlc/chord-reference.md`](../../agentic-sdlc/chord-reference.md) — CHORD five-dimension decomposition, seam derivation (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`), and the five-artifact model.

@@ -8,7 +8,7 @@ allowed-tools: Read Edit Glob Grep Bash
 
 ## Task
 
-Update a single capability tier's concrete model identifier from `$from_model` to `$to_model` across every authoritative representation atomically in one run: the tier-resolution `case` arm in runtime adapter scripts (`processes/ci-templates/scripts/adapters/*.sh` or `ci-templates/scripts/adapters/*.sh`), the concrete-model cell in `docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping`, and `.agents/agents/*/agent.md` (`agents/*/agent.md` in core) `default_model:` lines when applicable. (Project `.gemini/` projections via `adapters/gemini-agy.sh`.)
+Update a single capability tier's concrete model identifier from `$from_model` to `$to_model` across every authoritative representation atomically in one run: the tier-resolution `case` arm in runtime adapter scripts (`processes/ci-templates/scripts/adapters/*.sh` or `ci-templates/scripts/adapters/*.sh`), the concrete-model cell in `docs/agentic-sdlc/CADENCE_ORG.md#model-tier-mapping`, and `.agents/agents/*/agent.md` (`agents/*/agent.md` in core) `default_model:` lines when applicable. (Verify `.gemini/` and `.claude/` symlinks or runtime adapter projections via `adapters/gemini-agy.sh` and `adapters/claude-code.sh` rather than legacy compiled artifacts.)
 
 CADENCE defines two primary capability tiers (`Deep-reasoning` and `Fast-mechanical`) in `CADENCE_ORG.md#model-tier-mapping`, alongside read-only local hardware coprocessor models (`embedding` and `inference` on `:11434`). Each capability tier maps to a single concrete model identifier for the active runtime. This skill updates the concrete model identifier for **one tier per invocation** — requiring explicit `from` and `to` model arguments so tier boundaries stay explicit and accidental cross-tier reassignments are prevented.
 
@@ -30,13 +30,13 @@ When `$to_model` does not yet appear anywhere in the mapping table (the standard
 
 ### 2. Find all authored references
 
-Locate all concrete model references across adapters, `CADENCE_ORG.md`, and `.agents/agents/*/agent.md` (`default_model:` lines):
+Locate all concrete model references scoped by **capability-tier membership** (`Deep-reasoning` | `Standard` | `Fast` from `CADENCE_ORG.md#model-tier-mapping`) across adapters, `CADENCE_ORG.md`, and matching `.agents/agents/*/agent.md` (`default_model:` lines belonging to the target tier; only mutate other tiers when performing an explicit `cross-tier` override):
 
 ```bash
 grep -rn "$from_model" ci-templates/scripts/adapters/ processes/ci-templates/scripts/adapters/ agents/ .agents/agents/ 2>/dev/null || true
 ```
 
-**Org mapping table row:** locate the row inside `### Tier → Concrete Model` under `CADENCE_ORG.md#model-tier-mapping` whose concrete-model column currently contains `$from_model`.
+**Org mapping table row:** locate the row inside `### Tier → Concrete Model` under `CADENCE_ORG.md#model-tier-mapping` whose concrete-model column currently contains `$from_model`. Only `.agents/agents/*/agent.md` files whose capability tier matches that row are in scope for this bump (unless `--allow-cross-tier` override is explicitly confirmed).
 
 If neither the adapter scripts/`agent.md` nor `CADENCE_ORG.md` matches `$from_model`, halt and report zero matches (indicating a typo, already-completed bump, or unconfigured model). If only one target matches, surface the discrepancy and ask the operator before making partial edits.
 
@@ -50,11 +50,11 @@ Prompt the operator explicitly: *"Apply M file updates + 1 mapping row?"* Wait f
 
 ### 5. Apply edits + sync runtime projections
 
-Use Edit to update `$from_model` -> `$to_model` (preserving any `<provider>/` prefix) in matched adapter scripts, `CADENCE_ORG.md`, and matched `.agents/agents/*/agent.md` `default_model:` lines. If `.gemini/` projection exists, run the adapter script (`gemini-agy.sh`) to keep projections in sync.
+Use Edit to update `$from_model` -> `$to_model` (preserving any `<provider>/` prefix) in matched adapter scripts, `CADENCE_ORG.md`, and capability-tier-matched `.agents/agents/*/agent.md` `default_model:` lines. Re-run `adapters/gemini-agy.sh` / `adapters/claude-code.sh` (or verify `.gemini/`/`.claude/` symlinks) so runtime projections stay synchronized.
 
 ### 6. Verify consistency
 
-Confirm every `default_model:` in `.agents/agents/*/agent.md`, matched adapter `case` arms, and `CADENCE_ORG.md#model-tier-mapping` agrees on `$to_model`, and confirm zero stale `$from_model` entries remain outside historical prose (`grep -rn "$from_model" ...`). If drift remains (`bump-model.reference_search.incomplete_representation_set`), halt loud naming the diverging files.
+Confirm every capability-tier-matched `default_model:` in `.agents/agents/*/agent.md`, matched adapter `case` arms, `.gemini/`/`.claude/` symlinks or projections, and `CADENCE_ORG.md#model-tier-mapping` agrees on `$to_model`, and confirm zero stale `$from_model` entries remain outside historical prose (`grep -rn "$from_model" ...`). If drift remains (`bump-model.reference_search.incomplete_representation_set`), halt loud naming the diverging files.
 
 ### 7. Report outcome
 

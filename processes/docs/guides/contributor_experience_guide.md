@@ -31,21 +31,11 @@ This lifecycle applies across the board. Core team members do not bypass the int
 
 For small, low-blast-radius changes, the lightweight track (detailed below) condenses the artifact ceremony without skipping human accountability.
 
-> **Editing an agent or skill?** `.agents/agents/` and `.agents/skills/` (as well as `.gemini/` on Antigravity) are **generated** from the runtime-neutral source tree under `artifacts/` by `ci-templates/scripts/cadence-compile.sh`. Always edit `artifacts/roles/` or `artifacts/commands/` and recompile — never edit the compiled `.agents/` or `.gemini/` directories directly, or your edits will be overwritten on the next compile pass. See `artifacts/SCHEMA.md` and ADR_CADENCE-0008.
+> **Editing an agent or skill?** `.agents/agents/` and `.agents/skills/` are the canonical source of record, projected via symlinks to `.gemini/` / `.claude/` (`docs/policies/cli-runtime-adoption-policy.md`). Always edit `.agents/agents/` or `.agents/skills/` (never fork `.gemini/` or `.claude/`).
 
-### Drift prevention: the compile gate
+### Drift prevention: verification & Doctor gates
 
-The recompile rule is enforced mechanically rather than left to human memory. A single gate runner, `ci-templates/scripts/run-gates.sh`, executes the full suite of structural checks (round-trip compile verification, manifest synchronization, reproducible build verification, schema validation, and the vendor-reference sweep) and exits non-zero whenever `.agents/` (or the bound runtime install tree) has drifted from `artifacts/`, the manifest is out of date, the build is non-deterministic, or a vendor-specific primitive leaked into neutral prose. You can wire it locally:
-
-- **Pre-commit hook (opt-in, fast local guard).** Install it once in your checkout:
-  ```
-  bash ci-templates/scripts/install-hooks.sh
-  ```
-  Once installed, `run-gates.sh` executes automatically on every `git commit` and aborts the commit if any compiled surface has drifted — catching discrepancies before you push. The installer never runs silently on its own (no agent or skill invokes it behind your back) and refuses to overwrite an existing pre-commit hook. To bypass the hook temporarily for a work-in-progress commit, pass `git commit --no-verify`.
-
-Whether a repository also runs `run-gates.sh` on a remote CI runner after push is declared in a single place — `docs/agentic-sdlc/CADENCE_ORG.md` section 1 *Where (Network)*'s CI/CD row — and is deliberately not duplicated here. In your repository, that setting reflects your own infrastructure: this guide documents the local pre-commit guard without making assumptions about your remote forge.
-
-Regardless of where it runs, there is only one gate script: any remote CI check invokes the exact same `run-gates.sh` binary as the local pre-commit hook, guaranteeing both reach identical verdicts.
+Repository health and governance drift are checked automatically via `bash .agents/skills/cadence-doctor/doctor.sh --full` (and `tests/run-cadence-tests.sh` in framework development), which verify symlinks, org bindings, `<400`-line ceilings, eject footprint freshness, and eval contracts. If your repository wires a pre-commit hook via CI templates, it invokes the same canonical check script.
 
 ## Filing an intent issue
 

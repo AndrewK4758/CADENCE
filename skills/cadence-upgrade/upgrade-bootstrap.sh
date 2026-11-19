@@ -270,7 +270,7 @@ infer_base_version() {
                 # Claude-coupled runtime-root scan (PI-022, AC-10/DEC-018); the
                 # binding-aware base-version scan is deferred to PI-028. Logic
                 # UNCHANGED. The ONLY place this script names the bound tree root.
-                find "$TARGET/.claude" -type f 2>/dev/null
+                find "$TARGET/.agents" "$TARGET/.claude" -type f 2>/dev/null
                 # <<< binding-resolution (clause-7 exempt) <<<
                 sed -nE 's/^kind=installed[[:space:]]+path=(.*)$/\1/p' "$FOOTPRINT" 2>/dev/null \
                   | while IFS= read -r ip; do [[ -f "$TARGET/$ip" ]] && echo "$TARGET/$ip"; done; } )
@@ -283,21 +283,10 @@ infer_base_version() {
 
 # Read-only pre-flight (PI-033 / G-9; predicate corrected by PI-038, reversing
 # PI-033 DEC-007): classify a COMPILED-ONLY adopter and WARN. Mutates nothing;
-# does NOT alter merge control flow; proceeds.
-# Compiled-only <=> neutral SOURCE absent: artifacts/roles/ AND artifacts/commands/
-# AND CADENCE_ORG.md all missing (AND across the three source anchors -- PI-038
-# DEC-002). artifacts/footprint.generated is legitimately present on EVERY adopter
-# (adopt-cadence writes it; the engine reads its boundary from it) and is NOT part
-# of the discriminator -- keying on the bare artifacts/ dir was the PI-033 defect
-# (it is always present post-adoption, so the seam never fired -- PROD_CADENCE-002). Inert
-# for full-source AND partial-source adopters: any one source anchor present makes
-# the AND false (AC-2/AC-5). Returns 0 always (warn-and-proceed; never refuses).
-# The merged CADENCE_DIRECTIVES.md + agents + skills reference neutral-source
-# infrastructure a compiled-only adopter lacks (BTG-198: the directives are the
-# merged file now -- CLAUDE.md is adopter-owned and excluded from the merge); the warning names the four architectural anchors
-# (DEC-008, static list) so the operator can complete the adoption by hand (the
-# completion path is deferred -- DEC-001). Spec: specs/PI-038/spec.md (AC-1/AC-5).
+# does NOT alter merge control flow; proceeds. Modern adopters (.agents/ +
+# docs/agentic-sdlc/CADENCE_ORG.md) use .agents/ directly and must never fire this.
 warn_if_compiled_only() {
+  [[ -d "$TARGET/.agents/agents" && -d "$TARGET/.agents/skills" && -f "$TARGET/docs/agentic-sdlc/CADENCE_ORG.md" ]] && return 0
   [[ ! -d "$TARGET/artifacts/roles" && ! -d "$TARGET/artifacts/commands" \
      && ! -f "$TARGET/CADENCE_ORG.md" ]] || return 0
   emit_seam DELTA_AUDIT_GAP upgrade.adopter.compiled_only_infra_absent "$TARGET"
