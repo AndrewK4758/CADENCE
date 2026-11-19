@@ -51,6 +51,14 @@
           {
             "file": "skills/cadence-parallel/SKILL.md",
             "regex": "cadence-security-auditor"
+          },
+          {
+            "file": "skills/cadence-parallel/SKILL.md",
+            "regex": "cadence-breaker"
+          },
+          {
+            "file": "skills/cadence-parallel/SKILL.md",
+            "regex": "cadence-spec-challenger"
           }
         ]
       }

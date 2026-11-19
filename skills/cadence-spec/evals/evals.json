@@ -19,7 +19,8 @@
         "must_exist": [
           "skills/cadence-spec/SKILL.md",
           "agents/cadence-explorer/agent.md",
-          "agents/cadence-spec-author/agent.md"
+          "agents/cadence-spec-author/agent.md",
+          "agents/cadence-spec-challenger/agent.md"
         ],
         "patterns": [
           {
@@ -29,6 +30,10 @@
           {
             "file": "skills/cadence-spec/SKILL.md",
             "regex": "cadence-explorer"
+          },
+          {
+            "file": "skills/cadence-spec/SKILL.md",
+            "regex": "cadence-spec-challenger"
           }
         ]
       }

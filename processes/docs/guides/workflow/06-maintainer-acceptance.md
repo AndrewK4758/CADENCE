@@ -24,7 +24,7 @@ Only **Medium-** and **High-tier** changes pass through Gate 3 Maintainer Accept
 
 ## Prerequisite: Gate 2 Code Review has passed
 
-Before running its evaluation, `/cadence-maintain` verifies that **Gate 2 Code Review has approved the MR** (recorded in `submission.md` `## Discussion` or on the forge thread) and that the ticket's specification is present (`spec-approved` or later, or qualified post-implementation escalation ruling in `decisions.md`). If Gate 2 has not yet passed (or `spec.md` is missing without a qualified escalation), `/cadence-maintain` **halts** cleanly.
+Before running its evaluation, `/cadence-maintain` verifies that **Gate 2 Code Review has approved the MR** (including `cadence-reviewer` `Approve`, `cadence-breaker` `CLEAN` whenever `breaker-trigger.sh` triggered, and `cadence-security-auditor` `PASS` whenever `security-trigger.sh` triggered, recorded in `submission.md` `## Discussion` or on the forge thread) and that the ticket's specification is present (`spec-approved` or later, or qualified post-implementation escalation ruling in `decisions.md`). If Gate 2 has not yet passed (or `spec.md` is missing without a qualified escalation), `/cadence-maintain` **halts** cleanly. In addition, `cadence-maintainer` enforces the **Gate 2 Residual & Mock-Blind-Spot Backstop**, rejecting (`Reject` / `Request Changes`) any submission where `[observation]`/`[nit]` items or `"does NOT model:"` entries leave an unfixed race, unhandled error class, or unverified production seam.
 
 ## Optional Local Offload during Maintainer Acceptance (`offload_deep_review` & `local_semantic_embed`, Cloud Fallback)
 

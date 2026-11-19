@@ -30,6 +30,14 @@
           {
             "file": "agents/cadence-maintainer/agent.md",
             "regex": "local_semantic_embed"
+          },
+          {
+            "file": "agents/cadence-maintainer/agent.md",
+            "regex": "Residual & Mock-Blind-Spot Backstop"
+          },
+          {
+            "file": "skills/cadence-maintain/SKILL.md",
+            "regex": "cadence-breaker"
           }
         ]
       }

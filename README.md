@@ -30,7 +30,7 @@ Every letter of **CADENCE** maps directly to a governed phase of the software en
 2. **A — Architect & Explore**: Cross-boundary implicit contract discovery and 2–3 structurally distinct, unranked steelmanned design options (`cadence-architect`, `cadence-explorer`, `/cadence-define`).
 3. **D — Decompose & Specify**: Grounding via the **Contextual Grounding Matrix (`6W×4L`)**, evaluation against **Engineering Pillars**, and **CHORD** 5-part behavioral decomposition (**C**onditions [`Given`], **H**andling/Triggers [`When`], **O**utcomes [`Then` external], **R**ules [`Then` invariants], **D**eltas [`Then` internal mutations]) into `spec.md` and Gherkin `test-plan.md`, gated by `[Human Gate: Spec Approval]` (`cadence-spec-author`, `/cadence-spec`, `/cadence-onboard`, `/cadence-interview`, `/cadence-doctor`).
 4. **E — Execute via TDD**: Strict BDD Red $\rightarrow$ Green $\rightarrow$ Accumulate $\rightarrow$ Commit cycles, wide mechanical refactors, and expand/contract schema migrations (`cadence-implementer`, `cadence-migration-author`, `/cadence-implement`, `/cadence-refactor`, `/cadence-migrate`, `/cadence-build`, `/cadence-parallel`).
-5. **N — Navigate Gates**: Optional local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-reviewer`, `cadence-security-auditor`, `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`, `/cadence-watch`).
+5. **N — Navigate Gates**: Optional local coprocessor pre-scans followed by `[Human Gate: Code Review]` and `[Human Gate: Maintainer Acceptance]` (`cadence-spec-challenger` pre-Gate-1; `cadence-reviewer`, zero-spec `cadence-breaker`, `cadence-security-auditor`, and `cadence-maintainer`, `/cadence-review`, `/cadence-maintain`, `/cadence-watch`).
 6. **C — Consolidate**: Tier-gated integration merges, same-session tracker projection to YouTrack or Jira, and clean deliverable ejects (`/cadence-close`, `/cadence-merge`, `/cadence-watch`, `/cadence-sync-youtrack`, `/cadence-sync-jira`, `/cadence-eject`).
 7. **E — Enshrine**: Relocation to `archive/{ticket-id}/`, two-pass dead-citation sweeps, ADR and intent-insight promotion, cross-ticket retrospectives, living business flow updates (`docs/flows/`), and release cutting (`cadence-archivist`, `/cadence-archive`, `/cadence-retro`, `/cadence-release`, `/cadence-housekeep`).
 
@@ -112,9 +112,10 @@ Your configured **Cloud Frontier (or self-hosted) `Deep-reasoning` (`xhigh`) / `
 CADENCE/
 ├── AGENTS.md                        # Universal agent discovery manifest
 ├── README.md                        # End-to-end architecture & implementation guide
-├── agents/                          # 12 governed subagents (10 CADENCE + repo-scout + log-triage)
+├── agents/                          # 14 governed subagents (12 CADENCE + repo-scout + log-triage)
 │   ├── cadence-architect/
 │   ├── cadence-archivist/
+│   ├── cadence-breaker/
 │   ├── cadence-explorer/
 │   ├── cadence-implementer/
 │   ├── cadence-maintainer/
@@ -122,6 +123,7 @@ CADENCE/
 │   ├── cadence-reviewer/
 │   ├── cadence-security-auditor/
 │   ├── cadence-spec-author/
+│   ├── cadence-spec-challenger/
 │   ├── cadence-triage-agent/
 │   ├── log-triage/
 │   └── repo-scout/
@@ -211,6 +213,7 @@ CADENCE/
     ├── run-evals.sh
     ├── test-certainty-gate.sh
     ├── test-pr-watch.sh
+    ├── test-review-hardening.sh
     ├── test-security-trigger.sh
     └── test-turn-logger.sh
     └── test-trace-gates.sh

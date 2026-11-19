@@ -7,7 +7,7 @@ import re
 import subprocess
 import sys
 
-from certainty_claims import evaluate_evidence
+from certainty_claims import collect_changed_files, evaluate_evidence, resolve_repo_base
 
 SELF_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -29,25 +29,6 @@ def _read_scalar(meta_path: pathlib.Path, key: str) -> str | None:
                 end = val.find(q, 1)
                 return val[1:end].strip() if end != -1 else val.strip()
         return re.sub(r"\s+#.*$", "", val).strip()
-    return None
-
-
-def _resolve_base(root: pathlib.Path, base_arg: str) -> str | None:
-    if base_arg:
-        if _git(root, "rev-parse", "--verify", "--quiet", f"{base_arg}^{{commit}}").returncode != 0:
-            sys.exit(f"ERROR: base ref does not resolve: {base_arg}")
-        return base_arg
-    branch = None
-    for sub in ("docs/agentic-sdlc/CADENCE_ORG.md", "CADENCE_ORG.md", "processes/docs/agentic-sdlc/CADENCE_ORG.md"):
-        cand = root / sub
-        if cand.is_file():
-            m = re.search(r"integration-branch:\s*([^\s>`'\"]+)", cand.read_text(encoding="utf-8", errors="replace"))
-            if m and not m.group(1).startswith("<"):
-                branch = m.group(1)
-                break
-    for ref in ([f"origin/{branch}", branch] if branch else []) + ["HEAD"]:
-        if _git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").returncode == 0:
-            return ref
     return None
 
 
@@ -170,6 +151,8 @@ def _locate_sibling(root: pathlib.Path, rel_subpath: str) -> pathlib.Path | None
 
 def _run_layer1(
     root: pathlib.Path,
+    code_roots: list[pathlib.Path],
+    base_arg: str,
     ticket: str,
     ticket_dir: pathlib.Path,
     tier: str,
@@ -219,22 +202,17 @@ def _run_layer1(
             passes.append(("unknowns_mapped", "spec.md", f"unknowns={unk_count} drafts={draft_count} oqs={len(spec_oqs)}"))
 
     # 3. Reverse blast-radius drift
-    if stage in {"implement", "review"} and tier in {"medium", "high"} and spec_path.is_file() and base_ref:
+    if stage in {"implement", "review"} and tier in {"medium", "high"} and spec_path.is_file() and (base_ref or len(code_roots) > 1 or code_roots[0] != root):
         affected = _parse_files_affected(spec_path, ticket)
         if affected:
-            changed: set[str] = set()
-            r_diff = _git(root, "diff", "--name-only", f"{base_ref}...HEAD")
-            if r_diff.returncode == 0:
-                changed.update(p.strip() for p in r_diff.stdout.splitlines() if p.strip())
-            r_st = _git(root, "status", "--porcelain=v1", "-uall")
-            if r_st.returncode == 0:
-                for line in r_st.stdout.splitlines():
-                    if len(line) >= 4:
-                        changed.add(line[3:].strip().split(" -> ")[-1].strip().strip('"'))
+            try:
+                changed_pairs = collect_changed_files(root, code_roots, base_arg, base_ref)
+            except ValueError as exc:
+                sys.exit(f"ERROR: {exc}")
             undeclared = sorted(
-                p for p in changed
-                if not _is_test_or_doc_path(p)
-                and not any(fnmatch.fnmatch(p, pat) or p == pat for pat in affected)
+                disp for rel, disp in changed_pairs
+                if not _is_test_or_doc_path(rel)
+                and not any(fnmatch.fnmatch(disp, pat) or disp == pat or fnmatch.fnmatch(rel, pat) or rel == pat for pat in affected)
             )
             if undeclared and "scope" not in ruled_items:
                 escalates.append(("undeclared_blast_radius", "git-diff", f"modified file(s) outside spec.md Files Affected: {', '.join(undeclared[:6])}"))
@@ -245,7 +223,12 @@ def _run_layer1(
     sec_script = _locate_sibling(root, "cadence-review/security-trigger.sh")
     if sec_script and tier in {"low", "medium", "high"}:
         cmd = ["bash", str(sec_script), "--root", str(root), "--scan-signals"]
-        if base_ref:
+        for cr in code_roots:
+            if cr != root or len(code_roots) > 1:
+                cmd += ["--code-root", str(cr)]
+        if base_arg:
+            cmd += ["--base", base_arg]
+        elif len(code_roots) == 1 and code_roots[0] == root and base_ref:
             cmd += ["--base", base_ref]
         cmd.append(ticket)
         sr = subprocess.run(cmd, capture_output=True, text=True)
@@ -292,6 +275,7 @@ def _run_layer1(
 def main() -> int:
     ap = argparse.ArgumentParser(description="Empirical CADENCE certainty & human-escalation gate")
     ap.add_argument("--root", default="")
+    ap.add_argument("--code-root", action="append", default=[], dest="code_roots")
     ap.add_argument("--base", default="")
     ap.add_argument("--stage", default="auto", choices=["auto", "spec", "implement", "review"])
     ap.add_argument("--require-evidence", action="store_true")
@@ -301,6 +285,11 @@ def main() -> int:
     root = pathlib.Path(args.root).resolve() if args.root else pathlib.Path(
         subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip() or "."
     ).resolve()
+    code_roots = [pathlib.Path(p).resolve() for p in args.code_roots] if args.code_roots else [root]
+    for cr in code_roots:
+        if not cr.is_dir():
+            print(f"ERROR: --code-root is not a directory: {cr}", file=sys.stderr)
+            return 1
 
     ticket_dir = root / "specs" / args.ticket
     if not ticket_dir.is_dir():
@@ -334,7 +323,14 @@ def main() -> int:
         else:
             stage = "spec"
 
-    base_ref = _resolve_base(root, args.base)
+    try:
+        base_ref = resolve_repo_base(root, root, args.base if root in code_roots else "")
+        if args.base:
+            for cr in code_roots:
+                resolve_repo_base(root, cr, args.base)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     head_sha = _git(root, "rev-parse", "HEAD").stdout.strip()
     ruled_items = _parse_ruled_items(ticket_dir / "decisions.md")
     spec_path = ticket_dir / "spec.md"
@@ -342,7 +338,7 @@ def main() -> int:
     test_scenarios = _extract_test_scenarios(ticket_dir / "test-plan.md")
 
     halts, escalates, passes, sensitive_files = _run_layer1(
-        root, args.ticket, ticket_dir, tier, stage, base_ref, ruled_items, spec_oqs,
+        root, code_roots, args.base, args.ticket, ticket_dir, tier, stage, base_ref, ruled_items, spec_oqs,
     )
 
     ev_path = ticket_dir / "evidence.yaml"

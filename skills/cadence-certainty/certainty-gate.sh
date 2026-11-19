@@ -5,7 +5,7 @@
 # diff blast radius, dormant pillar contradictions, and HEAD-SHA test receipts.
 #
 # Usage:
-#   certainty-gate.sh [--root <repo-root>] [--base <ref>] [--stage <auto|spec|implement|review>] [--require-evidence] <ticket-id>
+#   certainty-gate.sh [--root <repo-root>] [--code-root <dir>]... [--base <ref>] [--stage <auto|spec|implement|review>] [--require-evidence] <ticket-id>
 #
 # Exit codes:
 #   0 = PROCEED (all active checks passed)

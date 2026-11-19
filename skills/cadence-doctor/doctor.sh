@@ -216,6 +216,23 @@ else
   skip "cadence-turn-logger hook (not installed)"
 fi
 
+for req in \
+  "$AGENTS_DIR/cadence-breaker/agent.md" \
+  "$AGENTS_DIR/cadence-spec-challenger/agent.md" \
+  "$SKILLS_DIR/cadence-review/breaker-trigger.sh" \
+  "$SKILLS_DIR/cadence-review/security-trigger.sh"; do
+  lbl="${req#"$ROOT/"}"
+  if [[ -e "$req" && ! -s "$req" ]]; then
+    fail "review-hardening artifact exists but is 0 bytes ($lbl)"
+  elif [[ -s "$req" ]]; then
+    pass "review-hardening artifact present ($lbl)"
+  elif [[ "$MODE" == "framework-dev" ]]; then
+    fail "review-hardening artifact missing ($lbl)"
+  else
+    warn "review-hardening artifact missing ($lbl -- refresh via cadence-adopt)"
+  fi
+done
+
 # 7. Optional ticket audit (--ticket <id>)
 if [[ -n "$TICKET" ]]; then
   SELF_SKILLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"

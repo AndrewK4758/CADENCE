@@ -28,10 +28,13 @@ Treat every assumption of the form *"safe because caller/middleware/DB validates
 ### 1. Authentication, Authorization & Tenant Isolation
 - **Default-deny coverage:** Confirm every new/modified endpoint, RPC, queue consumer, page route, or background hook enforces authentication and explicit permission checks (zero unannotated/anonymous handlers unless explicitly documented and approved).
 - **Actor identity & IDOR/BOLA:** Verify caller identity and `tenant_id`/`user_id` come exclusively from authenticated server-side session/JWT/proxy context — NEVER trusted from request path, query, body, headers, or DTO fields.
+- **Session revocation & pairing probes:** Verify token/session revocation epochs survive logout, password/role change, and process restarts; ensure startup/pairing probes catch `JsonException`, `FormatException`, and timeout cancellation without crashing or bypassing auth state.
 - **Data-layer scoping:** Confirm per-record queries/mutations include tenant/owner predicates at the repository/SQL layer, not only UI filtering.
 
 ### 2. Secrets, Credentials, Crypto & Data Exposure
-- **Zero plaintext secrets/PII leaks:** Check code, error messages, structured telemetry (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`), URL query params, and frontend bundles for credentials, tokens, signing keys, or sensitive fields.
+- **Zero plaintext secrets/PII leaks:** Check code, error messages, structured telemetry (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`), URL query params, and frontend bundles for credentials, tokens, signing keys, or sensitive fields. Inspect **inner collaborators** (e.g., `FlowiseService.run` behind mocked `chat`) for raw secret/header/body logging before rethrow.
+- **5xx vs 4xx & error sanitization:** Verify exception filters and error mappers check inheritance trees so 5xx subclasses (e.g., `InternalServerError` inheriting from `ResponseError`) are never forwarded raw or mapped to 4xx client errors, and post-header streams write sanitized terminal chunks rather than dropping EOF or leaking internal error markers.
+- **PII guardrails & scanner lexing:** Audit secret/PII scanners, redactors, and RAG guardrails for language-aware lexing (`1# Don't` / `// Don't` comments adjacent to tokens), apostrophes before literals, RAG prompt-header injection, full chained conversation history scanning (never leaf-turn only), `<6`-char custom blocked keywords, and non-greedy PII capture boundaries (`IBAN ... USD`).
 - **Cryptography & token verification:** Verify signature, issuer, audience, and expiration validation on JWTs/webhooks/callbacks; reject `alg=none`, weak digests for passwords/tokens, predictable PRNGs (`random` instead of `secrets`/`crypto`), and non-constant-time secret comparisons.
 
 ### 3. Injection, Path Traversal, SSRF & Untrusted Deserialization
@@ -42,10 +45,12 @@ Treat every assumption of the form *"safe because caller/middleware/DB validates
 - **TOCTOU & check-then-act:** Flag separate read-check followed by write-mutate sequences (quotas, balances, uniqueness, state transitions, file creation/locking) lacking atomic SQL/CAS predicates (`WHERE version = ...`), `SELECT ... FOR UPDATE`, unique constraints, or `flock`/mutex synchronization.
 - **Lock ordering & reentrancy:** Trace multi-lock acquisition graphs and async awaits held across locks for deadlock cycles, lock-release-on-error gaps, or shared mutable cache corruption across workers/coroutines.
 - **Transaction, outbox & idempotency boundaries:** Flag external side effects (HTTP webhooks, emails, charges, queue publishes) executed inside uncommitted DB transactions or retry paths without idempotency keys / deduplication (`CP-01`–`CP-11`).
+- **Bounded client deadlines & Swarm/FS isolation:** Require explicit deadlines across submission **and** cleanup/status calls on `ioredis` (`maxRetriesPerRequest`) and `fetch`/`AbortSignal.timeout`; check shared-filesystem disk budgets across concurrent model/transfer variants (`statvfs` without double-counting `.part` files), legacy storage prefixes on copy (`duplicateBinaryData`), and Swarm `PreviousSpec` secret preservation during rollback.
 - **Fail-open fallbacks (Behavior 5):** Audit `except`/`catch` blocks, permission checks, signature verifiers, and parser defaults for silent fail-open fallbacks returning `true`, empty allowlists, or stale state under error or timeout.
 
 ### 5. Security & Concurrency Test Fidelity
-- Verify negative/abuse-case tests (`unauthorized`, `cross-tenant`, `expired/tampered token`, `concurrent modification` / `double-submit`, `rollback/partial-failure`) exercise **real production guards and state**, not mocked-out auth/lock stubs.
+- Verify negative/abuse-case tests (`unauthorized`, `cross-tenant`, `expired/tampered token`, `concurrent modification` / `double-submit`, `rollback/partial-failure`, inner-logger sanitization, revocation epoch survival) exercise **real production guards and state**, not mocked-out auth/lock stubs.
+- Enforce `docs/policies/finding-classes.md`'s Anti-Downgrade Clause: zero real security, race, timeout, or sanitization defects may be downgraded to `[observation]`/`[nit]`.
 - Confirm any declared `UNSOUND_CONDITION` / `DELTA_AUDIT_GAP` / `BOUNDARY_FAULT` seams fire on bypassed preconditions without leaking secret payloads.
 
 ## Output Format (Returned to `/cadence-review`)

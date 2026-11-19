@@ -69,9 +69,11 @@ expected_effort = {
     "cadence-architect": "xhigh",
     "cadence-explorer": "xhigh",
     "cadence-spec-author": "xhigh",
+    "cadence-spec-challenger": "xhigh",
     "cadence-implementer": "xhigh",
     "cadence-migration-author": "xhigh",
     "cadence-reviewer": "xhigh",
+    "cadence-breaker": "xhigh",
     "cadence-security-auditor": "xhigh",
     "cadence-maintainer": "xhigh",
     "cadence-triage-agent": "high",
@@ -92,8 +94,8 @@ for am in sorted((root / "agents").glob("*/agent.md")):
     aname = am.parent.name
     if data.get("effort") != expected_effort.get(aname):
         errs.append(f"unexpected effort {data.get('effort')!r} in {am.relative_to(root)} (expected {expected_effort.get(aname)!r})")
-    if aname == "cadence-maintainer" and (set(data.get("tools", [])) & {"write_file", "edit_file"}):
-        errs.append(f"cadence-maintainer must stay read-only in {am.relative_to(root)}")
+    if aname in {"cadence-maintainer", "cadence-reviewer", "cadence-security-auditor", "cadence-breaker", "cadence-spec-challenger", "cadence-architect"} and (set(data.get("tools", [])) & {"write_file", "edit_file"}):
+        errs.append(f"{aname} must stay read-only in {am.relative_to(root)}")
     if m := provider_leak.search(txt):
         errs.append(f"provider-specific routing {m.group(0)!r} in {am.relative_to(root)}")
     if m := retired_coprocessor.search(txt):
@@ -107,8 +109,8 @@ for sm in sorted((root / "skills").glob("*/SKILL.md")):
     for bad in ("/cadence-run", "/cadence-finish", "/cadence-prep", "/cadence-cycle"):
         if bad in txt:
             errs.append(f"dangling command {bad} in {sm.relative_to(root)}")
-    if aname == "cadence-maintainer" and (set(data.get("tools", [])) & {"write_file", "edit_file"}):
-        errs.append(f"cadence-maintainer must stay read-only in {am.relative_to(root)}")
+    if aname in {"cadence-maintainer", "cadence-reviewer", "cadence-security-auditor", "cadence-breaker", "cadence-spec-challenger", "cadence-architect"} and (set(data.get("tools", [])) & {"write_file", "edit_file"}):
+        errs.append(f"{aname} must stay read-only in {am.relative_to(root)}")
     if m := provider_leak.search(txt):
         errs.append(f"provider-specific routing {m.group(0)!r} in {sm.relative_to(root)}")
     if m := retired_coprocessor.search(txt):
@@ -309,6 +311,9 @@ t5_adopt_and_eject() {
   CADENCE_ADOPT_RELEASE_TREE=checkout bash "$ROOT/skills/cadence-adopt/adopt-cadence.sh" "$dst" --gitignore-machinery >/dev/null
   test -e "$dst/.gemini/skills/cadence-watch/SKILL.md"
   test -x "$dst/.agents/skills/cadence-watch/scripts/pr_watch.py"
+  test -e "$dst/.gemini/agents/cadence-breaker/agent.md"
+  test -e "$dst/.gemini/agents/cadence-spec-challenger/agent.md"
+  test -x "$dst/.agents/skills/cadence-review/breaker-trigger.sh"
 
   bash "$ROOT/skills/cadence-doctor/doctor.sh" --root "$ROOT" >/dev/null
   local doc_pre
@@ -370,6 +375,7 @@ run_subtest "T8 executable eval runner across all 31 skills (+ fail-closed check
 run_subtest "T9 /cadence-watch PR & bound-tracker listener gates" bash "$ROOT/tests/test-pr-watch.sh" "$ROOT"
 run_subtest "T10 certainty-gate empirical evidence & escalation gates" bash "$ROOT/tests/test-certainty-gate.sh" "$ROOT"
 run_subtest "T11 cadence turn-logger hook & /cadence-trainlog dataset export gates" bash "$ROOT/tests/test-turn-logger.sh" "$ROOT"
+run_subtest "T12 review hardening: breaker-trigger, multi-repo --code-root, cold-breaker contracts" bash "$ROOT/tests/test-review-hardening.sh" "$ROOT"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]

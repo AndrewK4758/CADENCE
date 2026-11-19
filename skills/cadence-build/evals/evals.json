@@ -268,6 +268,29 @@
           }
         ]
       }
+    },
+    {
+      "id": 11,
+      "name": "review-hardening-breaker-and-challenger-wiring",
+      "prompt": "Does /cadence-build include zero-spec cadence-breaker and security-auditor triggers inside its /cadence-review loop?",
+      "expected_output": "Yes -- Step 3 invokes /cadence-review evaluating both security-trigger.sh and breaker-trigger.sh and dispatching cadence-security-auditor and zero-spec cadence-breaker alongside cadence-reviewer.",
+      "assertions": [
+        "Documents breaker-trigger.sh and cadence-breaker inside Step 3 /cadence-review loop",
+        "Preserves cadence-spec-challenger reference for escalated spec checks"
+      ],
+      "check": {
+        "type": "contract",
+        "patterns": [
+          {
+            "file": "skills/cadence-build/SKILL.md",
+            "regex": "breaker-trigger\\.sh"
+          },
+          {
+            "file": "skills/cadence-build/SKILL.md",
+            "regex": "cadence-breaker"
+          }
+        ]
+      }
     }
   ]
 }
