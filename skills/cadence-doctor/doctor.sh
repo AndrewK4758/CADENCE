@@ -205,6 +205,17 @@ else
   skip "chaos-citation-gate (no ticket test-plan.md files)"
 fi
 
+TURN_HOOK="$HOOKS_DIR/cadence-turn-logger.sh"
+TURN_PY="$HOOKS_DIR/cadence_turn_logger.py"
+if [[ -e "$TURN_HOOK" && ! -s "$TURN_HOOK" ]] || [[ -e "$TURN_PY" && ! -s "$TURN_PY" ]]; then
+  fail "cadence-turn-logger hook artifact exists but is 0 bytes"
+elif [[ -x "$TURN_HOOK" && -s "$TURN_PY" ]]; then
+  tl_en="yes"; [[ "${CADENCE_TURN_LOG:-1}" == "0" ]] && tl_en="no"
+  pass "cadence-turn-logger hook installed (enabled=$tl_en, dir=${CADENCE_TURN_LOG_DIR:-~/.local/share/cadence-turn-logs})"
+else
+  skip "cadence-turn-logger hook (not installed)"
+fi
+
 # 7. Optional ticket audit (--ticket <id>)
 if [[ -n "$TICKET" ]]; then
   SELF_SKILLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"

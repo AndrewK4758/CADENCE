@@ -45,5 +45,15 @@
         "timeout": 15
       }
     ]
+  },
+  "cadence-turn-logger": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); if [ -x \"$r/.agents/hooks/cadence-turn-logger.sh\" ]; then exec \"$r/.agents/hooks/cadence-turn-logger.sh\"; fi; printf \"{\\\"decision\\\":\\\"allow\\\"}\"'",
+        "timeout": 10
+      }
+    ]
   }
 }
