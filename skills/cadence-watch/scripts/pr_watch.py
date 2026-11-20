@@ -17,6 +17,7 @@ SOURCE_BUCKET = {
     "github_comment": "seen_pr_comments", "gitlab_comment": "seen_pr_comments",
     "github_inline": "seen_inline_comments", "gitlab_inline": "seen_inline_comments",
     "jira": "seen_tracker_comments", "youtrack": "seen_tracker_comments",
+    "github_issue": "seen_tracker_comments",
 }
 ITEM_GROUPS = ("new_reviews", "new_inline_comments", "new_pr_comments", "new_tracker_comments")
 KV_SCALARS = (
@@ -145,7 +146,7 @@ def _resolve_ticket_record(repo_root: str, ticket_id: str) -> tuple[str, dict, s
     meta_path = os.path.join(spec_dir, "metadata.yaml")
     if not os.path.isfile(meta_path):
         halt("metadata_absent", f"{spec_dir} has no metadata.yaml")
-    scalars = read_state.read_scalars(meta_path, set(read_state.FIELDS) | {"jira_url", "youtrack_url"})
+    scalars = read_state.read_scalars(meta_path, set(read_state.FIELDS) | {"jira_url", "youtrack_url", "github_issue_url"})
     if not scalars.get("status"):
         halt("status_unreadable", f"could not resolve status: from {meta_path}")
     return location, scalars, os.path.join(spec_dir, "submission.md"), read_state.read_ledger(spec_dir)
@@ -184,6 +185,9 @@ def classify_ticket(repo_root: str, integration_branch: str, ticket_id: str, sta
         "has_new_comments": False, "warnings": [], "event": "idle", "next_action": "none",
     }
     if kind_state != "active":
+        if kind_state == "no_pr" and (gh_issue_url := (scalars.get("github_issue_url") or "").strip()) and use_tracker:
+            wm = load_watermark(state_dir, ticket_id, sub_path)
+            return watch_sources.classify_github_issue(repo_root, gh_issue_url, wm["seen_tracker_comments"], res)
         if kind_state == "already_archived":
             res["event"] = "already_archived"
         elif kind_state == "cancelled":
@@ -211,6 +215,11 @@ def classify_ticket(repo_root: str, integration_branch: str, ticket_id: str, sta
     if use_tracker:
         tr = watch_sources.fetch_tracker_comments(repo_root, ticket_id, scalars.get("jira_url", ""), scalars.get("youtrack_url", ""))
         res["tracker_status"], res["tracker"], tracker_comments = tr["status"], tr["tracker"], tr["comments"]
+        if gh_issue_url := (scalars.get("github_issue_url") or "").strip():
+            gh_iss = watch_sources.fetch_github_issue_comments(gh_issue_url, repo_root)
+            tracker_comments.extend(gh_iss["comments"])
+            if res["tracker_status"] == "skipped_inner_source":
+                res["tracker_status"], res["tracker"] = gh_iss["status"], "github_issue"
     else:
         res["tracker_status"], tracker_comments = "disabled_flag", []
 
@@ -253,10 +262,10 @@ def discover_active_tickets(repo_root: str) -> list[str]:
         meta = os.path.join(tdir, "metadata.yaml")
         if entry in ("TEMPLATE", "drafts") or not os.path.isdir(tdir) or not os.path.isfile(meta):
             continue
-        sc = read_state.read_scalars(meta, {"status", "spec_mr", "merge_request"})
+        sc = read_state.read_scalars(meta, {"status", "spec_mr", "merge_request", "github_issue_url"})
         if (sc.get("status") or "").strip().lower() in ("archived", "cancelled"):
             continue
-        if sc.get("spec_mr") or sc.get("merge_request") or _read_thread_url(os.path.join(tdir, "submission.md")):
+        if sc.get("spec_mr") or sc.get("merge_request") or sc.get("github_issue_url") or _read_thread_url(os.path.join(tdir, "submission.md")):
             found.append(entry)
     return found
 
