@@ -165,12 +165,17 @@ A pillar whose every measure evaluates to `Pass` may be condensed to `**All meas
 | Mutation metadata | Actor identity (from auth system, never user input) + reason | {Are actor and reason captured for every write?} | {Pass/Flag} |
 | Multi-table write sequencing | Step order, failure handling, and cache invalidation documented | {See Proposed Design and CHORD Outcomes/Deltas} | {Pass/Flag} |
 | No client-side derived values | Server computes all derived values | {Does the API accept any pre-computed values from the client?} | {Pass/Flag} |
+| Authoritative durability horizon | Local durable authority whenever replay exceeds external TTL/cache (`CP-13`) | {How local state outlives external TTL/cache eviction, or N/A with proof} | {Pass/Flag} |
+| Post-commit ambiguity & caller reset | Pre-call claim/idempotency across sync+background callers (`CP-12`) & caller reset survival (`CP-14`) | {How dropped responses and caller reloads avoid duplicate effects, or N/A with proof} | {Pass/Flag} |
+| Post-lock predicate re-validation | Locked writes after unlocked I/O re-check live state & coupled tuple (`CP-05`) | {How post-lock writes re-validate coupled state, or N/A with proof} | {Pass/Flag} |
 
 **Anti-patterns checked:**
 - [ ] No fire-and-forget multi-step mutations
 - [ ] No optimistic updates on multi-table writes
 - [ ] No missing audit metadata fields
 - [ ] No cascading deletes without user confirmation
+- [ ] No sole reliance on transient external TTLs or ephemeral in-memory client attempt keys
+- [ ] No blind post-lock writeback of pre-I/O derived flags without live-row re-validation
 
 ### Pillar 5: Surface Compatibility (include when triggered — change touches registered public surfaces or introduces new ones)
 
@@ -335,6 +340,7 @@ Populated by `cadence-spec-author` at step 12 by converging against the `cadence
 
 **Winner:** {the chosen option, named exactly as the explorer named it}
 **Winning axis over the runner-up:** {name both the runner-up option AND the decisive engineering pillar -- never a generic dismissal}
+**Pillar precedence check:** {confirm no higher-ranked active pillar was traded away for a lower-ranked pillar without an explicit numbered OQ-N risk-acceptance item in Open Questions}
 **Testable flip-condition:** {what concrete fact would have to change to reverse this choice -- verifiable by someone other than the author}
 **Strongest objection to the chosen option:** {stated at full steelmanned strength from the explorer's analysis}
 **Domestication follow-up:** {only when the chosen winner is the novel option: success -> ADR -> local pattern -> baseline}

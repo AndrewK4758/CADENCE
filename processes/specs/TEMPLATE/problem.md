@@ -73,7 +73,7 @@ Draft | In Review | Approved | Superseded
 
 ## Out of Scope
 
-> **Probe:** What is deliberately out of scope today, and what would change your mind? Name the trigger that would move an item from 'no' to 'yes'.
+> **Probe:** What is deliberately out of scope today, what would change your mind, and does any excluded caller, background job, or surface mutate the same invariant or invoke the same irreversible external sink as an in-scope AC? Name the trigger that would move an item from 'no' to 'yes' (shared-invariant siblings cannot be silently excluded without an explicit Gate 1 risk ruling per `docs/policies/completeness-invariants.md`).
 > _Answer:_ _(not yet answered)_
 
 {Explicitly enumerate adjacent work that this problem statement does NOT address. Clear non-goals prevent scope drift during `/cadence-spec`.}

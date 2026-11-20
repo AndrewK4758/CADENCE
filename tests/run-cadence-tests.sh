@@ -40,6 +40,12 @@ import json, pathlib, re, sys, yaml
 root = pathlib.Path(sys.argv[1])
 forbidden = re.compile(r"\b(?:" + chr(99) + r"laire|" + "spect" + r"[ru]{2}m)\b", re.I)
 retired_hw = re.compile(r"Zero-VRAM|0\s*MB\s*(?:GPU|VRAM)|Tier\s*1\s*CPU|hybrid-MoE", re.I)
+anecdote_leak = re.compile(
+    r"\b(?:FlowiseService|VoiceMicrophoneStreamer|DictationAudioRecorder|duplicateBinaryData|"
+    r"PreviousSpec|yuv420p|1081x1081|resumeWaitingExecution|openReplyStream|generateFollowUpPrompts|"
+    r"ApplyTenantWalletPolicyHandler|ChargeTenantWalletHandler|VoiceDisabledForLowBalance|"
+    r"StripePaymentIntentId|AskDilly)\b"
+)
 errs = []
 
 for p in root.rglob("*"):
@@ -54,6 +60,10 @@ for p in root.rglob("*"):
     rel = p.relative_to(root).as_posix()
     if rel.startswith(("agents/", "skills/", "processes/")) and (m := retired_hw.search(text)):
         errs.append(f"retired offload claim {m.group(0)!r} in {rel}")
+    if (rel.startswith(("agents/", "processes/docs/policies/")) or re.match(r"skills/.*/SKILL\.md$", rel) or rel == "processes/CADENCE_DIRECTIVES.md"):
+        norm_txt = text.split("\n# Worked Example", 1)[0]
+        if m := anecdote_leak.search(norm_txt):
+            errs.append(f"project-specific anecdote leak {m.group(0)!r} in normative prompt {rel}")
     if (
         rel.startswith(("agents/", "hooks/", "local-offload/mcp/", "tests/"))
         or re.match(r"skills/.*/SKILL\.md$", rel)
@@ -376,6 +386,7 @@ run_subtest "T9 /cadence-watch PR & bound-tracker listener gates" bash "$ROOT/te
 run_subtest "T10 certainty-gate empirical evidence & escalation gates" bash "$ROOT/tests/test-certainty-gate.sh" "$ROOT"
 run_subtest "T11 cadence turn-logger hook & /cadence-trainlog dataset export gates" bash "$ROOT/tests/test-turn-logger.sh" "$ROOT"
 run_subtest "T12 review hardening: breaker-trigger, multi-repo --code-root, cold-breaker contracts" bash "$ROOT/tests/test-review-hardening.sh" "$ROOT"
+run_subtest "T13 completeness gates: strictness binding, non-inversion, absence closure, anomalies" bash "$ROOT/tests/test-completeness-gates.sh" "$ROOT"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]

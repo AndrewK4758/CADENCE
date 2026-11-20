@@ -268,7 +268,7 @@ Three additional pillars — **Data & Audit Fidelity**, **Surface Compatibility*
 - Extracting a shared utility package for code consumed by only one repository — extract shared libraries only when `2+` repositories depend on them.
 - Building abstract factory hierarchies for configuration or adapters that have only a single concrete implementation.
 
-**Decision rule:** When choosing between two valid designs, select the one that a new engineer (or AI coding agent) can understand by reading fewer files.
+**Decision rule:** When choosing between two designs that equally satisfy all higher-ranked active pillars (`docs/policies/completeness-invariants.md`), select the one that a new engineer (or AI coding agent) can understand by reading fewer files. Never use Structural Simplicity to silently trade away a `KNOWN` safety, durability, or security guarantee on a higher-ranked active pillar.
 
 ---
 
@@ -354,12 +354,18 @@ Three additional pillars — **Data & Audit Fidelity**, **Surface Compatibility*
 - Multi-table write sequencing: whenever an operation mutates `2+` tables or stores, `spec.md` documents the exact step order, partial-failure rollback/compensation behavior, and cache invalidation scope.
 - Server-authoritative derived values: clients submit raw user intent; the server computes all totals, state transitions, and derived fields.
 - Cache invalidation discipline: mutations explicitly invalidate affected client/server/CDN caches rather than relying on unverified optimistic patching.
+- Authoritative durability horizon (`docs/policies/completeness-invariants.md` §3): whenever caller or worker replay lifetimes can outlive an external system's cache, deduplication window, lease, or token TTL (`CP-13`), local durable storage owns replay/state authority.
+- Ambiguous post-commit outcome safety (`CP-12`): every irreversible external side effect — interactive or background — persists or claims a stable attempt identity before dispatch (or proves idempotent reconciliation) so a dropped response after remote commit cannot execute twice.
+- Post-lock predicate re-validation (`CP-05`): whenever state is read unlocked, external I/O executes, and a lock is acquired to write derived flags or status, the locked section re-evaluates the predicate against live locked state and compensates if the state flipped.
+- Caller/client survival across reset (`CP-14`): when an interactive client or stateful worker initiates an irreversible mutation whose outcome can become unknown, attempt identity or status recovery survives reload, remount, or restart until a terminal state is observed.
 
 **Org-specific anti-patterns:**
 - Fire-and-forget multi-step writes where a downstream step can fail silently and leave persistent state half-updated.
 - Client-side optimistic UI mutations across multi-table workflows where rollback is non-trivial.
 - Accepting write requests that omit actor provenance or audit metadata.
 - Executing cascading or destructive deletes without an explicit confirmation contract displaying the blast radius.
+- Delegating sole replay or state-uniqueness authority to an external cache/TTL shorter than the local replay window, or keeping unresolved mutation keys solely in ephemeral in-memory client state.
+- Blindly persisting pre-I/O derived flags after acquiring a row lock without re-checking live locked state.
 
 **Decision rule:** When choosing between an unverified optimistic UI shortcut and a server-confirmed transactional write with a loading indicator, always choose transactional audit fidelity.
 
@@ -819,6 +825,37 @@ This table governs **tracker worklog projection only**: it controls how a single
 **Single-source-of-truth rule:** never restate these factor numbers outside this section; `worklog-split.sh` resolves them internally and outputs only the resulting leg durations.
 
 **Change-tier note:** tuning the numeric factor values in the table above is a Trivial-tier configuration edit; adding, removing, or renaming stage rows is a structural change evaluated under `docs/policies/change-tiers.md`'s Configuration value-vs-shape rule.
+
+---
+
+## Completeness Strictness Binding
+
+The single repository-level declaration governing how strictly deterministic completeness checks (`docs/policies/completeness-invariants.md`, `certainty-gate.sh`) enforce shared-invariant `evidence.yaml` `absence` proofs, unruled `KNOWN` high-impact failure modes, pillar-precedence inversions, and unwaived review anomalies. Registered in `docs/policies/cadence-surfaces.md` (`CADENCE_ORG.md#completeness-strictness-binding`). Repositories that declare team/review posture in their root system markdown file (`AGENTS.md`, `GEMINI.md`, or `CLAUDE.md`) using the same HTML markers are also honored as a fallback when this section is absent.
+
+<!-- team-size: >1 -->
+<!-- enforce-review: yes -->
+<!-- completeness-strictness: auto -->
+<!-- ^ Machine-readable completeness strictness markers read by certainty-gate.sh.
+     When completeness-strictness is `auto` (recommended):
+       - team-size > 1 AND enforce-review: yes => HALT (exit 1, strict enforcement)
+       - team-size == 1 OR  enforce-review: no  => ESCALATE_HUMAN (exit 2, advisory)
+     Pin `completeness-strictness: halt` or `escalate` to override the auto derivation.
+     Operators may override per invocation via `--strictness halt|escalate` (or by stating
+     strict/advisory explicitly in the skill command). If these markers are absent, empty,
+     or placeholder in both CADENCE_ORG.md and the repo's root AGENTS.md/GEMINI.md/CLAUDE.md,
+     certainty-gate.sh emits ESCALATE completeness_strictness_unconfigured (exit 2) and the
+     calling skill prompts the operator rather than guessing silently. -->
+
+| Field | Value | Meaning |
+|---|---|---|
+| `team-size` | **`>1`** | Number of collaborating contributors (`1` for solo repos, `>1` or an integer `>=2` for multi-contributor teams) |
+| `enforce-review` | **`yes`** | Whether peer/human review is enforced before merge (`yes` \| `no`) |
+| `completeness-strictness` | **`auto`** | `auto` derives `halt` when `team-size > 1` and `enforce-review: yes`, else `escalate`; or pin `halt` \| `escalate` explicitly |
+
+**Resolution rule:**
+1. **Explicit command override** (`--strictness halt|escalate` or explicit strict/advisory instruction in the user's command) takes highest precedence for that invocation.
+2. **Repo-level governance/system MD markers** (`CADENCE_ORG.md#completeness-strictness-binding`, falling back to root `AGENTS.md` / `GEMINI.md` / `CLAUDE.md`) govern default enforcement (`halt` vs `escalate`).
+3. **Rule not in place (absent, empty, placeholder, or unrecognized):** never silently default — `certainty-gate.sh` emits `ESCALATE completeness_strictness_unconfigured` (`exit 2`), and the orchestrating skill prompts the user to choose `halt` or `escalate` for the run and optionally write the rule into the repo-level governance/system markdown file.
 
 ---
 

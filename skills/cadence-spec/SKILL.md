@@ -76,15 +76,16 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
    **Run the hybrid certainty gate (`certainty-gate.sh`) after `verify-facts.sh`:**
 
    ```bash
-   ( .agents/skills/cadence-certainty/certainty-gate.sh --stage spec $ticket_id \
-     || skills/cadence-certainty/certainty-gate.sh --stage spec $ticket_id )
+   ( .agents/skills/cadence-certainty/certainty-gate.sh --stage spec [--strictness halt|escalate] $ticket_id \
+     || skills/cadence-certainty/certainty-gate.sh --stage spec [--strictness halt|escalate] $ticket_id )
    ```
+   Pass `--strictness halt` or `--strictness escalate` only if the operator explicitly overrides repo-level strictness in the command; otherwise `certainty-gate.sh` resolves it from `CADENCE_ORG.md#completeness-strictness-binding` (or root `AGENTS.md`/`GEMINI.md`/`CLAUDE.md`).
 
-   - **Exit `1` (`decision=HALT`):** Return falsified `proof.ref` / `anchor_substring` / `absence` / DAG findings directly to `cadence-spec-author` until fixed.
-   - **Exit `2` (`decision=ESCALATE_HUMAN`):** Surface all `ESCALATE` triggers (`unanswered_probes`, `unmapped_unknowns`, `inference_depth_exceeded`, `unruled_unknown`) explicitly in Step 7 and `## Open Questions` for Gate 1 human ruling.
+   - **Exit `1` (`decision=HALT`):** Return falsified `proof.ref` / `anchor_substring` / `absence` / DAG findings or strict-mode completeness gaps (`unruled_known_risk`, `pillar_precedence_inversion`, `missing_shared_invariant_absence_proof`) directly to `cadence-spec-author` until fixed.
+   - **Exit `2` (`decision=ESCALATE_HUMAN`):** If `completeness_strictness_unconfigured` fired, **prompt the operator** to choose `halt` (team >1 enforcing review) vs `escalate` (solo/advisory) for this run (and offer to persist the markers in `CADENCE_ORG.md` / `AGENTS.md`). Surface all `ESCALATE` triggers (`unanswered_probes`, `unmapped_unknowns`, `unruled_known_risk`, `pillar_precedence_inversion`, `missing_shared_invariant_absence_proof`, `inference_depth_exceeded`, `unruled_unknown`) explicitly in Step 7 and `## Open Questions` for Gate 1 human ruling.
 
 4.5. **Adversarial Spec Challenge (Pre-Gate-1 Red-Team, Medium/High).** Once Step 4 mechanical checks (`verify-spec.sh`, `verify-facts.sh`, `certainty-gate.sh`) exit `0`, dispatch dedicated read-only `cadence-spec-challenger` (`Deep-reasoning` tier, `xhigh` effort) supplied ONLY with `problem.md`, `design-options.md`, `spec.md`, `test-plan.md`, and repository source access (zero authoring-session reasoning) to:
-   - Probe all 6 falsification checks: upgrade/sibling default drift, exception hierarchy & callee signatures vs `# STATUS: Verified`, multi-`await`/lock/stream completeness, regex/lexer/math bounds, sibling surface parity + `<400`-line split plans, and non-mock failure-mode scenarios in `test-plan.md`;
+   - Probe all 7 falsification checks (`docs/policies/completeness-invariants.md`): upgrade/sibling default drift, exception hierarchy & external authority/TTL reality vs `# STATUS: Verified`, multi-suspension/post-lock re-validation/stream completeness, grammar/lexer/math bounds, sibling surface parity + unsafe `Out of Scope` carve-outs + `<400`-line split plans, anti-mock/coupled-invariant/chaos (`CP-12`–`CP-14`) `test-plan.md` coverage, and Pillar Precedence non-inversion / unmitigated `KNOWN` safety holes;
    - Feed any `[HIGH]`/`[MEDIUM]` findings from `Verdict: CHALLENGE_ISSUES` back into `cadence-spec-author` (re-running Step 4 mechanical gates + `cadence-spec-challenger` until `Verdict: PASS`) before advancing.
 
 5. **Verify engineering completeness (judgment review).** Confirm every AC maps cleanly to design signatures and Gherkin scenarios, the 6W×4L matrix is substantively populated, `## Design Exploration` documents the flip condition and steelman counter-argument, and risks + `OQ-N` capture every unresolved challenge.

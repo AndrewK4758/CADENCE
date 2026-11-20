@@ -200,3 +200,62 @@ check_design_options_hygiene() {
     pass "design-options.md free of ranking/recommendation leakage"
   fi
 }
+
+check_pillar_precedence_convergence() {
+  local spec="$1" opts="$2" is_archive="$3"
+  [[ -f "$spec" && -f "$opts" ]] || return 0
+  local has_sentinel=0
+  grep -qF '**Gate 1 rulings:** required' "$spec" && has_sentinel=1
+  local res
+  res="$(python3 - "$spec" "$opts" <<'PY'
+import re, sys
+
+spec_txt = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+opts_txt = open(sys.argv[2], encoding="utf-8", errors="replace").read()
+
+def is_dormant(pattern):
+    m = re.search(rf"(?ms)^###\s+(?:Pillar|Facet)\s+\d+:\s*{pattern}.*?(?=^###\s+|\Z)", spec_txt, re.I)
+    return (not m) or bool(re.search(r"\b(?:dormant|not triggered)\b", m.group(0), re.I))
+
+di_active = not is_dormant(r"Data\s*(?:&|and)\s*Audit|Data Integrity")
+sec_active = not is_dormant(r"Security(?: Boundary)? Posture")
+if not (di_active or sec_active):
+    sys.exit(0)
+
+expl_m = re.search(r"(?ms)^##\s+Design Exploration\b.*?(?=^##\s+|\Z)", spec_txt)
+if not expl_m:
+    sys.exit(0)
+expl = expl_m.group(0)
+if not re.search(r"(?im)Pillar\s+precedence\s+check\s*:", expl):
+    print("MISSING_CHECK\tDesign Exploration omits explicit 'Pillar precedence check:' line while Pillar 4/6 is active")
+
+win_m = re.search(r"(?im)^[-*\s]*(?:\*\*)?(?:Winner|Selected\s+(?:winner|option))(?::\*\*|\*\*:|:)\s*(Option\s+[A-Z])\b", expl)
+axis_m = re.search(r"(?im)^[-*\s]*(?:\*\*)?(?:Winning\s+axis|Decisive\s+pillar)[^:\n]*:(?:\*\*)?\s*(.+)$", expl)
+oq_m = re.search(r"(?ms)^#{2,3}\s+Open Questions\b.*?(?=^#{1,2}\s+|\Z)", spec_txt)
+has_risk_oq = bool(oq_m and re.search(r"\bOQ-\d+\b", oq_m.group(0)) and re.search(r"(?i)\b(?:known|risk|trade-?off|pillar|precedence|option\s+[a-z]|sibling|durab|idempoten|ttl|stale|race)\b", oq_m.group(0)))
+
+if win_m and axis_m:
+    axis_low = axis_m.group(1).lower()
+    picked_lower = any(k in axis_low for k in ("structural simplicity", "simplicity", "agentic ergonomics", "developer experience")) and not re.search(r"data\s*(?:&|and)\s*audit|data\s+integrity|security", axis_low)
+    opt_m = re.search(rf"(?ms)^##\s+{re.escape(win_m.group(1))}\b.*?(?=^##\s+|\Z)", opts_txt)
+    high_known = bool(opt_m and re.search(r"\[[^\]]*(?:Severity:\s*HIGH|Pillar:\s*(?:Data\s*(?:&|and)\s*Audit|Data\s+Integrity|Security))[^\]]*\]", opt_m.group(0), re.I))
+    p_flag = any(re.search(r"\|\s*Flag\s*\|", m.group(0), re.I) for m in re.finditer(r"(?ms)^###\s+(?:Pillar|Facet)\s+[46]:.*?(?=^###\s+|\Z)", spec_txt))
+    if picked_lower and (high_known or p_flag) and not has_risk_oq:
+        print(f"INVERSION\t{win_m.group(1)} picked on lower-ranked pillar ({axis_m.group(1).strip()[:60]}) over active Pillar 4/6 risk without Gate 1 OQ-N")
+PY
+)"
+  local line kind payload
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    kind="${line%%	*}"
+    payload="${line#*	}"
+    case "$kind" in
+      MISSING_CHECK)
+        if [[ "$is_archive" -eq 1 || "$has_sentinel" -eq 0 ]]; then warn "$payload"
+        else fail "$payload"; fi ;;
+      INVERSION)
+        if [[ "$is_archive" -eq 1 ]]; then warn "pillar_precedence_inversion: $payload"
+        else fail "pillar_precedence_inversion: $payload"; fi ;;
+    esac
+  done <<< "$res"
+}

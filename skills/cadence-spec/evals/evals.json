@@ -103,6 +103,26 @@
           "FAIL seam UNSOUND_CONDITION"
         ]
       }
+    },
+    {
+      "id": 4,
+      "name": "pillar-precedence-non-inversion-caught",
+      "prompt": "Option A is selected on Structural Simplicity while carrying a HIGH Security Boundary Posture KNOWN failure mode (revoked tokens honored after short external cache eviction) and no Gate 1 risk OQ-N.",
+      "expected_output": "verify-spec.sh exits 1 catching pillar_precedence_inversion and blocks silent convergence on a lower-ranked pillar over an active higher-ranked pillar.",
+      "assertions": [
+        "Rejects selecting a lower-ranked pillar over an unmitigated HIGH KNOWN failure mode on an active Rank #1/#2 pillar",
+        "Requires either choosing the safer alternative or emitting an explicit Gate 1 risk-acceptance OQ-N"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "sed -i 's/\\[Pillar: Operational Resilience | Severity: LOW | Scope: in-scope\\]/[Pillar: Security Boundary Posture | Severity: HIGH | Scope: cross-boundary]/' \"$FIX/specs/ACME-201/design-options.md\"",
+        "cmd": "bash \"$ROOT/skills/cadence-spec/verify-spec.sh\" --root \"$FIX\" ACME-201",
+        "expect_exit": 1,
+        "output_regex": [
+          "pillar_precedence_inversion"
+        ]
+      }
     }
   ]
 }

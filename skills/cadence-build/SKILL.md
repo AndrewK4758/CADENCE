@@ -94,7 +94,7 @@ Halt fail-closed on missing/unreadable `org-binding-resolve.sh` or any non-zero 
 
 ## Finishing the Implementation MR
 
-Before calling `ready_mr.sh` (for Low, Medium, or High), run `(.agents/skills/cadence-certainty/certainty-gate.sh --stage review <TICKET-ID> || skills/cadence-certainty/certainty-gate.sh --stage review <TICKET-ID>)`: `exit 1` -> remediate in cycle; `exit 2` -> pause and prompt the operator to record rulings for the escalation triggers in `decisions.md` before publishing ready.
+Before calling `ready_mr.sh` (for Low, Medium, or High), run `(.agents/skills/cadence-certainty/certainty-gate.sh --stage review [--strictness halt|escalate] <TICKET-ID> || skills/cadence-certainty/certainty-gate.sh --stage review [--strictness halt|escalate] <TICKET-ID>)` (passing `--strictness` only when explicitly requested by the operator): `exit 1` -> remediate in cycle; `exit 2` -> pause and prompt the operator (selecting strictness if `completeness_strictness_unconfigured` fired, and recording rulings for any other escalation triggers in `decisions.md`) before publishing ready.
 
 ```bash
 bash .agents/skills/cadence-build/scripts/ready_mr.sh <pr-url-or-number> \

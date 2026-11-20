@@ -47,7 +47,7 @@ If any required Gate 2 verdict is missing or blocking (`REQUEST CHANGES`, `BROKE
 
 ### Gate 2 Residual & Mock-Blind-Spot Backstop
 
-Inspect every non-blocking `[observation]`, `[nit]`, `[hygiene]` entry and every `"does NOT model: ..."` line in `submission.md` `## Discussion`. Per `docs/policies/finding-classes.md`'s Anti-Downgrade Clause, if any item describes an unfixed runtime race, deferred cancellation/cleanup gap, unhandled exception subclass (`ResponseError` 5xx, `OperationCanceledException`, `JsonException`), un-sanitized inner logger, existing-state upgrade clobber, partial sibling fix, or unverified stubbed collaborator behavior, reject acceptance (`REQUEST CHANGES`) as a **Blocking Issue**.
+Inspect every non-blocking `[observation]`, `[nit]`, `[hygiene]` entry, every `"does NOT model: ..."` line, and the structured Adversarial Lens Anomaly Disposition table in `submission.md` `## Discussion` alongside `evidence.yaml` shared-invariant `absence` closure. Per `docs/policies/finding-classes.md` and `docs/policies/completeness-invariants.md`, if any item describes an unfixed runtime race, post-lock stale writeback, post-commit ambiguous fault (`CP-12`), external TTL eviction gap (`CP-13`), caller reset duplication (`CP-14`), deferred cancellation/cleanup gap, unhandled 5xx/internal error subclass, un-sanitized inner logger, existing-state upgrade clobber, partial sibling fix, eventual-consistency rationalization, or unverified stubbed collaborator behavior without an explicit human `Gate ruling:`, reject acceptance (`REQUEST CHANGES`) as a **Blocking Issue**.
 
 ## Evaluation Process
 

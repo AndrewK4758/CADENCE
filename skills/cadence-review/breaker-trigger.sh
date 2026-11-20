@@ -122,7 +122,7 @@ def resolve_base(repo_dir):
         cands.extend(["origin/main", "origin/develop", "main", "develop"])
     return next((r for r in cands + ["HEAD"] if git_ok(repo_dir, "rev-parse", "--verify", "--quiet", f"{r}^{{commit}}").returncode == 0), None)
 
-LOW_SIGNALS = re.compile(r"(?<![A-Za-z0-9])(?:await|async|abort[_ ]?(?:controller|signal)|promise|cancel|timeout|settimeout|retry|ioredis|bull|max[_ ]?retries|headers[_ ]?sent|stream|sse|flock|mutex|lock|transaction|for\s+update|response[_ ]?error|internal[_ ]?server|operation[_ ]?canceled|json[_ ]?exception|process[_ ]?runner|duplicate[_ ]?binary|s3:|filesystem|previous[_ ]?spec|docker[_-]?stack|swarm|env|redact|scrub|sanitize|guardrail|yuv420p|ffmpeg|statvfs)(?![A-Za-z0-9])", re.I)
+LOW_SIGNALS = re.compile(r"(?<![A-Za-z0-9])(?:await|async|abort[_ ]?(?:controller|signal)|promise|cancel|timeout|settimeout|retry|retries|backoff|idempoten[a-z]*|dedup[a-z]*|ttl|expir[a-z]*|session[_ ]?storage|local[_ ]?storage|queue|redis|headers[_ ]?sent|stream|sse|flock|mutex|lock|transaction|for\s+update|outbox|compensat[a-z]*|rollback|deploy|storage[_ ]?backend|filesystem|docker[_-]?stack|env|redact|scrub|sanitize|guardrail|parser|lexer|regex|quota|headroom)(?![A-Za-z0-9])", re.I)
 code_files, all_changed, low_signal_files = set(), set(), set()
 multi_repo, pathspecs = len(code_roots) > 1, ["--", ".", ":!specs/", ":!archive/"]
 
