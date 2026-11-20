@@ -6,6 +6,8 @@ import re
 import subprocess
 import sys
 
+from trace_diff_hygiene import analyze_test_diff
+
 SEAMS = ("UNSOUND_CONDITION", "DELTA_AUDIT_GAP", "RULE_DIVERGENCE", "BOUNDARY_FAULT")
 SKIP_DIRS = {
     ".git", ".agents", ".claude", ".gemini", ".venv", "venv",
@@ -23,8 +25,11 @@ DOC_FILES = {
 
 
 class Tracer:
-    def __init__(self, root, base_arg, base_explicit, ticket, ticket_dir, ticket_rel, strict):
+    def __init__(self, root, base_arg, base_explicit, ticket, ticket_dir, ticket_rel, strict, code_roots=None):
         self.root = pathlib.Path(root).resolve()
+        self.code_roots = [pathlib.Path(p).resolve() for p in code_roots] if code_roots else [self.root]
+        self.multi_repo = len(self.code_roots) > 1 or self.code_roots[0] != self.root
+        self.repo_map = {cr.name: cr for cr in self.code_roots}
         self.base_arg = base_arg
         self.base_explicit = int(base_explicit)
         self.ticket = ticket
@@ -33,7 +38,8 @@ class Tracer:
         self.strict = int(strict)
         self.pass_cnt = self.fail_cnt = self.warn_cnt = self.unv_cnt = 0
         self.sentinel = False
-        self.changed_files = set()
+        self.changed_pairs = set()
+        self.repo_bases = []
         self.affected_rows = []
         self.file_cache = {}
         self.tier = ""
@@ -50,8 +56,8 @@ class Tracer:
             self.unv_cnt += 1
         print(f"{v} {cat} {target}" + (f" -- {reason}" if reason else ""))
 
-    def git_ok(self, *args):
-        return subprocess.run(["git", "-C", str(self.root), *args], capture_output=True, text=True)
+    def git_ok(self, *args, repo_dir=None):
+        return subprocess.run(["git", "-C", str(repo_dir or self.root), *args], capture_output=True, text=True)
 
     @staticmethod
     def read_scalar(meta_path, key):
@@ -80,61 +86,79 @@ class Tracer:
         if self.tier not in {"trivial", "low", "medium", "high"}:
             sys.exit(f"ERROR: unrecognized tier {raw_tier!r} in {self.ticket_rel}/metadata.yaml")
 
-    def resolve_base(self):
+    def _disp(self, cr, rel):
+        return f"{cr.name}:{rel}" if self.multi_repo else rel
+
+    def _inner_rel(self, disp):
+        return disp.split(":", 1)[1] if (self.multi_repo and ":" in disp) else disp
+
+    def _resolve_affected(self, fpath):
+        if ":" in fpath:
+            pref, rest = fpath.split(":", 1)
+            if pref in self.repo_map:
+                return self.repo_map[pref], rest.lstrip("./")
+        rel = fpath.lstrip("./")
+        if len(self.code_roots) == 1:
+            return self.code_roots[0], rel
+        for cr in self.code_roots:
+            if (cr, rel) in self.changed_pairs or (cr / rel).exists():
+                return cr, rel
+        return self.code_roots[0], rel
+
+    def resolve_base(self, repo_dir):
         if self.base_explicit:
-            if self.git_ok("rev-parse", "--verify", "--quiet", f"{self.base_arg}^{{commit}}").returncode != 0:
-                sys.exit(f"ERROR: base ref does not resolve: {self.base_arg}")
+            if self.git_ok("rev-parse", "--verify", "--quiet", f"{self.base_arg}^{{commit}}", repo_dir=repo_dir).returncode != 0:
+                sys.exit(f"ERROR: base ref does not resolve in {repo_dir}: {self.base_arg}")
             return self.base_arg
-        branch = None
+        cands = []
         for sub in ("docs/agentic-sdlc/CADENCE_ORG.md", "CADENCE_ORG.md", "processes/docs/agentic-sdlc/CADENCE_ORG.md"):
-            cand = self.root / sub
-            if cand.is_file():
-                m = re.search(r"integration-branch:\s*([^\s>`'\"]+)", cand.read_text(encoding="utf-8", errors="replace"))
-                if m and not m.group(1).startswith("<"):
-                    branch = m.group(1)
-                    break
-        for ref in ([f"origin/{branch}", branch] if branch else []) + ["HEAD"]:
-            if self.git_ok("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").returncode == 0:
-                return ref
-        return None
+            cand = repo_dir / sub
+            if cand.is_file() and (m := re.search(r"integration-branch:\s*([^\s>`'\"]+)", cand.read_text(encoding="utf-8", errors="replace"))) and not m.group(1).startswith("<"):
+                cands.extend([f"origin/{m.group(1)}", m.group(1)])
+                break
+        if repo_dir != self.root or not cands:
+            r_sym = self.git_ok("symbolic-ref", "--short", "refs/remotes/origin/HEAD", repo_dir=repo_dir)
+            if r_sym.returncode == 0 and r_sym.stdout.strip():
+                cands.extend([r_sym.stdout.strip(), r_sym.stdout.strip().split("/", 1)[-1]])
+            cands.extend(["origin/main", "origin/develop", "main", "develop"])
+        return next((r for r in cands + ["HEAD"] if self.git_ok("rev-parse", "--verify", "--quiet", f"{r}^{{commit}}", repo_dir=repo_dir).returncode == 0), None)
 
     def collect_context(self, spec_path):
-        base_ref = self.resolve_base()
-        if base_ref:
-            r = self.git_ok("diff", "--name-only", f"{base_ref}...HEAD")
-            if r.returncode == 0:
-                self.changed_files.update(p for p in r.stdout.splitlines() if p)
-        st = self.git_ok("status", "--porcelain=v1", "-uall")
-        if st.returncode == 0:
-            for line in st.stdout.splitlines():
-                if len(line) >= 4:
-                    p = line[3:].strip().split(" -> ")[-1].strip().strip('"')
-                    self.changed_files.add(p)
-        self.changed_files = {p for p in self.changed_files if not p.startswith(("specs/", "archive/"))}
-
         if spec_path.is_file():
             self.affected_rows = self._parse_files_affected(spec_path)
-
-        explicit = set(self.changed_files) | {p for p, _ in self.affected_rows if "{" not in p and "*" not in p}
-        rels = {p for p in explicit if (self.root / p).is_file() and pathlib.Path(p).suffix.lower() not in BIN_EXTS}
-        ls = self.git_ok("ls-files", "-co", "--exclude-standard")
-        if ls.returncode == 0:
-            for p in ls.stdout.splitlines():
-                if p and not self._skip_default(p) and (self.root / p).is_file():
-                    rels.add(p)
-        else:
-            for dirpath, dirnames, filenames in os.walk(self.root):
-                rel_dir = pathlib.Path(dirpath).resolve().relative_to(self.root)
-                dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")]
-                for fn in filenames:
-                    p = (rel_dir / fn).as_posix() if rel_dir != pathlib.Path(".") else fn
-                    if not self._skip_default(p):
-                        rels.add(p)
-        for rel in sorted(rels):
-            try:
-                self.file_cache[rel] = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
-            except OSError:
-                pass
+        for cr in self.code_roots:
+            base_ref = self.resolve_base(cr)
+            self.repo_bases.append((cr, base_ref))
+            cr_changed = set()
+            if base_ref:
+                r = self.git_ok("diff", "--name-only", f"{base_ref}...HEAD", repo_dir=cr)
+                if r.returncode == 0:
+                    cr_changed.update(p for p in r.stdout.splitlines() if p)
+            st = self.git_ok("status", "--porcelain=v1", "-uall", repo_dir=cr)
+            if st.returncode == 0:
+                for line in st.stdout.splitlines():
+                    if len(line) >= 4:
+                        cr_changed.add(line[3:].strip().split(" -> ")[-1].strip().strip('"'))
+            cr_changed = {p for p in cr_changed if not p.startswith(("specs/", "archive/"))}
+            self.changed_pairs.update((cr, p) for p in cr_changed)
+            aff_here = {self._resolve_affected(p)[1] for p, _ in self.affected_rows if "{" not in p and "*" not in p and self._resolve_affected(p)[0] == cr}
+            rels = {p for p in (cr_changed | aff_here) if (cr / p).is_file() and pathlib.Path(p).suffix.lower() not in BIN_EXTS}
+            ls = self.git_ok("ls-files", "-co", "--exclude-standard", repo_dir=cr)
+            if ls.returncode == 0:
+                rels.update(p for p in ls.stdout.splitlines() if p and not self._skip_default(p) and (cr / p).is_file())
+            else:
+                for dirpath, dirnames, filenames in os.walk(cr):
+                    rel_dir = pathlib.Path(dirpath).resolve().relative_to(cr)
+                    dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")]
+                    for fn in filenames:
+                        p = (rel_dir / fn).as_posix() if rel_dir != pathlib.Path(".") else fn
+                        if not self._skip_default(p):
+                            rels.add(p)
+            for rel in sorted(rels):
+                try:
+                    self.file_cache[self._disp(cr, rel)] = (cr / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+                except OSError:
+                    pass
 
     @staticmethod
     def _skip_default(rel_pos):
@@ -179,7 +203,7 @@ class Tracer:
             sep_s = rf"{kind}[_-]?{maj}(?:[_.-]{minr})?" if minr else rf"{kind}[_-]?{maj}"
             id_pat = re.compile(rf"\b(?:def|async|func|fn|it|describe|test|public|void)\b.*{px}[_-]?{num}[A-Za-z0-9_]*{sep_s}(?![0-9])", re.I)
         for rel, lines in self.file_cache.items():
-            if rel.startswith(("docs/", "specs/", "archive/")):
+            if self._inner_rel(rel).startswith(("docs/", "specs/", "archive/")):
                 continue
             for idx, line in enumerate(lines, 1):
                 if pat_l.search(line) or pat_r.search(line) or (id_pat and id_pat.search(line)):
@@ -214,7 +238,7 @@ class Tracer:
                 self.emit("PASS" if hit else "FAIL", "scenario", ac, hit or f"no C5 test tag matching '{self.ticket} {ac}' outside specs/archive")
         elif real_bullets > 0:
             pat = re.compile(rf"(?<![A-Za-z0-9]){re.escape(self.ticket)}(?![A-Za-z0-9])")
-            hit = next((f"{r}:{i}" for r, ls in self.file_cache.items() if not r.startswith(("docs/", "specs/", "archive/")) for i, ln in enumerate(ls, 1) if pat.search(ln)), None)
+            hit = next((f"{r}:{i}" for r, ls in self.file_cache.items() if not self._inner_rel(r).startswith(("docs/", "specs/", "archive/")) for i, ln in enumerate(ls, 1) if pat.search(ln)), None)
             self.emit("PASS" if hit else "FAIL", "scenario", f"{self.ticket}-ACs", hit or f"no test tag citing '{self.ticket}' for {real_bullets} Low-tier AC(s)")
         else:
             self.emit("FAIL", "problem-ac", "Acceptance Criteria", "no concrete acceptance criteria in problem.md")
@@ -234,7 +258,8 @@ class Tracer:
             if "{" in fpath or "*" in fpath:
                 self.emit("UNVERIFIABLE", "files-affected", f"{ftype} {fpath}")
                 continue
-            exists = (self.root / fpath).exists()
+            cr, rel = self._resolve_affected(fpath)
+            exists = (cr / rel).exists()
             if ftype == "Add":
                 self.emit("PASS" if exists else "FAIL", "files-affected", f"Add {fpath}", "" if exists else "target file missing on disk")
             elif ftype == "Delete":
@@ -242,7 +267,7 @@ class Tracer:
             elif ftype == "Modify":
                 if not exists:
                     self.emit("FAIL", "files-affected", f"Modify {fpath}", "target missing on disk")
-                elif not self.changed_files or fpath in self.changed_files:
+                elif not self.changed_pairs or (cr, rel) in self.changed_pairs:
                     self.emit("PASS", "files-affected", f"Modify {fpath}")
                 else:
                     self.emit("WARN", "files-affected", f"Modify {fpath}", "untouched relative to resolved base")
@@ -316,10 +341,10 @@ class Tracer:
             for seam in SEAMS:
                 if re.search(rf"\b{seam}\b", raw) and seam not in active_seams:
                     active_seams.append(seam)
-        aff_set = {p for p, _ in self.affected_rows}
+        aff_set = {self._disp(*self._resolve_affected(p)) for p, _ in self.affected_rows if "{" not in p and "*" not in p}
         for seam in active_seams:
             pat_s = re.compile(rf"\b{seam}\b")
-            hit = next((f"{r}:{i}" for r, ls in self.file_cache.items() if not (r.endswith(".md") and r not in aff_set) for i, ln in enumerate(ls, 1) if pat_s.search(ln)), None)
+            hit = next((f"{r}:{i}" for r, ls in self.file_cache.items() if not (self._inner_rel(r).endswith(".md") and r not in aff_set) for i, ln in enumerate(ls, 1) if pat_s.search(ln)), None)
             self.emit("PASS" if hit else "FAIL", "seam", seam, hit or "declared in spec.md ## Observability Seams but not found in code/tests")
 
     def _trace_chord_coverage(self, spec_lines, scenarios, ac_map, traced_ok):
@@ -354,11 +379,15 @@ class Tracer:
             self.trace_low()
         else:
             self.trace_medium_high(spec_path)
+        for cr, base_ref in self.repo_bases:
+            chunks = [self.git_ok("diff", "-U2", *args, repo_dir=cr).stdout for args in (([f"{base_ref}...HEAD"],) if base_ref else ()) + (["--cached"], [])]
+            for fl in analyze_test_diff("\n".join(c for c in chunks if c)):
+                self.emit("WARN", "test-hygiene", cr.name if self.multi_repo else "diff", fl)
         print(f"SUMMARY pass={self.pass_cnt} fail={self.fail_cnt} warn={self.warn_cnt} unverifiable={self.unv_cnt}")
         return 1 if self.fail_cnt > 0 else 0
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 8:
-        sys.exit("Usage: verify_trace.py ROOT BASE BASE_EXPLICIT TICKET TICKET_DIR TICKET_REL STRICT")
-    sys.exit(Tracer(*sys.argv[1:8]).run())
+    if len(sys.argv) < 8:
+        sys.exit("Usage: verify_trace.py ROOT BASE BASE_EXPLICIT TICKET TICKET_DIR TICKET_REL STRICT [CODE_ROOT ...]")
+    sys.exit(Tracer(*sys.argv[1:8], code_roots=sys.argv[8:]).run())

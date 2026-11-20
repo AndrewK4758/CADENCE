@@ -148,6 +148,7 @@ for a, b in [
     ("skills/cadence-define/scripts/read_state.py", "skills/cadence-build/scripts/read_state.py"),
     ("skills/cadence-define/scripts/read_state.py", "skills/cadence-watch/scripts/read_state.py"),
     ("skills/cadence-define/scripts/ready_mr.sh", "skills/cadence-build/scripts/ready_mr.sh"),
+    ("local-offload/mcp/offload_diff_checks.py", "skills/cadence-spec/trace_diff_hygiene.py"),
 ]:
     if (root / a).read_bytes() != (root / b).read_bytes():
         errs.append(f"twin drift: {a} != {b}")
@@ -165,7 +166,7 @@ t1b_syntax() {
   python3 -B - "$ROOT" <<'PY'
 import pathlib, sys
 root = pathlib.Path(sys.argv[1])
-for p in sorted([*root.glob("skills/**/*.py"), *root.glob("hooks/*.py")]):
+for p in sorted([*root.glob("skills/**/*.py"), *root.glob("hooks/*.py"), *root.glob("local-offload/mcp/*.py")]):
     compile(p.read_text(encoding="utf-8"), str(p), "exec")
 PY
 }
@@ -387,6 +388,7 @@ run_subtest "T10 certainty-gate empirical evidence & escalation gates" bash "$RO
 run_subtest "T11 cadence turn-logger hook & /cadence-trainlog dataset export gates" bash "$ROOT/tests/test-turn-logger.sh" "$ROOT"
 run_subtest "T12 review hardening: breaker-trigger, multi-repo --code-root, cold-breaker contracts" bash "$ROOT/tests/test-review-hardening.sh" "$ROOT"
 run_subtest "T13 completeness gates: strictness binding, non-inversion, absence closure, anomalies" bash "$ROOT/tests/test-completeness-gates.sh" "$ROOT"
+run_subtest "T14 next-wave hardening: rework_base, cross-repo verify-facts, chaos, org-fold, anti-tautology, attestation" bash "$ROOT/tests/test-next-wave-hardening.sh" "$ROOT"
 
 echo "=== Summary: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]]

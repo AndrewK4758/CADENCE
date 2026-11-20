@@ -42,6 +42,7 @@ Before running the evaluation, verify Gate 2 clearance in `submission.md`'s `## 
 1. `cadence-reviewer` has approved the change proposal (`Approve`).
 2. When `breaker-trigger.sh` returns `decision=TRIGGER`, `cadence-breaker` has returned `Verdict: CLEAN` (recorded under `### Cold-Breaker Summary`).
 3. When `security-trigger.sh` returns `decision=TRIGGER`, `cadence-security-auditor` has returned `PASS` / approval.
+4. **Physical Cross-Model Attestation Check:** Inspect `cadence-run:cycle` ledger markers in `submission.md` (`reviewer_model=`, `breaker_model=`, `implementer_model=`). Whenever `CADENCE_ORG.md#runtime-binding` clause 6 binds an independent review/breaker model (or at `High` tier when heterogeneous runtimes are configured), verify the final approving cycle attests distinct review/breaker model provenance rather than unattested or same-model self-review; flag missing or same-model attestation as a blocking finding for explicit human ruling.
 
 If any required Gate 2 verdict is missing or blocking (`REQUEST CHANGES`, `BROKEN`, or `BLOCKING_ISSUES`), **halt immediately** and instruct the user to run `/cadence-review` first.
 

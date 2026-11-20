@@ -183,6 +183,7 @@ if [[ -f "$SELF_DIR/verify-spec-invariants.sh" ]]; then
   check_cross_artifact_traceability "$ROOT" "$SPEC" "$TEST_PLAN" "$IS_ARCHIVE" "$SPEC_AC_IDS"
   check_design_options_hygiene "$DESIGN_OPTIONS" "$IS_ARCHIVE"
   check_pillar_precedence_convergence "$SPEC" "$DESIGN_OPTIONS" "$IS_ARCHIVE"
+  check_chaos_applicability "$SPEC" "$TEST_PLAN" "$IS_ARCHIVE"
 else
   warn "verify-spec-invariants.sh absent; skipped Layer-1.5 checks"
 fi

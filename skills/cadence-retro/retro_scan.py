@@ -87,9 +87,17 @@ def scan_ticket(tdir: pathlib.Path, source: str) -> dict:
     nb_counts = {c: 0 for c in ("out-of-scope-defect", "adr-owed", "nit", "hygiene", "observation")}
     if sub.is_file():
         stxt = sub.read_text(encoding="utf-8", errors="replace")
-        for m in re.finditer(r"<!--\s*cadence-run:cycle\b([^>]*)-->", stxt):
-            kv = dict(re.findall(r"(\w+)=(\S+)", m.group(1)))
-            cycles.append({"n": int(kv.get("n", 0)), "blocking": int(kv.get("blocking", 0)), "nonblocking": int(kv.get("nonblocking", 0))})
+        for m in re.finditer(r"<!--\s*cadence-run:cycle\b(.*?)-->", stxt):
+            kv = dict(re.findall(r"([a-z_]+)=([^\s>]+)", m.group(1)))
+            cycles.append({
+                "n": int(kv.get("n", 0)),
+                "blocking": int(kv.get("blocking", 0)),
+                "nonblocking": int(kv.get("nonblocking", 0)),
+                "sha": kv.get("sha", ""),
+                "implementer_model": kv.get("implementer_model", ""),
+                "reviewer_model": kv.get("reviewer_model", ""),
+                "breaker_model": kv.get("breaker_model", ""),
+            })
         mf = re.search(r"Follow-ups created\s*:?\s*(.+)", stxt, re.I)
         if mf:
             followups_line = mf.group(1).strip()
@@ -104,6 +112,17 @@ def scan_ticket(tdir: pathlib.Path, source: str) -> dict:
     act_m = parse_minutes(meta["actual_effort"])
     if act_m is None and meta["stages"]:
         act_m = sum(meta["stages"].values())
+    attested_cycles = [c for c in sorted(cycles, key=lambda x: x["n"]) if c["implementer_model"] or c["reviewer_model"] or c["breaker_model"]]
+    same_model_review = False
+    independent_model_review = False
+    if attested_cycles:
+        last_att = attested_cycles[-1]
+        imp, rev, brk = last_att["implementer_model"].lower(), last_att["reviewer_model"].lower(), last_att["breaker_model"].lower()
+        same_model_review = bool(imp and rev and imp == rev)
+        independent_model_review = (not same_model_review) and bool(
+            (imp and rev and imp != rev) or (imp and brk and imp != brk) or (rev and brk and rev != brk)
+        )
+    unattested_high_tier = bool(meta["tier"] == "high" and cycles and not any(c["reviewer_model"] for c in cycles))
     return {
         "id": tdir.name, "source": source, "tier": meta["tier"] or "missing", "tier_valid": meta["tier_valid"],
         "status": meta["status"], "sort_date": meta["archived_at"] or meta["merged_at"] or "",
@@ -111,6 +130,10 @@ def scan_ticket(tdir: pathlib.Path, source: str) -> dict:
         "cycles_count": len(cycles), "max_blocking": max((c["blocking"] for c in cycles), default=0),
         "followups_deferred": bool(re.search(r"\bDeferred\b", followups_line)),
         "unguarded_sweep": unguarded_sweep, "nb_counts": nb_counts,
+        "independent_model_review": independent_model_review,
+        "same_model_review": same_model_review,
+        "unattested_high_tier": unattested_high_tier,
+        "attested_cycles": attested_cycles,
     }
 
 
@@ -172,6 +195,9 @@ def run_scan(root: pathlib.Path, since: str = "", include_active: bool = False) 
     unguarded = [t["id"] for t in tickets if t["unguarded_sweep"]]
     missing_sum = [t["id"] for t in tickets if t["source"] == "archive" and not t["has_summary"]]
     over_est = [t["id"] for t in tickets if t["est_min"] and t["act_min"] and t["act_min"] > t["est_min"]]
+    indep_models = [t["id"] for t in tickets if t["independent_model_review"]]
+    same_models = [t["id"] for t in tickets if t["same_model_review"]]
+    unattested_high = [t["id"] for t in tickets if t["unattested_high_tier"]]
     insights = scan_existing_insights(root)
     return {
         "status": "empty_archive" if archived_cnt == 0 and not include_active else "ok",
@@ -180,7 +206,11 @@ def run_scan(root: pathlib.Path, since: str = "", include_active: bool = False) 
         "stage_totals": {k: fmt_minutes(v) for k, v in sorted(stage_totals.items())},
         "rework_hotspots": rework, "deferred_followups": deferred,
         "unguarded_citation_sweeps": unguarded, "missing_summary": missing_sum,
-        "over_estimate_tickets": over_est, "existing_insights": insights,
+        "over_estimate_tickets": over_est,
+        "independent_model_reviews": indep_models,
+        "same_model_reviews": same_models,
+        "unattested_high_tier_reviews": unattested_high,
+        "existing_insights": insights,
         "tickets": tickets,
     }
 
@@ -208,6 +238,7 @@ def main() -> int:
     print("unguarded_citation_sweeps=" + (",".join(res["unguarded_citation_sweeps"]) or "none"))
     print("missing_summary=" + (",".join(res["missing_summary"]) or "none"))
     print("over_estimate_tickets=" + (",".join(res["over_estimate_tickets"]) or "none"))
+    print(f"model_attestation=independent:{len(res['independent_model_reviews'])},same_model:{len(res['same_model_reviews'])},unattested_high:{len(res['unattested_high_tier_reviews'])}")
     ins = res["existing_insights"]
     print(f"existing_insights=II:{ins['intent_count']},PROD:{ins['prod_count']}")
     return 0

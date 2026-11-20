@@ -11,5 +11,5 @@ trace_mode() {
     echo "ERROR: required module not found: $helper" >&2
     exit 1
   fi
-  python3 "$helper" "$ROOT" "$BASE" "$BASE_EXPLICIT" "$TICKET" "$TICKET_DIR" "$TICKET_REL" "$TRACE_STRICT"
+  python3 "$helper" "$ROOT" "$BASE" "$BASE_EXPLICIT" "$TICKET" "$TICKET_DIR" "$TICKET_REL" "$TRACE_STRICT" "${CODE_ROOTS[@]+"${CODE_ROOTS[@]}"}"
 }

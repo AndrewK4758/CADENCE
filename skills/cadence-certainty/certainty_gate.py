@@ -157,6 +157,18 @@ def _locate_sibling(root: pathlib.Path, rel_subpath: str) -> pathlib.Path | None
     return None
 
 
+def _target_flags(root: pathlib.Path, code_roots: list[pathlib.Path], base_arg: str, base_ref: str | None) -> list[str]:
+    flags: list[str] = []
+    for cr in code_roots:
+        if cr != root or len(code_roots) > 1:
+            flags += ["--code-root", str(cr)]
+    if base_arg:
+        flags += ["--base", base_arg]
+    elif len(code_roots) == 1 and code_roots[0] == root and base_ref:
+        flags += ["--base", base_ref]
+    return flags
+
+
 def _run_layer1(
     root: pathlib.Path,
     code_roots: list[pathlib.Path],
@@ -232,18 +244,10 @@ def _run_layer1(
                     passes.append(("blast_radius", "git-diff", "all modified production files declared in Files Affected"))
 
     # 4. Dormant Security / Data pillar vs security-trigger.sh
+    tgt_flags = _target_flags(root, code_roots, base_arg, base_ref)
     sec_script = _locate_sibling(root, "cadence-review/security-trigger.sh")
     if sec_script and tier in {"low", "medium", "high"}:
-        cmd = ["bash", str(sec_script), "--root", str(root), "--scan-signals"]
-        for cr in code_roots:
-            if cr != root or len(code_roots) > 1:
-                cmd += ["--code-root", str(cr)]
-        if base_arg:
-            cmd += ["--base", base_arg]
-        elif len(code_roots) == 1 and code_roots[0] == root and base_ref:
-            cmd += ["--base", base_ref]
-        cmd.append(ticket)
-        sr = subprocess.run(cmd, capture_output=True, text=True)
+        sr = subprocess.run(["bash", str(sec_script), "--root", str(root), "--scan-signals", *tgt_flags, ticket], capture_output=True, text=True)
         if sr.returncode == 0:
             m_sig = re.search(r"\bsignals=([^\s]+)", sr.stdout)
             m_files = re.search(r"\bfiles=([^\s]+)", sr.stdout)
@@ -259,11 +263,7 @@ def _run_layer1(
     # 5. verify-facts.sh UNVERIFIABLE ratio
     vf_script = _locate_sibling(root, "cadence-spec/verify-facts.sh")
     if vf_script and tier in {"medium", "high"} and spec_path.is_file():
-        cmd = ["bash", str(vf_script), "--root", str(root)]
-        if base_ref:
-            cmd += ["--base", base_ref]
-        cmd.append(ticket)
-        vr = subprocess.run(cmd, capture_output=True, text=True)
+        vr = subprocess.run(["bash", str(vf_script), "--root", str(root), *tgt_flags, ticket], capture_output=True, text=True)
         m_sum = re.search(r"SUMMARY\s+pass=(\d+)\s+fail=(\d+)\s+warn=(\d+)\s+unverifiable=(\d+)", vr.stdout)
         if vr.returncode != 0 or (m_sum and int(m_sum.group(2)) > 0):
             halts.append(("verify_facts_failed", "spec.md", "verify-facts.sh reported FAIL citation(s)"))

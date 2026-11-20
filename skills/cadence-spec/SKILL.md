@@ -68,10 +68,10 @@ When either prerequisite is missing, advise the operator to run `/cadence-triage
    **Run the mechanical citation and fact verifier (`verify-facts.sh`) under the same loop-until-green discipline:**
 
    ```bash
-   .agents/skills/cadence-spec/verify-facts.sh $ticket_id
+   .agents/skills/cadence-spec/verify-facts.sh [--code-root <dir>]... $ticket_id
    ```
 
-   This script validates `Files Affected` entries, every backticked `path:N` / markdown `#LN` citation across `spec.md`, `problem.md`, `design-options.md`, and `decisions.md`, plus identifier-proximity near cited lines. Whenever `verify-facts.sh` exits non-zero, route through `offload_log_triage` and return `FAIL` lines to `cadence-spec-author` until clean.
+   This script validates `Files Affected` entries (including `<repo>:<path>` satellite targets when `--code-root <dir>` is supplied), every backticked `path:N` / markdown `#LN` citation across `spec.md`, `problem.md`, `design-options.md`, and `decisions.md`, plus identifier-proximity near cited lines. Whenever `verify-facts.sh` exits non-zero, route through `offload_log_triage` and return `FAIL` lines to `cadence-spec-author` until clean.
 
    **Run the hybrid certainty gate (`certainty-gate.sh`) after `verify-facts.sh`:**
 
