@@ -35,7 +35,7 @@ For small, low-blast-radius changes, the lightweight track (detailed below) cond
 
 ### Drift prevention: verification & Doctor gates
 
-Repository health and governance drift are checked automatically via `bash .agents/skills/cadence-doctor/doctor.sh --full` (and `tests/run-cadence-tests.sh` in framework development), which verify symlinks, org bindings, `<400`-line ceilings, eject footprint freshness, and eval contracts. If your repository wires a pre-commit hook via CI templates, it invokes the same canonical check script.
+Repository health and governance drift are checked automatically via `bash .agents/skills/cadence-doctor/doctor.sh --full` (and `tests/run-cadence-tests.sh` in framework development), which verify symlinks, org bindings, authored file-length ceilings, eject footprint freshness, and eval contracts. If your repository wires a pre-commit hook via CI templates, it invokes the same canonical check script.
 
 ## Filing an intent issue
 

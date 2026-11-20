@@ -8,14 +8,14 @@ allowed-tools: Read Write Edit Glob Grep Bash Skill
 
 # cadence-watch
 
-Monitor open `spec_mr` / `merge_request` / `triage_mr` threads on GitHub (`gh`) or GitLab (`glab`) plus inbound comments on the bound external tracker (`CADENCE_ORG.md#tracker-binding`: Jira Server/DC or YouTrack Server), mirror unseen feedback into `specs/<TICKET-ID>/submission.md`, and advance or remediate the ticket strictly within approved scope while preserving every mandatory CADENCE human gate.
+Monitor open `spec_mr` / `merge_request` / `triage_mr` threads on GitHub (`gh`) or GitLab (`glab`), upstream `github_issue_url` discussions, and inbound comments on the bound external tracker (`CADENCE_ORG.md#tracker-binding`: Jira Server/DC or YouTrack Server), mirror unseen feedback into `specs/<TICKET-ID>/submission.md`, and advance or remediate the ticket strictly within approved scope while preserving every mandatory CADENCE human gate.
 
 > **Shared State & Isolation Contract:** Always inspect ticket state and poll external sources via `pr_watch.py` (using byte-identical `read_state.py` and `CADENCE_ORG.md#branch-strategy-binding` `integration-branch`, never hardcoded `main`/`develop`). Never parse `metadata.yaml` by hand, never self-merge an unmerged PR, never commit directly onto a protected `<integration-branch>`, and never mutate files under `--dry-run`.
 
 ## Step 0 — Optional Local Offload (:11434, Cloud-Only Fallback)
 
 1. **Failure & CI Log Compaction (`offload_log_triage`):** When `:11434` is reachable, pipe `ci_failed` run logs (`gh run view --log-failed` / `glab ci trace`) and any failing verification/test output >30 lines through `offload_log_triage` (`inference` on `:11434`, raw log saved to `/tmp/agy-last-triage.log`; else inspect directly).
-2. **Pre-Push Mechanical Diff Scan (`offload_deep_review`):** When `:11434` is reachable, before pushing remediation commits on `merge_request`, invoke `offload_deep_review(diff_range="<integration-branch>...HEAD", cwd="<worktree-root>")` to verify `<400`-line file ceilings, comment discipline, and CHORD seams.
+2. **Pre-Push Mechanical Diff Scan (`offload_deep_review`):** When `:11434` is reachable, before pushing remediation commits on `merge_request`, invoke `offload_deep_review(diff_range="<integration-branch>...HEAD", cwd="<worktree-root>")` to verify authored file-length ceilings, comment discipline, and CHORD seams.
 3. **Semantic Grounding & Dedupe (`local_semantic_embed` / `repo-scout`):** When `:11434` is reachable, use `local_semantic_embed` (`embedding` on `:11434`) when grounding reviewer questions in `specs/`, `archive/`, or codebase symbols, or checking non-blocking follow-up candidates (falling back to `Grep`/`Glob` when offline).
 
 ## Step 1 — Poll Forge & Bound Tracker (`pr_watch.py`)
@@ -35,7 +35,7 @@ python3 .agents/skills/cadence-watch/scripts/pr_watch.py <TICKET-ID-OR---all> \
 
 ## Step 2 — Mirror Unseen External Feedback Before Acting
 
-When `has_new_comments=true` (unseen PR reviews, inline diff comments, PR conversation comments, or bound Jira/YouTrack ticket comments):
+When `has_new_comments=true` (unseen PR reviews, inline diff comments, PR conversation comments, `github_issue_url` issue comments, or bound Jira/YouTrack ticket comments):
 
 1. Check out or enter the ticket's active branch/worktree (creating `../worktrees/watch-<TICKET-ID>` if operating from a primary checkout per `.agents/skills/cadence-build/references/worktree-and-ledger.md`).
 2. Append each unseen entry chronologically to `specs/<TICKET-ID>/submission.md` under `## Discussion`, embedding the exact deduplication tag right beneath the heading:
