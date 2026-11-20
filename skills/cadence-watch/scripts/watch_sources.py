@@ -313,3 +313,53 @@ def fetch_tracker_comments(repo_root: str, ticket_id: str, jira_url: str, youtra
             "body": body, "created_at": str(c.get("created") or ""), "updated_at": str(c.get("updated") or ""), "source": tracker,
         })
     return {"status": "ok", "tracker": tracker, "comments": comments}
+
+
+def fetch_github_issue_comments(issue_url: str, repo_root: str) -> dict:
+    """Poll an upstream GitHub issue referenced by github_issue_url via gh."""
+    url = (issue_url or "").strip()
+    if not url:
+        return {"status": "skipped_no_issue_url", "issue_url": "", "issue_state": "", "comments": []}
+    if not shutil.which("gh"):
+        raise SourceHalt("gh_missing", "gh CLI is not installed -- cannot query GitHub issue")
+    rc, out, err = _run_cmd(["gh", "issue", "view", url, "--json", "number,url,state,closedAt,comments"], cwd=repo_root)
+    if rc != 0:
+        raise SourceHalt("forge_unreachable", f"gh issue view {url} failed: {err.strip()[:220]}")
+    try:
+        data = json.loads(out)
+    except json.JSONDecodeError as exc:
+        raise SourceHalt("forge_unreachable", f"gh issue view returned invalid JSON: {exc}")
+    comments = []
+    for c in data.get("comments") or []:
+        body = c.get("body") or ""
+        if is_ignored_body(body):
+            continue
+        author = (c.get("author") or {}).get("login") or "unknown"
+        created = c.get("createdAt") or ""
+        comments.append({
+            "id": str(c.get("id") or f"{author}:{created}"), "author": author,
+            "body": body, "created_at": created, "source": "github_issue",
+        })
+    return {
+        "status": "polled_github_issue", "issue_url": data.get("url") or url,
+        "issue_state": (data.get("state") or "OPEN").upper(), "comments": comments,
+    }
+
+
+def classify_github_issue(repo_root: str, issue_url: str, seen_ids: list | set, res: dict) -> dict:
+    """Populate classify_ticket result for an upstream github_issue_url pre-PR."""
+    gh_iss = fetch_github_issue_comments(issue_url, repo_root)
+    seen = set(seen_ids or [])
+    new_tr = [c for c in gh_iss["comments"] if c["id"] not in seen]
+    res.update({
+        "pr_kind": "github_issue", "pr_ref": issue_url, "pr_url": gh_iss["issue_url"],
+        "forge": "github", "pr_state": gh_iss["issue_state"], "tracker_status": gh_iss["status"],
+        "tracker": "github_issue", "new_tracker_comments": new_tr, "has_new_comments": bool(new_tr),
+    })
+    if gh_iss["issue_state"] == "CLOSED":
+        res["event"], res["next_action"] = "closed_unmerged", "halt_human_rejected"
+    elif new_tr:
+        res["event"], res["next_action"] = "comments_new", "triage_comments"
+    else:
+        res["event"], res["next_action"] = "idle", "none"
+    return res

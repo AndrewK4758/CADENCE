@@ -23,6 +23,9 @@ DATA="${MOCK_GH_DIR:?}"
 if [[ "$1 $2" == "pr view" ]]; then
   pr="${3##*/}"
   cat "$DATA/pr_${pr}.json"
+elif [[ "$1 $2" == "issue view" ]]; then
+  iss="${3##*/}"
+  cat "$DATA/issue_${iss}.json"
 elif [[ "$1" == "api" ]]; then
   pr="$(echo "$2" | sed -n 's|.*/pulls/\([0-9]*\)/comments|\1|p')"
   if [[ -f "$DATA/inline_${pr}.json" ]]; then
@@ -38,6 +41,9 @@ DATA="${MOCK_GL_DIR:?}"
 if [[ "$1 $2" == "mr view" ]]; then
   mr="${3##*/}"
   cat "$DATA/mr_${mr}.json"
+elif [[ "$1 $2" == "issue view" ]]; then
+  iss="${3##*/}"
+  cat "$DATA/issue_${iss}.json"
 elif [[ "$1" == "api" ]]; then
   mr="$(echo "$2" | sed -n 's|.*/merge_requests/\([0-9]*\)/discussions|\1|p')"
   cat "${DATA}/disc_${mr}.json"
@@ -201,11 +207,31 @@ pw ACME-112 --no-tracker --watch --interval 0.03 --timeout 0.08 | grep -q '^even
 cat > "$TMP/mock_data/pr_77.json" <<'JSON'
 {"number":77,"url":"https://github.com/acme/repo/pull/77","state":"OPEN","isDraft":false,"reviewDecision":"","headRefName":"spec/high/ACME-106","headRefOid":"sha77b","baseRefName":"trunk","reviews":[],"comments":[],"statusCheckRollup":[]}
 JSON
+# 11. Upstream github_issue_url polling (pre-PR Gate 1, --all discovery, --ack dedupe, closed_unmerged)
+mkdir -p "$TMP/specs/ACME-401"
+printf 'id: ACME-401\ntier: Medium\nstatus: triaged\nbranch: "spec/bug/ACME-401"\ngithub_issue_url: "https://github.com/acme/upstream/issues/128"\n' > "$TMP/specs/ACME-401/metadata.yaml"
+cat > "$TMP/mock_data/issue_128.json" <<'JSON'
+{"number":128,"url":"https://github.com/acme/upstream/issues/128","state":"OPEN","closedAt":null,"comments":[{"id":"IC_self","author":{"login":"author"},"body":"Clarified\n<!-- cadence-watch:reply for=IC_0 -->","createdAt":"2026-11-20T10:00:00Z"},{"id":"IC_1","author":{"login":"maintainer"},"body":"Let us go with Option 3 (bounded lease).","createdAt":"2026-11-20T12:00:00Z"}]}
+JSON
+out11="$(pw ACME-401 --write-snapshot "$TMP/s11.json")"
+grep -q '^pr_kind=github_issue$' <<<"$out11"
+grep -q '^event=comments_new$' <<<"$out11"
+grep -q '^next_action=triage_comments$' <<<"$out11"
+grep -q '^new_tracker_comment_count=1$' <<<"$out11"
+grep -q '^item=github_issue:IC_1:maintainer:-:Let us go with Option 3 (bounded lease)\.$' <<<"$out11"
 all_out="$(JIRA_BASE_URL="http://127.0.0.1:$PORT" JIRA_PAT="tok-jira-99" YOUTRACK_BASE_URL="http://127.0.0.1:$PORT" YOUTRACK_TOKEN="tok-yt-99" pw --all)"
-grep -q '^active_tickets=6$' <<<"$all_out"
-grep -q 'ticket=YT-9 .*event=comments_new' <<<"$all_out"
+grep -q '^active_tickets=7$' <<<"$all_out"
+grep -q 'ticket=ACME-401 .*pr_kind=github_issue forge=github event=comments_new' <<<"$all_out"
 ! env -u JIRA_BASE_URL -u JIRA_PAT YOUTRACK_BASE_URL="http://127.0.0.1:$PORT" YOUTRACK_TOKEN="tok-yt-99" python3 -B "$WATCH_PY" --all --repo-root "$TMP" --state-dir "$TMP/ws" >"$TMP/all_err.out" 2>"$TMP/all_err.err"
 grep -q 'ticket=ACME-112 event=error cause=tracker_env_unset' "$TMP/all_err.out"
 grep -q 'ticket=YT-9 .*event=comments_new' "$TMP/all_err.out"
+pw --ack ACME-401 --from-snapshot "$TMP/s11.json" >/dev/null
+pw ACME-401 | grep -q '^event=idle$'
+cat > "$TMP/mock_data/issue_128.json" <<'JSON'
+{"number":128,"url":"https://github.com/acme/upstream/issues/128","state":"CLOSED","closedAt":"2026-11-20T13:00:00Z","comments":[]}
+JSON
+out11c="$(pw ACME-401)"
+grep -q '^event=closed_unmerged$' <<<"$out11c"
+grep -q '^next_action=halt_human_rejected$' <<<"$out11c"
 
-echo "PASS: test-pr-watch (all 10 scenarios)"
+echo "PASS: test-pr-watch (all 11 scenarios)"
