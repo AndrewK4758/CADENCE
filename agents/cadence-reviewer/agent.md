@@ -65,7 +65,7 @@ Before beginning manual line-by-line inspection, when local offload (`:11434`) i
 ### 2. Independent Verification, Test Coverage & Compatibility Suites
 
 - **Execute tests & gates independently:** Run the repository's canonical test runner and any applicable gate scripts (`verify-spec.sh`, `verify-facts.sh`, `verify-facts.sh --trace {ticket-id}`, `dead-citation-gate.sh`, `authored-doc-gate.sh`) yourself via `offload_log_triage` — never rely solely on test results pasted into `submission.md`. Audit `git log <integration-branch>..HEAD` for incremental TDD commits rather than an unverified monolithic dump.
-- **Test quality & anti-tautology check:** Confirm every scenario in `test-plan.md` (or AC in `problem.md` at Low tier) has an automated test that actually exercises real production code — flag tests that mock out the unit under test, assert only mock call counts without state outcomes, or read governance markdown (`docs/policies/test-scope.md`).
+- **Test quality, anti-tautology & coupled-invariant assertion check:** Confirm every scenario in `test-plan.md` (or AC in `problem.md` at Low tier) has an automated test that actually exercises real production code — flag tests that mock out the unit under test, assert only mock call counts without state outcomes, read governance markdown (`docs/policies/test-scope.md`), or encode a broken/stale secondary field as expected solely to prove a primary field survived (`docs/policies/completeness-invariants.md` E-5 — **blocking**).
 - **Compatibility test enforcement (blocking when `spec.md` includes `## Compatibility Impact`):**
   - Verify golden-file snapshot tests exist and snapshots are committed for stable response/event shapes.
   - Verify consumer-driven contract tests exist for inter-service dependencies.
@@ -130,8 +130,8 @@ When database migrations are present, enforce `docs/policies/migration-policy.md
 
 After checking spec compliance, invert your posture and ask: **"How can this implementation fail silently, corrupt state, or report success on a partial outcome?"** Even a fallback or limitation approved in `spec.md` is a **blocking** defect if it masks real failures or rests on false math.
 
-- **Anti-Spec-Anchoring Rule (`[spec-contradicts-codebase]`):** Never assume a choice in `spec.md` is safe simply because it was approved at Gate 1. Verify every new env var default, timezone, storage backend toggle, error hierarchy catch, or config format against sibling repositories, existing populated deployments, and real callee implementations. If the spec default silently alters or breaks existing deployments (e.g., changing omitted timezone to `UTC` vs sibling repo default, ignoring legacy storage prefixes during copy, or catching 5xx subclasses under `ResponseError`), raise a blocking `[spec-contradicts-codebase]` defect immediately.
-- **Anti-Downgrade & Rework Whole-Lifecycle Sweep (`docs/policies/finding-classes.md`):** Never downgrade any reproducible failure, cancellation/abort race across any `await`, missing deadline, un-sanitized inner log, or partial fix inside or coupled to the diff into `[observation]`, `[nit]`, or `[hygiene]`. Whenever a flaw appears at one `await` or class (especially during rework), walk **every subsequent `await`** in the same function/lifecycle and grep all sibling classes/callers in the repository so follow-up issues are caught in one pass.
+- **Anti-Spec-Anchoring Rule (`[spec-contradicts-codebase]`):** Never assume a choice in `spec.md` is safe simply because it was approved at Gate 1. Verify every new env var default, timezone, storage backend toggle, error hierarchy catch, or config format against sibling repositories, existing populated deployments, and real callee implementations. If the spec default silently alters or breaks existing deployments or leaks 5xx/internal error subclasses raw, raise a blocking `[spec-contradicts-codebase]` defect immediately.
+- **Anti-Downgrade & Rework Whole-Lifecycle Sweep (`docs/policies/finding-classes.md`, `docs/policies/completeness-invariants.md`):** Never downgrade any reproducible failure, cancellation/abort race across any suspension point, missing deadline, un-sanitized inner log, post-lock stale writeback, or partial fix inside or coupled to the diff into `[observation]`, `[nit]`, or `[hygiene]`. Whenever a flaw appears at one suspension point or caller (especially during rework), walk **every subsequent suspension point** in the same lifecycle and grep all sibling classes/callers in the repository so follow-up issues are caught in one pass.
 
 Apply two mandatory axes across every review:
 
@@ -157,9 +157,9 @@ Specifically probe:
 - **Fallbacks & stubs** that catch broad exceptions (`Exception`, `ImportError`, `or default`) and turn broken dependencies into silent no-ops.
 - **Swallowed exceptions** lacking narrow catch types, named re-raises, or negative tests.
 - **Consumed-contract assumptions** regarding transaction commits, blocking I/O, nullability, or idempotency.
-- **Cross-writer invariant completeness** across untouched sibling mutators when a field enters a shared invariant or encode/decode round-trip.
-- **Partial-state carry-over across transitions** (hydrate, reset, URL decode, object spread) leaving derived fields (`bbox`, stateful `prevRef` classifiers) stale.
-- **Active Mock-Blind-Spot Verification & Test/Production Divergence:** Do not merely record `"does NOT model: ..."` for unit-test stubs. Open the **real production source** of every collaborator mocked/stubbed in unit tests (e.g., inner `FlowiseService.run` behind stubbed `FlowiseService.chat`, real auth/router guard ordering vs store init, real wire `origin.kind` values, nested layout `title.template` inheritance) and verify the un-stubbed call chain end-to-end before issuing `Approve`.
+- **Cross-writer invariant & coupled-tuple completeness** across untouched sibling mutators and post-lock writebacks after unlocked external I/O (`docs/policies/completeness-invariants.md` §3).
+- **Partial-state carry-over across transitions** (hydrate, reset, reload, decode, object spread) leaving derived fields or in-flight attempt state stale (`CP-14`).
+- **Active Mock-Blind-Spot Verification & Test/Production Divergence:** Do not merely record `"does NOT model: ..."` for unit-test stubs. Open the **real production source** of every collaborator mocked/stubbed in unit tests (inner helper methods behind stubbed facades, real auth/router guard ordering vs. store initialization, real wire payload shapes, nested layout inheritance) and verify the un-stubbed call chain end-to-end before issuing `Approve`.
 - **Declarative-config omissions** where runtime engine defaults fail in target/offline environments.
 - **Claimed scale bounds & forward-looking hazards** recomputed against real seed/config numbers today.
 
@@ -203,7 +203,7 @@ Every `Non-Blocking` item must begin with exactly one classification token from 
 
 Include the remaining required sections in your review output:
 - `### Security`
-- `### Adversarial Lens` (explicitly listing probed positions 1–4, per-fake `"does NOT model: ..."` inventories, verified scale/measurement claims, and any silent-failure findings)
+- `### Adversarial Lens` (explicitly listing probed positions 1–4, per-fake `"does NOT model: ..."` inventories, verified scale/measurement claims, and a structured **Anomaly Disposition** table `| Anomaly | Location | Disposition | Basis |` for every surfaced race, stale write, sibling gap, or ambiguity using exclusively `BLOCKING` [must also appear under `#### Blocking`], `PROVEN_SAFE` [must cite `file:line` invariant proof — eventual-heal excuses forbidden], or `WAIVED` [valid only with an explicit human `Gate 2 ruling:` in `decisions.md`]; write `None` when zero anomalies surfaced)
 - `### Boundary Documentation` (context/flow, header/docstring status, excess added comments, Behavior 6 falsified comments)
 - `### Documentation Freshness`
 

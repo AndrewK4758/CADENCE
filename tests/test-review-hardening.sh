@@ -139,10 +139,18 @@ out_halt="$(bash "$CERTAINTY" --root "$SAT_C" --code-root "$REPO_A" --stage revi
 [[ "$rc_halt" -eq 1 ]]
 [[ "$out_halt" == *"HALT dormant_security_contradicted"* ]]
 
-# 7. Structural contracts across new agents and policy
+# 7. Structural contracts across agents, completeness policy, and chaos catalog
 test -s "$ROOT/agents/cadence-breaker/agent.md"
 test -s "$ROOT/agents/cadence-spec-challenger/agent.md"
+test -s "$ROOT/processes/docs/policies/completeness-invariants.md"
 grep -q "DO NOT READ.*spec\.md" "$ROOT/agents/cadence-breaker/agent.md"
+grep -q "CP-12.*CP-13.*CP-14" "$ROOT/agents/cadence-breaker/agent.md"
+grep -q "invariant-required-state" "$ROOT/agents/cadence-explorer/agent.md"
+grep -q "Pillar Precedence Non-Inversion" "$ROOT/agents/cadence-spec-challenger/agent.md"
 grep -q "Anti-Downgrade" "$ROOT/processes/docs/policies/finding-classes.md"
+grep -q "Eventual-reconciliation excuses" "$ROOT/processes/docs/policies/finding-classes.md"
+grep -q "^### CP-12:" "$ROOT/processes/docs/policies/chaos-profiles.md"
+grep -q "^### CP-13:" "$ROOT/processes/docs/policies/chaos-profiles.md"
+grep -q "^### CP-14:" "$ROOT/processes/docs/policies/chaos-profiles.md"
 
 echo "PASS: test-review-hardening (all checks)"

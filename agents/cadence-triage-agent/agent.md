@@ -103,11 +103,12 @@ Whenever `CADENCE_ORG.md#id-allocation-binding` configures an external allocator
       - Uncomment and populate `observability_category`, `observability_chord_dimension`, and `production_insight_id`.
       - When marked `Recurring`, populate `related_insights` with the matching historical `PROD-{NNN}` identifiers.
 
-8. **Evaluate architectural impact:**
+8. **Evaluate architectural impact & shared-invariant boundaries (`docs/policies/completeness-invariants.md` E-1):**
    - Which domain entities are touched?
    - Which architectural layers require modification?
    - Which external services or boundaries are involved?
    - Does the change imply schema migrations or public surface compatibility concerns?
+   - **Ban silent sibling exclusion:** Whenever discovery surfaces another caller, background job, webhook, or entry point that mutates the same protected invariant or invokes the same irreversible external sink as an in-scope behavior, **do NOT quietly place it under `## Out of Scope`**. Include it in scope by default, or emit an explicit unanswered probe in `problem.md` (`## Out of Scope`) forcing the requester to decide between pulling the sibling into scope vs. accepting the named residual risk and tracking a linked follow-up.
 
 9. **Assign capitalization classification:**
    - `cap-dev`: net-new capability development (capitalizable)

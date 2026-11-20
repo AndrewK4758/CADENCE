@@ -71,6 +71,11 @@ cat > "$DEST/docs/agentic-sdlc/CADENCE_ORG.md" <<'EOF'
 | `bound-version-scheme` | **calver-yyyy-ww** |
 | `version-pattern` | **`^[0-9]{4}\.(0[1-9]|[1-4][0-9]|5[0-3])\.(0|[1-9][0-9]*)$`** |
 | `cycle-qualifying-cut` | **non-patch** |
+
+## Completeness Strictness Binding
+<!-- team-size: >1 -->
+<!-- enforce-review: yes -->
+<!-- completeness-strictness: auto -->
 EOF
 
 _mk_ticket() {
@@ -163,7 +168,7 @@ Streaming iterator vs upfront materialized count.
 ## Option A: Streaming
 - Structure: Single-pass iterator in `compute_total`
 - Steelman: Zero extra allocation for large sequences
-- Failure modes (KNOWN): Single-consume iterator exhaustion
+- Failure modes (KNOWN): [Pillar: Operational Resilience | Severity: LOW | Scope: in-scope] Single-consume iterator exhaustion
 - Failure modes (UNKNOWN): Non-sized generator inputs
 - Pillar-relevant properties: Structural Simplicity high; Agentic Ergonomics concise
 - Novelty class: Existing codebase idiom
@@ -171,7 +176,7 @@ Streaming iterator vs upfront materialized count.
 ## Option B: Batch Pre-Aggregate
 - Structure: Materialize list before `len`
 - Steelman: Idempotent re-iteration across callers
-- Failure modes (KNOWN): Linear memory spike on huge streams
+- Failure modes (KNOWN): [Pillar: Operational Resilience | Severity: MEDIUM | Scope: in-scope] Linear memory spike on huge streams
 - Failure modes (UNKNOWN): Timeout on slow iterators
 - Pillar-relevant properties: Higher memory footprint
 - Novelty class: Textbook alternative
@@ -255,6 +260,9 @@ Internal helper signature stays backwards-compatible.
 
 ## Design Exploration
 Evaluated Options A and B in `design-options.md`.
+- **Winner:** Option A: Streaming
+- **Winning axis over the runner-up:** Structural Simplicity over Option B (all active higher pillars equal)
+- **Pillar precedence check:** Confirmed no higher-ranked active pillar was traded away for Structural Simplicity.
 
 ## Risks and Open Questions
 **Gate 1 rulings:** required

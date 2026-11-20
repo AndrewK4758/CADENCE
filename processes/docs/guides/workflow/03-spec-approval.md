@@ -74,7 +74,7 @@ Calibrate your review to the lifecycle stage of the subsystem:
 | Proposed design | Do the proposed file paths and class/method signatures match codebase conventions (`AGENTS.md`)? |
 | Alternatives considered | Was at least one credible alternative genuinely weighed and contrasted? |
 | Test plan (`test-plan.md`) | Does the Gherkin scenario set cover every CHORD dimension and `OS-{N}` observability seam (`UNSOUND_CONDITION`, `DELTA_AUDIT_GAP`, `RULE_DIVERGENCE`, `BOUNDARY_FAULT`)? |
-| Journey invariants | When declared: are invariants falsifiable, traced to a CHORD Rules/Deltas cell, and mapped to the applicable [`chaos-profiles.md`](../../policies/chaos-profiles.md) profiles (`CP-01`–`CP-11`)? |
+| Journey invariants | When declared: are invariants falsifiable, traced to a CHORD Rules/Deltas cell, and mapped to the applicable [`chaos-profiles.md`](../../policies/chaos-profiles.md) profiles (`CP-01`–`CP-14`)? |
 
 Remember: `.agents/skills/cadence-spec/verify-spec.sh` already checked structural presence. Spend your energy on whether the content inside those sections is *architecturally sound*.
 

@@ -200,3 +200,154 @@ check_design_options_hygiene() {
     pass "design-options.md free of ranking/recommendation leakage"
   fi
 }
+
+check_pillar_precedence_convergence() {
+  local spec="$1" opts="$2" is_archive="$3"
+  [[ -f "$spec" && -f "$opts" ]] || return 0
+  local has_sentinel=0
+  grep -qF '**Gate 1 rulings:** required' "$spec" && has_sentinel=1
+  local res
+  res="$(python3 - "$spec" "$opts" <<'PY'
+import re, sys
+
+spec_txt = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+opts_txt = open(sys.argv[2], encoding="utf-8", errors="replace").read()
+
+def is_dormant(pattern):
+    m = re.search(rf"(?ms)^###\s+(?:Pillar|Facet)\s+\d+:\s*{pattern}.*?(?=^###\s+|\Z)", spec_txt, re.I)
+    return (not m) or bool(re.search(r"\b(?:dormant|not triggered)\b", m.group(0), re.I))
+
+di_active = not is_dormant(r"Data\s*(?:&|and)\s*Audit|Data Integrity")
+sec_active = not is_dormant(r"Security(?: Boundary)? Posture")
+if not (di_active or sec_active):
+    sys.exit(0)
+
+expl_m = re.search(r"(?ms)^##\s+Design Exploration\b.*?(?=^##\s+|\Z)", spec_txt)
+if not expl_m:
+    sys.exit(0)
+expl = expl_m.group(0)
+if not re.search(r"(?im)Pillar\s+precedence\s+check\s*:", expl):
+    print("MISSING_CHECK\tDesign Exploration omits explicit 'Pillar precedence check:' line while Pillar 4/6 is active")
+
+win_m = re.search(r"(?im)^[-*\s]*(?:\*\*)?(?:Winner|Selected\s+(?:winner|option))(?::\*\*|\*\*:|:)\s*(Option\s+[A-Z])\b", expl)
+axis_m = re.search(r"(?im)^[-*\s]*(?:\*\*)?(?:Winning\s+axis|Decisive\s+pillar)[^:\n]*:(?:\*\*)?\s*(.+)$", expl)
+oq_m = re.search(r"(?ms)^#{2,3}\s+(?:Risks\s+and\s+)?Open Questions\b.*?(?=^#{1,2}\s+|\Z)", spec_txt)
+has_risk_oq = bool(oq_m and re.search(r"\bOQ-\d+\b", oq_m.group(0)) and re.search(r"(?i)\b(?:known|risk|trade-?off|pillar|precedence|option\s+[a-z]|sibling|durab|idempoten|ttl|stale|race)\b", oq_m.group(0)))
+
+if win_m and axis_m:
+    axis_low = axis_m.group(1).lower()
+    picked_lower = any(k in axis_low for k in ("structural simplicity", "simplicity", "agentic ergonomics", "developer experience")) and not re.search(r"data\s*(?:&|and)\s*audit|data\s+integrity|security", axis_low)
+    opt_m = re.search(rf"(?ms)^##\s+{re.escape(win_m.group(1))}\b.*?(?=^##\s+|\Z)", opts_txt)
+    high_known = bool(opt_m and re.search(r"\[[^\]]*(?:Severity:\s*HIGH|Pillar:\s*(?:Data\s*(?:&|and)\s*Audit|Data\s+Integrity|Security))[^\]]*\]", opt_m.group(0), re.I))
+    p_flag = any(re.search(r"\|\s*Flag\s*\|", m.group(0), re.I) for m in re.finditer(r"(?ms)^###\s+(?:Pillar|Facet)\s+[46]:.*?(?=^###\s+|\Z)", spec_txt))
+    if picked_lower and (high_known or p_flag) and not has_risk_oq:
+        print(f"INVERSION\t{win_m.group(1)} picked on lower-ranked pillar ({axis_m.group(1).strip()[:60]}) over active Pillar 4/6 risk without Gate 1 OQ-N")
+PY
+)"
+  local line kind payload
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    kind="${line%%	*}"
+    payload="${line#*	}"
+    case "$kind" in
+      MISSING_CHECK)
+        if [[ "$is_archive" -eq 1 || "$has_sentinel" -eq 0 ]]; then warn "$payload"
+        else fail "$payload"; fi ;;
+      INVERSION)
+        if [[ "$is_archive" -eq 1 ]]; then warn "pillar_precedence_inversion: $payload"
+        else fail "pillar_precedence_inversion: $payload"; fi ;;
+    esac
+  done <<< "$res"
+}
+
+check_chaos_applicability() {
+  local spec="$1" test_plan="$2" is_archive="$3"
+  [[ -f "$spec" && -f "$test_plan" ]] || return 0
+  local has_sentinel=0
+  grep -qF '**Gate 1 rulings:** required' "$spec" && has_sentinel=1
+  local res
+  res="$(python3 - "$spec" "$test_plan" <<'PY'
+import re, sys
+
+spec_txt = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+tp_txt = open(sys.argv[2], encoding="utf-8", errors="replace").read()
+
+def is_dormant(pattern):
+    m = re.search(rf"(?ms)^###\s+(?:Pillar|Facet)\s+\d+:\s*{pattern}.*?(?=^###\s+|\Z)", spec_txt, re.I)
+    return (not m) or bool(re.search(r"\b(?:dormant|not triggered)\b", m.group(0), re.I))
+
+di_active = not is_dormant(r"Data\s*(?:&|and)\s*Audit|Data Integrity")
+sec_active = not is_dormant(r"Security(?: Boundary)? Posture")
+
+# Strip fenced blocks, Alternatives Considered, Prior Production Findings, and Out of Scope
+lines, active_lines, in_fence, skip_sec = spec_txt.splitlines(), [], False, False
+for raw in lines:
+    if re.match(r"^\s*```", raw):
+        in_fence = not in_fence; continue
+    if in_fence:
+        continue
+    if re.match(r"^##\s+(?:Alternatives Considered|Out of Scope)\b", raw, re.I) or re.match(r"^###\s+Prior Production Findings\b", raw, re.I):
+        skip_sec = True; continue
+    if re.match(r"^##\s+", raw):
+        skip_sec = False
+    if not skip_sec:
+        active_lines.append(raw)
+body = "\n".join(active_lines)
+
+oq_txt = "\n".join(m.group(0) for m in re.finditer(r"(?ms)^#{2,3}\s+(?:Risks\s+and\s+)?Open Questions\b.*?(?=^#{1,2}\s+|\Z)", spec_txt))
+
+triggers = []
+if di_active and (
+    re.search(r"\bCP-12\b", body)
+    or (
+        re.search(r"(?i)\b(?:irreversible\s+external|external\s+(?:side[- ]?effect|mutation|charge|dispatch|write)|outbound\s+(?:mutation|payment|billing|webhook|charge))", body)
+        and re.search(r"(?i)\b(?:retry|retries|timeout|idempoten|at-most-once|post-commit|ambiguous)\b", body)
+    )
+):
+    triggers.append(("CP-12", "irreversible external side effect under retry/timeout"))
+
+if (di_active or sec_active) and (
+    re.search(r"\bCP-13\b", body)
+    or re.search(r"(?i)\b(?:external|vendor|provider|remote|dedup(?:lication)?|idempotency|lease|token).{0,40}\b(?:ttl|expir(?:es?|ation|y)|evict(?:ion|ed)?)\b", body)
+):
+    triggers.append(("CP-13", "external authority/dedup/cache TTL expiration window"))
+
+if di_active and (
+    re.search(r"\bCP-05\b", body)
+    or re.search(r"(?i)\b(?:for\s+update|row[- ]level\s+lock|row\s+lock|advisory\s+lock|pessimistic\s+lock|post-lock\s+(?:re-?validat|predicate)|lock\s+contention)\b", body)
+):
+    triggers.append(("CP-05", "concurrent contention / post-lock predicate re-validation"))
+
+if (
+    re.search(r"\bCP-14\b", body)
+    or re.search(r"(?i)\b(?:reload|remount|page\s+refresh|route\s+change|browser\s+back|worker\s+restart|caller\s+reset).{0,50}\b(?:in-flight|mutation|attempt|idempoten|pending|submit)\b", body)
+    or re.search(r"(?i)\b(?:in-flight|attempt\s+identity|pending\s+mutation).{0,50}\b(?:reload|remount|refresh|restart|reset)\b", body)
+):
+    triggers.append(("CP-14", "caller state reset/remount during in-flight mutation"))
+
+satisfied, missing = [], []
+for code, desc in triggers:
+    if re.search(rf"\b{re.escape(code)}\b", tp_txt) or (re.search(r"\bOQ-\d+\b", oq_txt) and re.search(rf"\b{re.escape(code)}\b", oq_txt)):
+        satisfied.append(code)
+    else:
+        missing.append((code, desc))
+
+for code, desc in missing:
+    print(f"MISSING\t{code} ({desc}) triggered by spec.md but omitted from test-plan.md")
+if satisfied and not missing:
+    print("SATISFIED\t" + ", ".join(satisfied))
+PY
+)"
+  local line kind payload
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    kind="${line%%	*}"
+    payload="${line#*	}"
+    case "$kind" in
+      SATISFIED) pass "Chaos matrix applicability satisfied ($payload)" ;;
+      MISSING)
+        if [[ "$is_archive" -eq 1 || "$has_sentinel" -eq 0 ]]; then warn "chaos_matrix_omission: $payload"
+        else fail "chaos_matrix_omission: $payload"; fi ;;
+    esac
+  done <<< "$res"
+}

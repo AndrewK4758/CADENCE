@@ -42,12 +42,13 @@ Before running the evaluation, verify Gate 2 clearance in `submission.md`'s `## 
 1. `cadence-reviewer` has approved the change proposal (`Approve`).
 2. When `breaker-trigger.sh` returns `decision=TRIGGER`, `cadence-breaker` has returned `Verdict: CLEAN` (recorded under `### Cold-Breaker Summary`).
 3. When `security-trigger.sh` returns `decision=TRIGGER`, `cadence-security-auditor` has returned `PASS` / approval.
+4. **Physical Cross-Model Attestation Check:** Inspect `cadence-run:cycle` ledger markers in `submission.md` (`reviewer_model=`, `breaker_model=`, `implementer_model=`). Whenever `CADENCE_ORG.md#runtime-binding` clause 6 binds an independent review/breaker model (or at `High` tier when heterogeneous runtimes are configured), verify the final approving cycle attests distinct review/breaker model provenance rather than unattested or same-model self-review; flag missing or same-model attestation as a blocking finding for explicit human ruling.
 
 If any required Gate 2 verdict is missing or blocking (`REQUEST CHANGES`, `BROKEN`, or `BLOCKING_ISSUES`), **halt immediately** and instruct the user to run `/cadence-review` first.
 
 ### Gate 2 Residual & Mock-Blind-Spot Backstop
 
-Inspect every non-blocking `[observation]`, `[nit]`, `[hygiene]` entry and every `"does NOT model: ..."` line in `submission.md` `## Discussion`. Per `docs/policies/finding-classes.md`'s Anti-Downgrade Clause, if any item describes an unfixed runtime race, deferred cancellation/cleanup gap, unhandled exception subclass (`ResponseError` 5xx, `OperationCanceledException`, `JsonException`), un-sanitized inner logger, existing-state upgrade clobber, partial sibling fix, or unverified stubbed collaborator behavior, reject acceptance (`REQUEST CHANGES`) as a **Blocking Issue**.
+Inspect every non-blocking `[observation]`, `[nit]`, `[hygiene]` entry, every `"does NOT model: ..."` line, and the structured Adversarial Lens Anomaly Disposition table in `submission.md` `## Discussion` alongside `evidence.yaml` shared-invariant `absence` closure. Per `docs/policies/finding-classes.md` and `docs/policies/completeness-invariants.md`, if any item describes an unfixed runtime race, post-lock stale writeback, post-commit ambiguous fault (`CP-12`), external TTL eviction gap (`CP-13`), caller reset duplication (`CP-14`), deferred cancellation/cleanup gap, unhandled 5xx/internal error subclass, un-sanitized inner logger, existing-state upgrade clobber, partial sibling fix, eventual-consistency rationalization, or unverified stubbed collaborator behavior without an explicit human `Gate ruling:`, reject acceptance (`REQUEST CHANGES`) as a **Blocking Issue**.
 
 ## Evaluation Process
 

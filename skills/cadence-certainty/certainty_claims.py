@@ -15,17 +15,14 @@ SKIP_PREFIXES = (".git/", "specs/", "archive/")
 
 
 def _is_safe_rel(root: pathlib.Path, rel_str: str) -> pathlib.Path | None:
-    if not rel_str or rel_str.startswith("/"):
-        return None
-    p = pathlib.PurePosixPath(rel_str)
-    if ".." in p.parts:
+    if not rel_str or rel_str.startswith("/") or ".." in pathlib.PurePosixPath(rel_str).parts:
         return None
     resolved = (root / rel_str).resolve()
     try:
         resolved.relative_to(root.resolve())
+        return resolved
     except ValueError:
         return None
-    return resolved
 
 
 def _read_repo_file_lines(root: pathlib.Path, rel_str: str) -> list[str] | None:
@@ -34,26 +31,42 @@ def _read_repo_file_lines(root: pathlib.Path, rel_str: str) -> list[str] | None:
         return None
     if target.is_file():
         return target.read_text(encoding="utf-8", errors="replace").splitlines()
-    res = subprocess.run(
-        ["git", "-C", str(root), "cat-file", "-p", f"HEAD:{rel_str}"],
-        capture_output=True, text=True,
-    )
-    if res.returncode == 0:
-        return res.stdout.splitlines()
-    return None
+    res = subprocess.run(["git", "-C", str(root), "cat-file", "-p", f"HEAD:{rel_str}"], capture_output=True, text=True)
+    return res.stdout.splitlines() if res.returncode == 0 else None
+
+
+def _resolve_target(root: pathlib.Path, code_roots: list[pathlib.Path], rel_str: str) -> tuple[pathlib.Path, str]:
+    s = str(rel_str).strip()
+    if ":" in s:
+        prefix, rest = s.split(":", 1)
+        for cr in code_roots:
+            if cr.name == prefix and rest:
+                return cr, rest.lstrip("./")
+    clean = s.lstrip("./")
+    if len(code_roots) == 1 and code_roots[0] != root:
+        if _is_safe_rel(code_roots[0], clean) is not None and ((code_roots[0] / clean).exists() or not (root / clean).exists()):
+            return code_roots[0], clean
+    if _is_safe_rel(root, clean) is not None and (root / clean).exists():
+        return root, clean
+    for cr in code_roots:
+        if cr != root and _is_safe_rel(cr, clean) is not None and (cr / clean).exists():
+            return cr, clean
+    return (code_roots[0] if len(code_roots) == 1 else root), clean
 
 
 def _parse_ref(ref_str: str) -> tuple[str, int, int] | None:
-    m = re.match(r"^([^:\s]+):(\d+)(?:-(\d+))?$", str(ref_str).strip())
+    m = re.match(r"^(.+):(\d+)(?:-(\d+))?$", str(ref_str).strip())
     if not m:
         return None
-    path = m.group(1).lstrip("./")
+    path = m.group(1).strip().lstrip("./")
     start = int(m.group(2))
     end = int(m.group(3) or start)
     return path, start, end
 
 
-def _verify_observed_proof(root: pathlib.Path, cid: str, claim: dict, halts: list, passes: list) -> None:
+def _verify_observed_proof(
+    root: pathlib.Path, code_roots: list[pathlib.Path], cid: str, claim: dict, halts: list, passes: list
+) -> None:
     proof = claim.get("proof")
     if not isinstance(proof, dict) or not proof.get("ref"):
         halts.append(("missing_proof", cid, "observed non-absence claim lacks proof.ref"))
@@ -62,61 +75,46 @@ def _verify_observed_proof(root: pathlib.Path, cid: str, claim: dict, halts: lis
     if not parsed:
         halts.append(("hallucinated_ref", cid, f"invalid proof.ref syntax: {proof['ref']!r}"))
         return
-    rel_path, start, end = parsed
-    lines = _read_repo_file_lines(root, rel_path)
+    raw_path, start, end = parsed
+    tgt_root, rel_path = _resolve_target(root, code_roots, raw_path)
+    lines = _read_repo_file_lines(tgt_root, rel_path)
     if lines is None:
-        halts.append(("hallucinated_ref", cid, f"cited file missing or outside repo: {rel_path}"))
+        halts.append(("hallucinated_ref", cid, f"cited file missing or outside repo: {raw_path}"))
         return
     if start < 1 or end < start or end > len(lines):
-        halts.append(("ref_out_of_bounds", cid, f"{rel_path}:{start}-{end} exceeds file length {len(lines)}"))
+        halts.append(("ref_out_of_bounds", cid, f"{raw_path}:{start}-{end} exceeds file length {len(lines)}"))
         return
-
     win = "\n".join(lines[max(0, start - 6) : min(len(lines), end + 5)])
     for sym in proof.get("symbols") or []:
         if str(sym) not in win:
-            halts.append(("missing_symbol", cid, f"symbol {sym!r} not found near {rel_path}:{start}-{end}"))
+            halts.append(("missing_symbol", cid, f"symbol {sym!r} not found near {raw_path}:{start}-{end}"))
             return
-
     anchor = proof.get("anchor_substring")
-    if anchor:
-        slice_txt = "\n".join(lines[start - 1 : end])
-        if str(anchor) not in slice_txt:
-            halts.append(("anchor_mismatch", cid, f"anchor_substring not found inside {rel_path}:{start}-{end}"))
-            return
-    passes.append(("observed_proof", cid, f"{rel_path}:{start}-{end}"))
+    if anchor and str(anchor) not in "\n".join(lines[start - 1 : end]):
+        halts.append(("anchor_mismatch", cid, f"anchor_substring not found inside {raw_path}:{start}-{end}"))
+        return
+    passes.append(("observed_proof", cid, f"{raw_path}:{start}-{end}"))
 
 
 def _list_scope_files(root: pathlib.Path, scope: str) -> list[str] | None:
     scope_clean = scope.strip().rstrip("/") or "."
     if scope_clean != "." and _is_safe_rel(root, scope_clean) is None:
         return None
-    ls = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "--", scope_clean],
-        capture_output=True, text=True,
-    )
-    rels: list[str] = []
+    ls = subprocess.run(["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "--", scope_clean], capture_output=True, text=True)
     if ls.returncode == 0:
         candidates = [line.strip() for line in ls.stdout.splitlines() if line.strip()]
     else:
         base = root if scope_clean == "." else (root / scope_clean)
-        if base.is_file():
-            candidates = [scope_clean]
-        elif base.is_dir():
-            candidates = [
-                p.relative_to(root).as_posix()
-                for p in base.rglob("*") if p.is_file()
-            ]
-        else:
-            candidates = []
-    for rel in sorted(set(candidates)):
-        if rel.startswith(SKIP_PREFIXES) or pathlib.PurePosixPath(rel).suffix.lower() in BIN_EXTS:
-            continue
-        if (root / rel).is_file():
-            rels.append(rel)
-    return rels
+        candidates = [scope_clean] if base.is_file() else ([p.relative_to(root).as_posix() for p in base.rglob("*") if p.is_file()] if base.is_dir() else [])
+    return [
+        rel for rel in sorted(set(candidates))
+        if not rel.startswith(SKIP_PREFIXES) and pathlib.PurePosixPath(rel).suffix.lower() not in BIN_EXTS and (root / rel).is_file()
+    ]
 
 
-def _verify_absence_claim(root: pathlib.Path, cid: str, claim: dict, halts: list, passes: list) -> None:
+def _verify_absence_claim(
+    root: pathlib.Path, code_roots: list[pathlib.Path], cid: str, claim: dict, halts: list, passes: list
+) -> None:
     proof = claim.get("proof")
     if not isinstance(proof, dict) or not proof.get("search_pattern") or not proof.get("scope"):
         halts.append(("missing_absence_proof", cid, "absence claim requires proof.search_pattern and proof.scope"))
@@ -126,26 +124,29 @@ def _verify_absence_claim(root: pathlib.Path, cid: str, claim: dict, halts: list
     except re.error as exc:
         halts.append(("invalid_absence_regex", cid, f"invalid search_pattern: {exc}"))
         return
-
-    rels = _list_scope_files(root, str(proof["scope"]))
+    tgt_root, scope_rel = _resolve_target(root, code_roots, str(proof["scope"]))
+    rels = _list_scope_files(tgt_root, scope_rel)
     if rels is None:
         halts.append(("hallucinated_ref", cid, f"invalid or unsafe scope: {proof['scope']!r}"))
         return
-
-    expected = {str(p).strip().lstrip("./") for p in (proof.get("expected_files") or []) if str(p).strip()}
+    expected = set()
+    for ep in proof.get("expected_files") or []:
+        if str(ep).strip():
+            _, ep_rel = _resolve_target(root, code_roots, str(ep))
+            expected.add(ep_rel)
+            expected.add(str(ep).strip().lstrip("./"))
     unexpected: list[str] = []
     for rel in rels:
         try:
-            txt = (root / rel).read_text(encoding="utf-8", errors="replace")
+            txt = (tgt_root / rel).read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        if pat.search(txt) and rel not in expected:
-            unexpected.append(rel)
-
+        if pat.search(txt) and rel not in expected and f"{tgt_root.name}:{rel}" not in expected:
+            unexpected.append(f"{tgt_root.name}:{rel}" if tgt_root != root else rel)
     if unexpected:
         halts.append(("falsified_absence", cid, f"unexpected match(es) for {proof['search_pattern']!r}: {', '.join(unexpected[:5])}"))
     else:
-        passes.append(("absence_proof", cid, f"scope={proof['scope']} matched expected={len(expected)} file(s)"))
+        passes.append(("absence_proof", cid, f"scope={proof['scope']} matched expected={len(proof.get('expected_files') or [])} file(s)"))
 
 
 def _evaluate_inferred_dag(
@@ -230,9 +231,16 @@ def _evaluate_inferred_dag(
                 passes.append(("inferred_claim", cid, f"depth={depth} <= 2"))
 
 
+def _sha_matches(rsha: str, head_shas: dict[str, str], repo_hint: str = "") -> bool:
+    if not rsha or len(rsha) < 7:
+        return False
+    cands = [head_shas[repo_hint]] if (repo_hint and repo_hint in head_shas) else list(head_shas.values())
+    return any(h and h.lower().startswith(rsha) for h in cands)
+
+
 def _verify_receipts(
     receipts: object,
-    head_sha: str,
+    head_shas: dict[str, str],
     test_scenarios: set[str],
     halts: list,
     escalates: list,
@@ -241,7 +249,6 @@ def _verify_receipts(
     if not isinstance(receipts, list) or not any(isinstance(r, dict) and r.get("kind") == "test_suite" for r in receipts):
         halts.append(("missing_test_receipt", "receipts", "implement/review stage requires >=1 test_suite receipt"))
         return
-
     covered: set[str] = set()
     valid_suite = 0
     for idx, rec in enumerate(receipts):
@@ -249,29 +256,27 @@ def _verify_receipts(
             continue
         target = f"receipt[{idx}]"
         rsha = str(rec.get("head_sha") or "").strip().lower()
-        if not rsha or not head_sha or not (head_sha.lower().startswith(rsha) or rsha.startswith(head_sha.lower())) or len(rsha) < 7:
-            halts.append(("stale_test_receipt", target, f"receipt head_sha={rsha!r} != HEAD {head_sha[:12]}"))
+        repo_hint = str(rec.get("repo") or "").strip()
+        if not _sha_matches(rsha, head_shas, repo_hint):
+            expected_str = "/".join(v[:12] for v in head_shas.values() if v)
+            halts.append(("stale_test_receipt", target, f"receipt head_sha={rsha!r} != HEAD {expected_str}"))
             continue
         if rec.get("exit_code") != 0:
             halts.append(("failing_test_receipt", target, f"test_suite exit_code={rec.get('exit_code')!r} != 0"))
             continue
-        raw_log = str(rec.get("raw_log") or "").strip()
-        exp_hash = str(rec.get("raw_log_sha256") or "").strip().lower()
+        raw_log, exp_hash = str(rec.get("raw_log") or "").strip(), str(rec.get("raw_log_sha256") or "").strip().lower()
         if raw_log and exp_hash:
             lp = pathlib.Path(raw_log).expanduser()
             if lp.is_file():
-                actual = hashlib.sha256(lp.read_bytes()).hexdigest().lower()
-                if actual != exp_hash:
+                if hashlib.sha256(lp.read_bytes()).hexdigest().lower() != exp_hash:
                     halts.append(("receipt_log_hash_mismatch", target, f"raw_log sha256 mismatch for {raw_log}"))
                     continue
             else:
                 escalates.append(("receipt_log_missing", target, f"raw_log missing on disk: {raw_log}"))
                 continue
         valid_suite += 1
-        for sid in rec.get("scenarios_observed_passing") or []:
-            covered.add(str(sid).strip())
+        covered.update(str(sid).strip() for sid in (rec.get("scenarios_observed_passing") or []))
         passes.append(("test_receipt", target, f"head={rsha[:12]} exit=0"))
-
     if valid_suite > 0 and test_scenarios and covered:
         missing = sorted(s for s in test_scenarios if s not in covered)
         if missing:
@@ -280,27 +285,24 @@ def _verify_receipts(
 
 def evaluate_evidence(
     root: pathlib.Path,
+    code_roots: list[pathlib.Path],
     evidence_path: pathlib.Path,
     stage: str,
-    head_sha: str,
+    head_shas: dict[str, str],
     ruled_items: set[str],
     spec_oqs: set[str],
     test_scenarios: set[str],
     sensitive_files: set[str],
-) -> tuple[list, list, list]:
-    halts: list = []
-    escalates: list = []
-    passes: list = []
+) -> tuple[list, list, list, dict | None]:
+    halts, escalates, passes = [], [], []
     try:
         data = yaml.safe_load(evidence_path.read_text(encoding="utf-8", errors="replace"))
     except Exception as exc:
         halts.append(("malformed_evidence_manifest", evidence_path.name, f"YAML parse error: {exc}"))
-        return halts, escalates, passes
-
+        return halts, escalates, passes, None
     if not isinstance(data, dict) or not isinstance(data.get("claims"), list):
         halts.append(("malformed_evidence_manifest", evidence_path.name, "manifest must be a mapping with claims list"))
-        return halts, escalates, passes
-
+        return halts, escalates, passes, None
     by_id: dict[str, dict] = {}
     for c in data["claims"]:
         if not isinstance(c, dict) or not c.get("id"):
@@ -308,17 +310,14 @@ def evaluate_evidence(
             continue
         cid = str(c["id"]).strip()
         by_id[cid] = c
-        st = str(c.get("status", "")).strip().lower()
-        kind = str(c.get("kind", "")).strip().lower()
+        st, kind = str(c.get("status", "")).strip().lower(), str(c.get("kind", "")).strip().lower()
         if kind == "absence" and st == "observed":
-            _verify_absence_claim(root, cid, c, halts, passes)
+            _verify_absence_claim(root, code_roots, cid, c, halts, passes)
         elif st == "observed":
-            _verify_observed_proof(root, cid, c, halts, passes)
+            _verify_observed_proof(root, code_roots, cid, c, halts, passes)
         elif st == "unknown":
-            oq = str(c.get("mapped_oq") or "").strip()
-            crit = str(c.get("criticality", "supporting")).strip().lower()
-            is_ruled = (cid in ruled_items) or (oq and oq in ruled_items)
-            if is_ruled:
+            oq, crit = str(c.get("mapped_oq") or "").strip(), str(c.get("criticality", "supporting")).strip().lower()
+            if (cid in ruled_items) or (oq and oq in ruled_items):
                 passes.append(("unknown_claim", cid, f"ruled via {oq or cid}"))
             elif crit == "load_bearing" or stage in {"implement", "review"}:
                 escalates.append(("unruled_unknown", cid, f"unruled unknown claim (criticality={crit}, stage={stage})"))
@@ -326,11 +325,10 @@ def evaluate_evidence(
                 escalates.append(("unmapped_unknown_claim", cid, f"unknown claim lacks valid spec.md OQ-N mapping ({oq or 'none'})"))
             else:
                 passes.append(("unknown_claim", cid, f"mapped to {oq} for Gate 1 review"))
-
     _evaluate_inferred_dag(by_id, ruled_items, sensitive_files, halts, escalates, passes)
     if stage in {"implement", "review"}:
-        _verify_receipts(data.get("receipts"), head_sha, test_scenarios, halts, escalates, passes)
-    return halts, escalates, passes
+        _verify_receipts(data.get("receipts"), head_shas, test_scenarios, halts, escalates, passes)
+    return halts, escalates, passes, data
 
 
 def resolve_repo_base(root: pathlib.Path, repo_dir: pathlib.Path, base_arg: str) -> str | None:

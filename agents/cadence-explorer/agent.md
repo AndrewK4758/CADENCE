@@ -53,9 +53,11 @@ When `tier:` resolves to `Medium` or `High`, read:
 
 5. **Treat `UNKNOWN` as a first-class epistemic label.** Under every option, separate failure modes that are **KNOWN** (provable from retrieved evidence) from failure modes that are **UNKNOWN** (unresolvable from static inspection), explicitly stating for each `UNKNOWN` what evidence is absent and what experiment or owner ruling would settle it. Never omit unresolved risks and never guess at them.
 
-6. **Default the novelty budget to ZERO at public contracts and persisted-data boundaries** — specifically any registered public surface or any state mutation that activates the **Data & Audit Fidelity** (*Data Integrity*) pillar. Explicitly declare each option's novelty classification and novelty budget rather than leaving them implicit.
+6. **Distinguish speculative novelty from invariant-required state (`docs/policies/completeness-invariants.md` E-2):** Default the novelty budget to ZERO at registered public API/event contracts and for **speculative novelty** (unprofiled caches, unneeded abstractions, or new frameworks). At persisted-data or trust boundaries activating `Data & Audit Fidelity` or `Security Boundary Posture`, durable state strictly required to close a `KNOWN` higher-pillar failure mode (such as a local idempotency/attempt ledger, pending-claim row, revocation epoch store, outbox, or version lock) is **`invariant-required-state`** — classify it as `established-durability` or `adjacent-required` and **never penalize it** as speculative novelty. Explicitly declare each option's novelty classification and budget.
 
 7. **When the solution space genuinely collapses to a single viable option, emit one option and prove why.** Never manufacture a fake second option to hit a quota. If constraints or invariants mathematically eliminate all but one architecture, document that single option and state the exact constraint that collapsed the space.
+
+8. **Stress-test sibling callers & full lifecycle boundaries:** Inspect all callers (interactive, async, background/scheduled, or client) sharing any modified invariant or irreversible external sink. Whenever an option leaves a sibling caller or lifecycle boundary (`docs/policies/completeness-invariants.md` §3) unprotected, document that exact exposure explicitly under `Failure modes (KNOWN)`.
 
 ## Workflow
 
@@ -84,14 +86,16 @@ Every `design-options.md` artifact must include all fields shown below; omitting
   - **Structure:** where architectural ownership sits -- which component governs the
     rule, which seam the data crosses, and which artifact/table is the source of record
   - **Steelman:** the strongest honest argument for this architecture on its own terms
-  - **Failure modes (KNOWN):** concrete failure conditions and what triggers them
+  - **Failure modes (KNOWN):** concrete failure conditions and triggers, each tagged
+    `[Pillar: <PillarName> | Severity: HIGH|MEDIUM|LOW | Scope: in-scope|sibling|cross-boundary]`
+    so higher-ranked pillar gaps cannot be glossed over during convergence
   - **Failure modes (UNKNOWN):** risks that cannot be settled from current evidence,
     what evidence is missing, and what check or owner decision would resolve them
   - **Pillar-relevant properties:** how this option behaves across the Engineering
     Pillars (Facet definitions) in docs/agentic-sdlc/CADENCE_ORG.md -- described
     factually, never scored or ranked
-  - **Novelty class:** established | adjacent | novel, together with its novelty
-    budget under Operating Principle 6
+  - **Novelty class:** established | established-durability | adjacent | adjacent-required | novel,
+    together with its novelty budget under Operating Principle 6
 
   ## Option B: <descriptive name>
   <identical six required bullets>

@@ -24,7 +24,7 @@ Execute a cross-ticket engineering retrospective across archived CADENCE work (`
 1. **Synthesize the Cross-Ticket Retrospective Report (Strictly Read-Only Default):**
    - Present a structured synthesis covering:
      1. **Tier & Stage Effort Ledger:** Ticket counts per `tier` (preserving unresolved tiers verbatim — never defaulting empty tiers to `Low`), recorded `stage_effort` sums vs `estimated_effort` (`actual_effort` variance computed strictly from recorded `metadata.yaml` ledgers, never recomputed from git commit timestamps).
-     2. **Code-Review Rework & Traceability Hotspots:** Tickets requiring `>=2` `cadence-run:cycle` iterations, recurring blocking findings, or `unguarded_citation_sweeps` (`DEAD-CITATION-SWEEP: SKIPPED|MANUAL`).
+     2. **Code-Review Rework, Model Attestation & Traceability Hotspots:** Tickets requiring `>=2` `cadence-run:cycle` iterations, recurring blocking findings, `model_attestation` gaps (`same_model_reviews` / `unattested_high_tier_reviews` vs `independent_model_reviews`), or `unguarded_citation_sweeps` (`DEAD-CITATION-SWEEP: SKIPPED|MANUAL`).
      3. **Unresolved Follow-Up Debt:** `Deferred` follow-ups (`## Resolution -> Follow-ups created`) still unfiled across closed work.
      4. **Candidate Systemic Insights (Deduplicated):** Distinct multi-ticket patterns qualifying for `II-NNN` (`intent-insights.md`) or `PROD-NNN` (`production-insights.md`, honoring `field-observed` / `execution-reproduced` / `categorically-reachable` entry criteria), excluding already-recorded `Source Ticket` entries.
    - Without `--promote` (or explicit operator confirmation), **STOP cleanly after presenting the synthesis — modify ZERO files and reserve ZERO IDs.**

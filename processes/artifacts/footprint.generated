@@ -54,6 +54,7 @@ kind=installed path=docs/policies/observability-patterns.md
 kind=installed path=docs/policies/inner_source_sdlc_charter.md
 kind=installed path=docs/policies/test-scope.md
 kind=installed path=docs/policies/finding-classes.md
+kind=installed path=docs/policies/completeness-invariants.md
 kind=installed path=docs/policies/comment-discipline.md
 kind=installed path=docs/guides/submitting-changes.md
 kind=installed path=docs/guides/contributor_experience_guide.md

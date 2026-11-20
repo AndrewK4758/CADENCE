@@ -71,10 +71,12 @@ Capture `guard_tuple=` before every loop iteration and re-read it immediately af
 `/cadence-build` appends a machine-readable HTML comment at the end of each review block inside `specs/<TICKET-ID>/submission.md` under `## Discussion`:
 
 ```html
-<!-- cadence-run:cycle n=2 phase=code-review blocking=1 nonblocking=3 at=2026-08-21T14:02:11Z -->
+<!-- cadence-run:cycle n=2 phase=code-review blocking=1 nonblocking=3 at=2026-08-21T14:02:11Z sha=a1b2c3d implementer_model=model-a reviewer_model=model-b breaker_model=model-c -->
 ```
 
 - **Always preserve the literal marker prefix `cadence-run:cycle`** for backwards compatibility with `read_state.py` and existing ticket histories.
 - Populate `at=` via `date -u +%Y-%m-%dT%H:%M:%SZ`.
+- Populate optional `sha=<short-sha>` (or `<repo>:<short-sha>,...` in multi-repo satellite workspaces) from `git rev-parse --short HEAD` so subsequent rework cycles supply `cadence-breaker` with the exact `<rework_base>..HEAD` rework delta via `breaker-trigger.sh`.
+- Populate optional `implementer_model=<id>`, `reviewer_model=<id>`, and `breaker_model=<id>` (the concrete model identifiers that executed each role in this cycle) so Gate 3 (`cadence-maintainer`) and `/cadence-retro` (`retro_scan.py`) can audit physical cross-model gate independence mechanically.
 - Append only the live cycle marker line — never paste instructional examples containing `cadence-run:cycle` into `submission.md`, because `read_state.py` greps `submission.md` for `cadence-run:cycle` and would miscount example prose as completed cycles.
-- After every review cycle, re-run `read_state.py` and confirm `ledger_cycles_completed` incremented by `1`.
+- After every review cycle, re-run `read_state.py` and confirm `ledger_cycles_completed` incremented by `1` (and `ledger_last_sha` / `ledger_last_models` reflect the completed cycle).
