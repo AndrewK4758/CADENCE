@@ -154,6 +154,26 @@
           }
         ]
       }
+    },
+    {
+      "id": 6,
+      "name": "anti-rationalization-and-structured-anomaly-gate",
+      "prompt": "A blocking=0 review cycle narrates a post-lock stale-flag race and claims the next periodic sweep reconciles both flags, or marks an Adversarial Lens anomaly row BLOCKING.",
+      "expected_output": "certainty-gate.sh --stage review halts (team>1 strict mode) or escalates (advisory mode) with reviewer_rationalized_defect / blocking_anomaly_in_approve rather than letting a downgraded defect pass.",
+      "assertions": [
+        "Blocks eventual-reconciliation rationalizations in blocking=0 review cycles",
+        "Halts unconditionally if an Adversarial Lens row is marked BLOCKING inside a blocking=0 cycle"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "cat > \"$FIX/specs/ACME-112/submission.md\" <<'MD'\n# Sub\n## Discussion\n### Adversarial Lens\nStale flag race remains, but the next periodic sweep reconciles both states.\n<!-- cadence-run:cycle n=1 phase=code-review blocking=0 nonblocking=0 at=2026-11-20T00:00:00Z -->\nMD",
+        "cmd": "rc=0; out=$(bash \"$ROOT/skills/cadence-certainty/certainty-gate.sh\" --root \"$FIX\" --base trunk --stage review ACME-112 2>&1) || rc=$?; echo \"rc=$rc\"; echo \"$out\"; test \"$rc\" -eq 1",
+        "stdout_regex": [
+          "rc=1",
+          "HALT reviewer_rationalized_defect"
+        ]
+      }
     }
   ]
 }

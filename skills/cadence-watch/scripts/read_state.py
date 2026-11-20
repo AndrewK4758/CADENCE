@@ -83,7 +83,7 @@ ORG_REL = os.path.join("docs", "agentic-sdlc", "CADENCE_ORG.md")
 # markdown, greppable, and consistent with CADENCE_ORG.md machine-readable markers.
 LEDGER_RE = re.compile(
     r"<!--\s*cadence-run:cycle\s+n=(?P<n>\d+)\s+phase=(?P<phase>[a-z-]+)\s+"
-    r"blocking=(?P<blocking>\d+)\s+nonblocking=(?P<nonblocking>\d+)"
+    r"blocking=(?P<blocking>\d+)\s+nonblocking=(?P<nonblocking>\d+)(?P<tail>.*?)-->"
 )
 
 SCALAR_RE = re.compile(r"^(?P<key>[A-Za-z_][A-Za-z0-9_]*):(?P<rest>.*)$")
@@ -218,15 +218,22 @@ def read_ledger(spec_dir):
         return []
     with open(path, encoding="utf-8") as fh:
         text = fh.read()
-    return [
-        {
-            "n": int(m.group("n")),
-            "phase": m.group("phase"),
-            "blocking": int(m.group("blocking")),
-            "nonblocking": int(m.group("nonblocking")),
-        }
-        for m in LEDGER_RE.finditer(text)
-    ]
+    entries = []
+    for m in LEDGER_RE.finditer(text):
+        kv = dict(re.findall(r"([a-z_]+)=([^\s>]+)", m.group("tail") or ""))
+        entries.append(
+            {
+                "n": int(m.group("n")),
+                "phase": m.group("phase"),
+                "blocking": int(m.group("blocking")),
+                "nonblocking": int(m.group("nonblocking")),
+                "sha": kv.get("sha", ""),
+                "implementer_model": kv.get("implementer_model", ""),
+                "reviewer_model": kv.get("reviewer_model", ""),
+                "breaker_model": kv.get("breaker_model", ""),
+            }
+        )
+    return entries
 
 
 def main():
@@ -334,8 +341,21 @@ def main():
             "ledger_last=n=%d,phase=%s,blocking=%d,nonblocking=%d"
             % (last["n"], last["phase"], last["blocking"], last["nonblocking"])
         )
+        out.append("ledger_last_sha=%s" % last["sha"])
+        models = [
+            "%s:%s" % (lbl, last[k])
+            for lbl, k in (
+                ("implementer", "implementer_model"),
+                ("reviewer", "reviewer_model"),
+                ("breaker", "breaker_model"),
+            )
+            if last[k]
+        ]
+        out.append("ledger_last_models=%s" % ",".join(models))
     else:
         out.append("ledger_last=")
+        out.append("ledger_last_sha=")
+        out.append("ledger_last_models=")
 
     guard_values = {
         "location": location,

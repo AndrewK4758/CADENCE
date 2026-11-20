@@ -13,9 +13,9 @@
 # (Proposed Design -> Sidecar interface) for the design rationale.
 #
 # Usage:
-#   verify-facts.sh [--root <dir>] [--base <ref>] <ticket-id>    # facts mode (default HEAD)
-#   verify-facts.sh [--root <dir>] --rulings <ticket-id>         # rulings mode
-#   verify-facts.sh [--root <dir>] [--base <ref>] [--strict] --trace <ticket-id>  # trace mode
+#   verify-facts.sh [--root <dir>] [--code-root <dir>]... [--base <ref>] <ticket-id>
+#   verify-facts.sh [--root <dir>] [--code-root <dir>]... --rulings <ticket-id>
+#   verify-facts.sh [--root <dir>] [--code-root <dir>]... [--base <ref>] [--strict] --trace <ticket-id>
 #
 # Where it looks: resolves specs/<id>/ then archive/<id>/, same idiom as
 # verify-spec.sh -- neither present is a loud exit 1 naming both roots.
@@ -44,9 +44,9 @@
 set -u
 
 usage() {
-  echo "Usage: $0 [--root <repo-root>] [--base <ref>] <ticket-id>" >&2
-  echo "       $0 [--root <repo-root>] --rulings <ticket-id>" >&2
-  echo "       $0 [--root <repo-root>] [--base <ref>] [--strict] --trace <ticket-id>" >&2
+  echo "Usage: $0 [--root <repo-root>] [--code-root <dir>]... [--base <ref>] <ticket-id>" >&2
+  echo "       $0 [--root <repo-root>] [--code-root <dir>]... --rulings <ticket-id>" >&2
+  echo "       $0 [--root <repo-root>] [--code-root <dir>]... [--base <ref>] [--strict] --trace <ticket-id>" >&2
   exit 1
 }
 
@@ -56,6 +56,7 @@ BASE_EXPLICIT=0
 TRACE_STRICT=0
 ROOT=""
 TICKET=""
+CODE_ROOTS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --rulings) MODE="rulings"; shift ;;
@@ -67,6 +68,9 @@ while [[ $# -gt 0 ]]; do
     --root)
       [[ $# -ge 2 ]] || usage
       ROOT="$2"; shift 2 ;;
+    --code-root)
+      [[ $# -ge 2 ]] || usage
+      CODE_ROOTS+=("$2"); shift 2 ;;
     -*) usage ;;
     *)
       [[ -z "$TICKET" ]] || usage
@@ -91,6 +95,7 @@ if [[ ! -f "$SELF_DIR/verify-facts-lib.sh" ]]; then
 fi
 # shellcheck source=/dev/null
 . "$SELF_DIR/verify-facts-lib.sh"
+validate_code_roots
 
 if [[ "$MODE" == "trace" ]]; then
   if [[ ! -f "$SELF_DIR/verify-trace-lib.sh" ]]; then
@@ -166,16 +171,18 @@ check_files_affected_row() { # <path> <type>
     report_fact UNVERIFIABLE files-affected "$type $path"
     return 0
   fi
+  resolve_target_repo "$path"
+  local repo="$RESOLVED_REPO" rpath="$RESOLVED_PATH"
   case "$type" in
     Add)
-      if git -C "$ROOT" cat-file -e "$BASE:$path" 2>/dev/null; then
+      if git -C "$repo" cat-file -e "$BASE:$rpath" 2>/dev/null; then
         report_fact FAIL files-affected "$type $path" "path exists at base ($BASE)"
       else
         report_fact PASS files-affected "$type $path"
       fi
       ;;
     Modify|Delete)
-      if git -C "$ROOT" cat-file -e "$BASE:$path" 2>/dev/null; then
+      if git -C "$repo" cat-file -e "$BASE:$rpath" 2>/dev/null; then
         report_fact PASS files-affected "$type $path"
       else
         report_fact FAIL files-affected "$type $path" "path is absent at base ($BASE)"
@@ -188,10 +195,7 @@ check_files_affected_row() { # <path> <type>
 }
 
 facts_mode() {
-  if ! git -C "$ROOT" rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null 2>&1; then
-    echo "ERROR: base ref does not resolve: $BASE" >&2
-    exit 1
-  fi
+  validate_facts_bases
 
   SENTINEL=0
   sentinel_present && SENTINEL=1
@@ -201,14 +205,18 @@ facts_mode() {
     [[ -n "$path" ]] || continue
     check_files_affected_row "$path" "$type"
   done < <(awk -F'|' '
-    /^### Files Affected/ { insec=1; rownum=0; next }
+    /^### Files Affected/ { insec=1; rownum=0; tcol=4; next }
     /^#/ { insec=0 }
     insec && /^\|/ {
       rownum++
-      if (rownum <= 2) next
-      p=$2; t=$4
+      if (rownum == 1) {
+        for (i=2; i<=NF; i++) { h=$i; gsub(/^[ \t]+|[ \t]+$/, "", h); if (tolower(h) ~ /^(change type|action|type)$/) { tcol=i; break } }
+        next
+      }
+      if (rownum == 2) next
+      p=$2; t=$tcol
       gsub(/^[ \t]+|[ \t]+$/, "", p); gsub(/^`|`$/, "", p)
-      gsub(/^[ \t]+|[ \t]+$/, "", t)
+      gsub(/^[ \t]+|[ \t]+$/, "", t); gsub(/^`|`$/, "", t)
       print p "\t" t
     }
   ' "$SPEC")

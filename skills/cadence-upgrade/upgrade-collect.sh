@@ -161,6 +161,7 @@ RECONCILE=(
   # NEW adopter; without this row an ALREADY-ADOPTED repo never receives the new
   # non-blocking finding class policy its upgraded roles/commands now point at.
   "docs/policies/finding-classes.md|installed|add||BTG-343"
+  "docs/policies/completeness-invariants.md|installed|add||CADENCE-COMPLETENESS"
   # BTG-341 (PROD_CADENCE-010): comment-discipline.md's COPY_PATHS entry reaches only a
   # NEW adopter; without this row an ALREADY-ADOPTED repo never receives the policy its
   # upgraded roles now point at.

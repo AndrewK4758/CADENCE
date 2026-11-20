@@ -159,7 +159,7 @@ To pass, an answer must name >=1 concrete item for **each** bullet `(i)` and `(i
 | Desired Outcome (adjacent assumptions) | (i) a specific adjacent service/system/team OR an explicit `"no dependencies"`; (ii) the exact state, contract, or behavior being relied upon |
 | Acceptance Criteria (NFR) | (i) a non-functional dimension (latency / durability / observability / audit / accessibility / security); (ii) a concrete violation signal the requester would notice |
 | Constraints (rejected edge cases) | (i) a specific rejected edge case OR an explicit `"none considered yet"`; (ii) the rationale for rejecting it |
-| Out of Scope (what would change your mind) | (i) a concrete out-of-scope item; (ii) a specific trigger condition that would pull it in-scope OR an explicit `"no trigger"` |
+| Out of Scope (what would change your mind) | (i) a concrete out-of-scope item plus whether it shares a mutable invariant or irreversible external sink with an in-scope AC; (ii) a specific trigger condition that would pull it in-scope OR an explicit risk-acceptance / `"no shared invariant and no trigger"` |
 
 When a typed answer fails one or both bullets:
 

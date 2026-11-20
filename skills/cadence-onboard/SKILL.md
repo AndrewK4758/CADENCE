@@ -41,7 +41,7 @@ When `--linked` is supplied (recommended for first-party repos referencing the c
 
 Check `docs/agentic-sdlc/CADENCE_ORG.md` for unfilled `<placeholder>` markers or table cells.
 - **Step 3a (Where / Who / Why constants):** Unless `--skip-interview` was passed, run `/cadence-interview` interactively to populate repository identity constants (`Where`, `Who`, `Why`, test/surface commands).
-- **Step 3b (Operator-confirmed operational bindings):** Still inside `/cadence-onboard` (unless `--skip-interview` is set or running non-interactively), interactively confirm `#branch-strategy-binding`, `#version-scheme-binding`, `#tracker-binding`, and `#id-allocation-binding`, then validate the populated file via `org-binding-resolve.sh`.
+- **Step 3b (Operator-confirmed operational bindings):** Still inside `/cadence-onboard` (unless `--skip-interview` is set or running non-interactively), interactively confirm `#branch-strategy-binding`, `#version-scheme-binding`, `#tracker-binding`, `#id-allocation-binding`, and `#completeness-strictness-binding` (`team-size`, `enforce-review`, `completeness-strictness` — defaulting team `>1` + `enforce-review: yes` to `halt` and solo/unreviewed repos to `escalate`), then validate the populated file via `org-binding-resolve.sh`.
 - If non-interactive or `--skip-interview` is set, leave `<placeholder>` entries intact and list the remaining markers explicitly so the operator can finish `/cadence-interview` and binding configuration before `/cadence-define`.
 
 ### 4. Health & offload verification (`/cadence-doctor --check-offload`)

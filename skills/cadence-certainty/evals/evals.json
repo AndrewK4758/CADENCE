@@ -63,6 +63,27 @@
           "decision=ESCALATE_HUMAN tier=high stage=spec grade=CONDITIONAL"
         ]
       }
+    },
+    {
+      "id": 3,
+      "name": "repo-strictness-unconfigured-prompts-and-cli-override",
+      "prompt": "Run certainty-gate.sh when CADENCE_ORG.md and AGENTS.md omit team-size/enforce-review markers, then override via --strictness escalate.",
+      "expected_output": "Exits 2 with completeness_strictness_unconfigured when the rule is absent, and exits 0 with strictness=escalate when explicitly overridden on the command line.",
+      "assertions": [
+        "Never guesses a silent strictness default when the repo-level rule is absent",
+        "Honors explicit --strictness halt|escalate command overrides"
+      ],
+      "check": {
+        "type": "script",
+        "fixture": "cadence_fixture",
+        "setup_sh": "sed -i '/Completeness Strictness Binding/,$d' \"$FIX/docs/agentic-sdlc/CADENCE_ORG.md\" && echo 'Gate 1 ruling: unknowns -- agree -- checked' >> \"$FIX/specs/ACME-201/decisions.md\"",
+        "cmd": "rc1=0; out1=$(bash \"$ROOT/skills/cadence-certainty/certainty-gate.sh\" --root \"$FIX\" --base trunk --stage spec ACME-201 2>&1) || rc1=$?; echo \"rc1=$rc1\"; echo \"$out1\"; out2=$(bash \"$ROOT/skills/cadence-certainty/certainty-gate.sh\" --root \"$FIX\" --base trunk --stage spec --strictness escalate ACME-201 2>&1); echo \"$out2\"; test \"$rc1\" -eq 2",
+        "stdout_regex": [
+          "rc1=2",
+          "ESCALATE completeness_strictness_unconfigured",
+          "decision=PROCEED .*strictness=escalate"
+        ]
+      }
     }
   ]
 }

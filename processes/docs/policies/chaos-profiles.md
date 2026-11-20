@@ -135,6 +135,39 @@ This catalog defines the standardized chaos profiles applied to business journey
 | What breaks if unhandled | Work applied to the wrong session or context, writes silently lost that the caller believes succeeded, an unbreakable re-authenticate loop, cross-session data exposure when a rotated handle is replayed |
 | Invariants to verify | Divergence is detected rather than assumed away — the caller validates the session identity it got back, not just the transport status. Re-establishing a session neither duplicates nor loses already-applied work. No operation is attributed to a session other than the one it was issued against. A divergence the caller cannot reconcile fails loudly (UNSOUND_CONDITION or DELTA_AUDIT_GAP seam fires) rather than continuing against a wrong context. |
 
+### CP-12: Post-Commit Ambiguous Fault
+
+**Failure mode:** An external dependency executes and commits an irreversible side effect, then drops the connection, resets the socket, or times out before delivering the response receipt. The caller receives an ambiguous error and cannot distinguish "never executed" from "committed externally."
+
+| Aspect | Detail |
+|--------|--------|
+| Injection point | Any outbound call performing an irreversible external write or dispatch — both interactive request handlers and background pollers/workers |
+| Parameters | `commit_before_fault` (true = simulator records the committed side effect before raising fault), `fault_type` (timeout, connection_reset, 503), `trigger_replay` (immediate_retry \| next_scheduled_tick) |
+| What breaks if unhandled | Catch blocks record no local trace and subsequent retries or background sweeps execute the irreversible side effect a second time, or skip downstream state-reconciliation invariants |
+| Invariants to verify | At most ONE external side effect executes across immediate retries AND subsequent scheduled/background ticks. A pre-call durable claim or stable deterministic attempt key reconciles the prior external outcome without duplicating effects or corrupting coupled local state. |
+
+### CP-13: External Authority / TTL Eviction Asymmetry
+
+**Failure mode:** An external system's deduplication cache, idempotency window, lease, or token store evicts or expires an entry earlier than the local system's replay, retry, or retention window. Replaying the same client key or token after external eviction bypasses external deduplication.
+
+| Aspect | Detail |
+|--------|--------|
+| Injection point | Any boundary relying on external deduplication keys, third-party idempotency caches, short-lived leases, or external token/session windows |
+| Parameters | `evict_after_calls` (default: 1) or `advance_clock_past_external_ttl` (true), `replay_payload` (identical \| altered) |
+| What breaks if unhandled | Delayed retries or late replays execute a duplicate external mutation, mint duplicate local ledger/state rows, or honor an expired/revoked authorization decision |
+| Invariants to verify | Local durable persistence (or server-enforced bounded expiry backed by a durable attempt record) remains authoritative after external eviction — replaying a processed key returns the persisted outcome or rejects cleanly without executing a second side effect. |
+
+### CP-14: Caller State Reset Mid-In-Flight Attempt
+
+**Failure mode:** The initiating caller (browser tab, UI component, CLI process, or stateful worker) reloads, remounts, navigates away and back, or restarts while a previously submitted irreversible mutation's outcome is still unresolved, then re-submits the same intent.
+
+| Aspect | Detail |
+|--------|--------|
+| Injection point | Any interactive UI, client SDK, or stateful caller initiating an irreversible mutation whose transport response can be lost |
+| Parameters | `interrupt_mode` (lost_response \| timeout \| crash_mid_flight), `reset_scope` (component_remount \| page_reload \| process_restart) |
+| What breaks if unhandled | Ephemeral in-memory attempt state is discarded on reset; the freshly mounted caller mints a brand-new attempt/idempotency key for the same intent and triggers duplicate execution |
+| Invariants to verify | The reset caller recovers or reuses the persisted attempt identity for the matching intent (or reconciles prior attempt status from the server) until a terminal outcome is observed — never silently minting a second key for an unresolved attempt. |
+
 ## Applicability Matrix
 
 Not every chaos profile applies to every business journey. The `cadence-spec-author` does NOT cherry-pick profiles — the `cadence-implementer` determines applicability mechanically from the infrastructure patterns the journey exercises:
@@ -144,6 +177,10 @@ Not every chaos profile applies to every business journey. The `cadence-spec-aut
 | Outbound HTTP/gRPC calls | CP-01, CP-07, CP-09 |
 | Queue consumption | CP-02, CP-03, CP-06 |
 | Multi-step mutations | CP-04, CP-05 |
+| Unlocked external I/O followed by locked state writeback | CP-04, CP-05 (with full coupled-state tuple assertions) |
+| Irreversible external side effects (interactive or background) | CP-01, CP-04, CP-07, CP-12, CP-13 |
+| External deduplication/TTL/lease caches with longer local replay windows | CP-08, CP-13 |
+| Interactive/stateful callers submitting irreversible mutations | CP-14 |
 | Time-dependent logic | CP-08 |
 | Distributed coordination | CP-10 |
 | Any external dependency | CP-07, CP-09 |

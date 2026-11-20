@@ -7,7 +7,7 @@
 # Usage:
 #   breaker-trigger.sh [--root <cadence-root>] [--code-root <target-repo>]... [--base <ref>] <ticket-id>
 # Output:
-#   decision=TRIGGER|SKIP tier=<t> mode=<exempt|initial|rework> reason=<why> [files=<csv>]
+#   decision=TRIGGER|SKIP tier=<t> mode=<exempt|initial|rework> reason=<why> [rework_base=<sha>] [files=<csv>]
 
 set -euo pipefail
 
@@ -94,9 +94,19 @@ if tier == "trivial":
 
 sub_path = ticket_dir / "submission.md"
 sub_text = sub_path.read_text(encoding="utf-8", errors="replace") if sub_path.is_file() else ""
+cycle_matches = list(re.finditer(r"<!--\s*cadence-run:cycle\b(.*?)-->", sub_text))
+last_cycle_sha = ""
+if cycle_matches:
+    parsed_cycles = []
+    for idx, cm in enumerate(cycle_matches):
+        kv = dict(re.findall(r"([a-z_]+)=([^\s>]+)", cm.group(1)))
+        parsed_cycles.append((int(kv.get("n", idx + 1)), idx, kv.get("sha", "")))
+    parsed_cycles.sort(key=lambda x: (x[0], x[1]))
+    last_cycle_sha = parsed_cycles[-1][2]
 is_rework = (
     status_val in {"rework", "changes-requested", "blocked"}
-    or bool(re.search(r"<!--\s*cadence-run:cycle\b|\bREQUEST CHANGES\b|\bVerdict:\s*BROKEN\b", sub_text))
+    or bool(cycle_matches)
+    or bool(re.search(r"\bREQUEST CHANGES\b|\bVerdict:\s*BROKEN\b", sub_text))
 )
 mode = "rework" if is_rework else "initial"
 
@@ -122,7 +132,7 @@ def resolve_base(repo_dir):
         cands.extend(["origin/main", "origin/develop", "main", "develop"])
     return next((r for r in cands + ["HEAD"] if git_ok(repo_dir, "rev-parse", "--verify", "--quiet", f"{r}^{{commit}}").returncode == 0), None)
 
-LOW_SIGNALS = re.compile(r"(?<![A-Za-z0-9])(?:await|async|abort[_ ]?(?:controller|signal)|promise|cancel|timeout|settimeout|retry|ioredis|bull|max[_ ]?retries|headers[_ ]?sent|stream|sse|flock|mutex|lock|transaction|for\s+update|response[_ ]?error|internal[_ ]?server|operation[_ ]?canceled|json[_ ]?exception|process[_ ]?runner|duplicate[_ ]?binary|s3:|filesystem|previous[_ ]?spec|docker[_-]?stack|swarm|env|redact|scrub|sanitize|guardrail|yuv420p|ffmpeg|statvfs)(?![A-Za-z0-9])", re.I)
+LOW_SIGNALS = re.compile(r"(?<![A-Za-z0-9])(?:await|async|abort[_ ]?(?:controller|signal)|promise|cancel|timeout|settimeout|retry|retries|backoff|idempoten[a-z]*|dedup[a-z]*|ttl|expir[a-z]*|session[_ ]?storage|local[_ ]?storage|queue|redis|headers[_ ]?sent|stream|sse|flock|mutex|lock|transaction|for\s+update|outbox|compensat[a-z]*|rollback|deploy|storage[_ ]?backend|filesystem|docker[_-]?stack|env|redact|scrub|sanitize|guardrail|parser|lexer|regex|quota|headroom)(?![A-Za-z0-9])", re.I)
 code_files, all_changed, low_signal_files = set(), set(), set()
 multi_repo, pathspecs = len(code_roots) > 1, ["--", ".", ":!specs/", ":!archive/"]
 
@@ -161,10 +171,38 @@ for cr in code_roots:
     if cur_rel and not cur_rel.endswith(".md") and not cur_rel.startswith("docs/") and (LOW_SIGNALS.search(cur_rel) or LOW_SIGNALS.search("\n".join(cur_buf))):
         low_signal_files.add(f"{cr.name}:{cur_rel}" if multi_repo else cur_rel)
 
+rework_base_tokens = []
+if is_rework and last_cycle_sha:
+    sha_map = {}
+    for tok in last_cycle_sha.split(","):
+        if ":" in tok:
+            k, v = tok.split(":", 1)
+            sha_map[k] = v
+        elif tok:
+            sha_map["*"] = tok
+    for cr in code_roots:
+        cand_sha = sha_map.get(cr.name) or sha_map.get("*")
+        if not cand_sha:
+            continue
+        r_ver = git_ok(cr, "rev-parse", "--verify", "--quiet", f"{cand_sha}^{{commit}}")
+        if r_ver.returncode == 0:
+            short_sha = git_ok(cr, "rev-parse", "--short", cand_sha).stdout.strip() or cand_sha
+            rework_base_tokens.append(f"{cr.name}:{short_sha}" if multi_repo else short_sha)
+            r_delta = git_ok(cr, "diff", "--name-only", f"{cand_sha}..HEAD", *pathspecs)
+            if r_delta.returncode == 0:
+                for rel in (p for p in r_delta.stdout.splitlines() if p):
+                    disp = f"{cr.name}:{rel}" if multi_repo else rel
+                    all_changed.add(disp)
+                    if not rel.endswith(".md") and not rel.startswith("docs/"):
+                        code_files.add(disp)
+        else:
+            rework_base_tokens.append(f"unreachable:{cr.name}:{cand_sha}" if multi_repo else f"unreachable:{cand_sha}")
+
 files_csv = ",".join(sorted(low_signal_files or code_files))
+rework_part = f" rework_base={','.join(rework_base_tokens)}" if rework_base_tokens else ""
 suffix = f" files={files_csv}" if files_csv else ""
 if is_rework:
-    print(f"decision=TRIGGER tier={tier} mode=rework reason=rework-mandatory{suffix}")
+    print(f"decision=TRIGGER tier={tier} mode=rework reason=rework-mandatory{rework_part}{suffix}")
 elif tier == "high":
     print(f"decision=TRIGGER tier=high mode={mode} reason=high-tier-mandatory{suffix}")
 elif tier == "medium":

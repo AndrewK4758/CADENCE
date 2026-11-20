@@ -114,6 +114,7 @@ COPY_PATHS=(
   docs/policies/inner_source_sdlc_charter.md
   docs/policies/test-scope.md
   docs/policies/finding-classes.md
+  docs/policies/completeness-invariants.md
   docs/policies/comment-discipline.md
   docs/guides/submitting-changes.md
   docs/guides/contributor_experience_guide.md

@@ -16,6 +16,8 @@ import time
 from typing import Any
 from urllib.parse import urlsplit
 
+from offload_diff_checks import analyze_test_diff
+
 HOME_STR = str(pathlib.Path.home())
 LLAMA_SWAP_URL = os.environ.get("LLAMA_SWAP_URL", "http://127.0.0.1:11434/v1")
 LAN_EMBED_URL = os.environ.get("LIVING_ROOM_EMBED_URL", "http://192.168.50.254:11434/v1")
@@ -387,13 +389,8 @@ def collect_git_diff_context(diff_range: str, work_dir: pathlib.Path) -> tuple[l
     for dline in diff_text.splitlines():
         if dline.startswith("+") and not dline.startswith("+++") and re.search(r"(#|//)\s*(?:TODO|FIXME|specs/)", dline):
             flags.append(f"DIFF_SMELL: `{dline[1:].strip()[:100]}`")
-    sections = re.split(r"(?=^diff --git )", diff_text, flags=re.MULTILINE)
-    sections = [s for s in sections if s.strip()]
+    flags.extend(analyze_test_diff(diff_text))
+    sections = [s for s in re.split(r"(?=^diff --git )", diff_text, flags=re.MULTILINE) if s.strip()]
     per_file = max(360, 9000 // max(1, len(sections)))
-    budgeted = []
-    for sec in sections:
-        if len(sec) <= per_file:
-            budgeted.append(sec.rstrip())
-        else:
-            budgeted.append(sec[:per_file].rstrip() + f"\n... (hunk clipped at {per_file}/{len(sec)} chars)")
+    budgeted = [s.rstrip() if len(s) <= per_file else f"{s[:per_file].rstrip()}\n... (hunk clipped at {per_file}/{len(s)} chars)" for s in sections]
     return rows, flags, ["\n".join(budgeted)] if budgeted else []

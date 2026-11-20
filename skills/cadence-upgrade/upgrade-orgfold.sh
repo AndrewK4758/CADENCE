@@ -163,6 +163,24 @@ fi
 # brand-new source-section append (DEC-013) are layered in by the red-green
 # cycles that follow.
 # ---------------------------------------------------------------------------
+# _orgfold_strictness_preserve <live_sec> <target_sec>: substitute any customized
+# non-placeholder strictness marker lines from live_sec into target_sec so future
+# template prose updates under "Completeness Strictness Binding" fold cleanly
+# without clobbering or conflicting on the adopter's team-size / enforce-review values.
+_orgfold_strictness_preserve() {
+  local livesec="$1" target="$2"
+  awk '
+    function mkey(line,   k) {
+      if (line ~ /^[ \t]*<!--[ \t]*(team-size|enforce-review|completeness-strictness):[ \t]*[^<].*-->[ \t]*$/) {
+        k = line; sub(/^[ \t]*<!--[ \t]*/, "", k); sub(/:.*$/, "", k); return k
+      }
+      return ""
+    }
+    FNR==NR { k = mkey($0); if (k != "") live_m[k] = $0; next }
+    { k = mkey($0); if (k != "" && (k in live_m)) print live_m[k]; else print }
+  ' "$livesec" "$target"
+}
+
 FOLD_RC=0
 fold_one() {
   local base="$1" src="$2" live="$3" out="$4"
@@ -227,9 +245,15 @@ fold_one() {
     fi
     if [[ -n "${SRCKEY[$key]:-}" ]]; then
       bfile="${BASEKEY[$key]:-$wd/empty}"
+      local sfile="${SRCKEY[$key]}"
+      if [[ "$key" == "Completeness Strictness Binding" ]]; then
+        _orgfold_strictness_preserve "$livesec" "$bfile" > "$wd/sb-base"
+        _orgfold_strictness_preserve "$livesec" "$sfile" > "$wd/sb-src"
+        bfile="$wd/sb-base"; sfile="$wd/sb-src"
+      fi
       merged="$wd/merged"
       if git merge-file -p -L theirs -L base -L "core@${NEW_VERSION:-new}" \
-           "$livesec" "$bfile" "${SRCKEY[$key]}" > "$merged" 2>/dev/null; then
+           "$livesec" "$bfile" "$sfile" > "$merged" 2>/dev/null; then
         cat "$merged" >> "$out"
       else
         cat "$merged" >> "$out"; FOLD_RC=1
@@ -247,6 +271,9 @@ fold_one() {
     if [[ -z "${LIVEKEY[$key]:-}" && -z "${BASEKEY[$key]:-}" ]]; then
       cat "$wd/src/sec.$n" >> "$out"
       echo "upgrade-cadence: org-fold appended new template section [$key] at end-of-file (relocate as needed)." >&2
+      if [[ "$key" == "Completeness Strictness Binding" ]]; then
+        echo "upgrade-cadence: org-fold NOTE -- verify [Completeness Strictness Binding] markers (team-size, enforce-review, completeness-strictness) in CADENCE_ORG.md; solo or unreviewed repos should set team-size: 1 or enforce-review: no." >&2
+      fi
     fi
   done < "$wd/src/index"
 

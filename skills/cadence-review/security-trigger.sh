@@ -138,8 +138,8 @@ SIGNALS = {
     "auth": re.compile(r"(?<![A-Za-z0-9])(?:auth[nz]?|oauth|oidc|jwt|rbac|acl|session|cookie|permission|authorize|login|logout|sudo|csrf|cors)(?![A-Za-z0-9])", re.I),
     "secrets_crypto": re.compile(r"(?:\.env(?:\.|$)|(?<![A-Za-z0-9])(?:secret|api[_-]?key|apikey|password|passwd|credential|private[_-]?key|hmac|encrypt|decrypt|cipher|pkcs|pem|tls|ssl|bearer|signing[_-]?key|bcrypt|argon2|scrypt|pbkdf2|redact|scrub|sanitize[_a-z]*|guardrail)(?![A-Za-z0-9]))", re.I),
     "data_sql": re.compile(r"(?:migrat|schema|\.sql$|(?<![A-Za-z0-9])(?:SELECT\s+.+\s+FROM|INSERT\s+INTO|UPDATE\s+.+\s+SET|DELETE\s+FROM|ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE|raw[_-]?query|execute[_-]?sql|cursor\.execute)(?![A-Za-z0-9]))", re.I),
-    "concurrency": re.compile(r"(?<![A-Za-z0-9])(?:flock|mutex|rwlock|semaphore|lock|unlock|atomic|transaction|serializable|for\s+update|asyncio|threading|multiprocessing|goroutine|concurrent|race|idempoten[a-z]*|nonce|compare[_-]?and[_-]?swap|abort[_ ]?controller|abort[_ ]?signal|ioredis|bull|max[_ ]?retries[_ ]?per[_ ]?request)(?![A-Za-z0-9])", re.I),
-    "untrusted_exec": re.compile(r"(?<![A-Za-z0-9])(?:subprocess|shell\s*=\s*True|os\.system|eval\(|exec\(|pickle\.loads?|yaml\.load|marshal\.loads?|deserialize|unserialize|redirect[_-]?url|webhook|presign|tarfile\.extract|zipfile|path[_-]?traversal|docker[_-]?stack|swarm)(?![A-Za-z0-9])", re.I),
+    "concurrency": re.compile(r"(?<![A-Za-z0-9])(?:flock|mutex|rwlock|semaphore|lock|unlock|atomic|transaction|serializable|for\s+update|asyncio|threading|multiprocessing|goroutine|concurrent|race|idempoten[a-z]*|dedup[a-z]*|nonce|compare[_-]?and[_-]?swap|abort[_ ]?controller|abort[_ ]?signal|max[_ ]?retries|retry|outbox|redis|queue|ttl)(?![A-Za-z0-9])", re.I),
+    "untrusted_exec": re.compile(r"(?<![A-Za-z0-9])(?:subprocess|shell\s*=\s*True|os\.system|eval\(|exec\(|pickle\.loads?|yaml\.load|marshal\.loads?|deserialize|unserialize|redirect[_-]?url|webhook|presign|tarfile\.extract|zipfile|path[_-]?traversal|docker[_-]?stack|rollback[_ ]?config)(?![A-Za-z0-9])", re.I),
 }
 
 matched_signals = set()

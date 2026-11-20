@@ -111,6 +111,14 @@ if [[ -f "$ORG_FILE" ]]; then
       fail "marker $marker missing or placeholder in ${ORG_FILE#"$ROOT/"}"
     fi
   done
+  cs_val="$(sed -n 's/.*<!-- *completeness-strictness: *\(.*\) *-->.*/\1/p' "$ORG_FILE" "$ROOT/AGENTS.md" "$ROOT/GEMINI.md" "$ROOT/CLAUDE.md" 2>/dev/null | head -n 1 | xargs 2>/dev/null || true)"
+  ts_val="$(sed -n 's/.*<!-- *team-size: *\(.*\) *-->.*/\1/p' "$ORG_FILE" "$ROOT/AGENTS.md" "$ROOT/GEMINI.md" "$ROOT/CLAUDE.md" 2>/dev/null | head -n 1 | xargs 2>/dev/null || true)"
+  er_val="$(sed -n 's/.*<!-- *enforce-review: *\(.*\) *-->.*/\1/p' "$ORG_FILE" "$ROOT/AGENTS.md" "$ROOT/GEMINI.md" "$ROOT/CLAUDE.md" 2>/dev/null | head -n 1 | xargs 2>/dev/null || true)"
+  if [[ -n "$cs_val" && "$cs_val" != \<* ]] || [[ -n "$ts_val" && -n "$er_val" && "$ts_val" != \<* && "$er_val" != \<* ]]; then
+    pass "completeness strictness binding configured (team-size=${ts_val:-unset} enforce-review=${er_val:-unset} strictness=${cs_val:-auto})"
+  else
+    warn "completeness strictness binding absent in ${ORG_FILE#"$ROOT/"} / root AGENTS.md (certainty-gate will prompt on Medium/High)"
+  fi
   if [[ "$MODE" == "adopter" ]]; then
     ph_count="$(awk '/^## .*Pre-Filled Contextual Grounding Constants/{f=1;next} /^## /{f=0} f && /<[^>]+>/{c++} END{print c+0}' "$ORG_FILE")"
     if [[ "$ph_count" -eq 0 ]]; then
@@ -220,7 +228,8 @@ for req in \
   "$AGENTS_DIR/cadence-breaker/agent.md" \
   "$AGENTS_DIR/cadence-spec-challenger/agent.md" \
   "$SKILLS_DIR/cadence-review/breaker-trigger.sh" \
-  "$SKILLS_DIR/cadence-review/security-trigger.sh"; do
+  "$SKILLS_DIR/cadence-review/security-trigger.sh" \
+  "$PROC_ROOT/docs/policies/completeness-invariants.md"; do
   lbl="${req#"$ROOT/"}"
   if [[ -e "$req" && ! -s "$req" ]]; then
     fail "review-hardening artifact exists but is 0 bytes ($lbl)"

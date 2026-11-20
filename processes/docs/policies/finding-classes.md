@@ -14,15 +14,23 @@ filing a follow-up ticket.
 
 ### Anti-Downgrade & Anti-Rationalization Clause
 
-No observable bug, race, unhandled error class, security/PII leak, upgrade regression, or edge-case
-failure inside modified/added code — or in lifecycle callers/callees directly coupled to the diff — may
-ever be labelled `[observation]`, `[nit]`, or `[hygiene]`. Specifically **forbidden** downgrades include
-teardown/cancellation races across `await` boundaries, missing client timeouts/deadlines (`ioredis`,
-`AbortSignal.timeout`), catching base `ResponseError` over 5xx subclasses, un-sanitized inner logger
-calls, clobbering existing populated defaults or rollback secrets, fixing only one sibling class/endpoint,
-and regex/lexer/rounding boundary failures. Rationalizations (*"only happens if stopped quickly"*,
-*"the spec did not mention this case"*, *"unit tests stubbed that collaborator"*, *"low likelihood in
-normal usage"*) are banned: every such defect inside or coupled to the diff MUST be **blocking**.
+No observable bug, race, unhandled error class, security/PII leak, upgrade regression, partial invariant violation, or edge-case failure inside modified/added code — or in lifecycle callers/callees directly coupled to the diff — may ever be labelled `[observation]`, `[nit]`, or `[hygiene]` (see also `docs/policies/completeness-invariants.md` E-5 / E-6). Specifically **forbidden** downgrades include:
+
+- async teardown/cancellation races across suspension points or unbounded external/client retry deadlines;
+- conflating 5xx/internal error subclasses with 4xx client errors or leaking sensitive data through inner collaborators;
+- clobbering existing populated deployment defaults, legacy storage prefixes, or rollback artifacts;
+- post-commit ambiguous-timeout duplicate execution (`CP-12`), external TTL/authority eviction gaps (`CP-13`), or caller/client reset duplication (`CP-14`);
+- post-lock stale-flag or stale-state writebacks after unlocked external I/O, or tests encoding a broken secondary field as expected;
+- fixing only one sibling caller/writer while leaving another writer of the same invariant or sink unprotected;
+- input-grammar, lexer, serialization, or cumulative capacity/rounding boundary failures.
+
+Four categories of **rationalization are banned**:
+1. *Eventual-reconciliation excuses* — claiming a future poll, cron sweep, TTL expiry, or background job will heal an inconsistent state.
+2. *Probability or timing dismissals* — claiming a defect "only happens under tight races, reloads, restarts, or delayed replays" or has "low likelihood in normal usage."
+3. *Spec or test-stub deference* — claiming "the spec did not mention it" or "unit tests stubbed that collaborator."
+4. *Selective scope dismissals* — treating a sibling caller or coupled path as out of scope when the diff shares its invariant/sink or modifies its lock/error handling.
+
+Every such defect inside or coupled to the diff MUST be **blocking** and recorded in the review's structured Adversarial Lens Anomaly Disposition table (`BLOCKING | PROVEN_SAFE | WAIVED`).
 
 ## The five classes
 
